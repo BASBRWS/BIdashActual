@@ -549,3 +549,13 @@ Het technische storingslog loopt automatisch mee in BiDash en de losse signaalge
 Klik na het probleem op Storingslog downloaden in de kopbalk. Je vindt dezelfde knop onder Data & export, Laden & exporteren. Stuur de gedownloade JSON mee met een korte omschrijving van wat je deed. Bij een vastgelopen pagina kun je herladen en daarna downloaden vanuit hetzelfde tabblad. De laatste nog niet opgeslagen meldingen kunnen bij een crash ontbreken. Sluit het tabblad tussendoor niet.
 
 Het log blijft lokaal en verstuurt niets automatisch. Het bewaart maximaal 600 meldingen, binnen een vaste groottebegroting, en voegt identieke herhalingen samen. Onder Data & export kun je Storingslog wissen gebruiken. Dat verandert jouw brondata niet. Controleer de JSON voordat je die deelt.
+
+## Snelle actuele MTM-dagstand, vanaf BIdashActual 2.63
+
+Open Data & export, DVM-bronbeheer, Signaalgevers uit map. De standaardmethode is Openstaande dumps, vergelijking na 48 uur. Kies jouw verkeerscentrales en de bestandsperiode, daarna de mtm-map of X-hoofdmap. Bij de alternatieve mapkeuze kies je de mtm-map of VC-map. De losse signaalgeverimporter biedt dezelfde methode zonder All Assets te vereisen; in het dashboard is All Assets nodig voor koppeling en doorrekening.
+
+De importer zoekt alleen *_openstaandestoringen.txt. Per VC worden doorgaans de nieuwste dump en een dump van minstens 48 uur eerder gelezen. Grote BSS-logs worden overgeslagen. Een bestand kan meerdere dumps achter elkaar bevatten; de laatste volledige lijst bepaalt wat nog openstaat. Vanaf en Tot en met begrenzen de bestandsdagen. Een storing die vóór Vanaf begon blijft dus gewoon staan als die nog in de laatste dump voorkomt.
+
+Een verdwenen melding staat niet meer in de actuele open lijst. Bij een vergelijking van minstens 48 uur krijgt de historie afgeleid hersteld. Het exacte herstelmoment blijft onbekend en ligt tussen de twee waarnemingen. Bij een korter interval blijft de melding in historie als verdwenen, herstel onbevestigd. Een volgende import kan dit alsnog bevestigen op basis van het interval. Zonder oudere vergelijking wordt geen herstel verzonnen. Andere verkeerscentrales en DRIP-/camerabronnen blijven behouden.
+
+Je ziet hoeveel bestanden daadwerkelijk zijn gelezen en per VC de vergelijking en herstelstatus. Download de bijgewerkte JSON om de stand over te dragen of als back-up te bewaren. Kies BSS-gebeurtenissen en oude storinglijsten alleen wanneer je bewust de eerdere methode wilt gebruiken.

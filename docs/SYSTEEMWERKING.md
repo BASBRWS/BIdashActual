@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.62 en DVM 141, bijgewerkt op 16 oktober 2026 voor het lokale technische storingslog. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.63 en DVM 142, bijgewerkt op 16 oktober 2026 voor de snelle import van openstaande MTM-dumps. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -41,10 +41,10 @@ MTM-bronnen uit map én importer blijven in de actual-autosave bewaard.
 Planning en contracten blijven toegankelijk als operationele context. De
 planning toont het geladen plan, niet een voorspelling van storingsontwikkeling.
 De documentatie hieronder beschrijft ook de geërfde analysefuncties; waar die
-prognose betreffen, zijn ze in deze variant geblokkeerd. Bronkwaliteit blijft een
-voorwaarde: de eerder gevonden tegenstrijdige MTM-kopdatum is hiermee niet
-inhoudelijk opgelost. De importer blijft zulke bestanden weigeren; er worden
-geen datums of hersteltijden verzonnen.
+prognose betreffen, zijn ze in deze variant geblokkeerd. Bronkwaliteit blijft een voorwaarde. De snelle MTM-import herkent meerdere
+gedateerde dumpblokken binnen één bestand en beoordeelt iedere alarmregel tegen
+haar eigen dumpkop. Een werkelijke tegenstrijdigheid blijft een bronfout; er
+worden geen datums of hersteltijden verzonnen.
 
 ## 1. Doel en grenzen
 
@@ -325,6 +325,24 @@ Nieuwe incidenten worden samengevoegd op canonieke VC, type, locatie inclusief z
 Oude light-historie met alleen locatie en start bevat onvoldoende kenmerken om rijstroken of foutcodes terug te vinden. Die regels blijven in hun oorspronkelijke aantallen behouden. Identieke oude basisbestanden worden multisetgewijs samengevoegd; de app verzint geen ontbrekende incidentidentiteit. Overlap van zo’n verliesarme oude regel met een rijkere nieuwe alarmregel kan daarom niet betrouwbaar worden vastgesteld.
 
 `pasSignaalgeverBundelToe(...,{bijwerken:true})` activeert het gereconcilieerde bronbeeld en behoudt andere historische en actuele bronnen, waaronder camera en de onafhankelijke DRIP-selectie. De algemene landelijke live-snapshotpatch sluit deze MTM-rijen niet nogmaals af. De bestaande live doorrekening en uitgestelde prognose blijven eigenaar van de uitkomsten. De mapdialoog en eindmelding tonen per VC het verwerkte tijdstip. **Download bijgewerkte JSON** levert een selectieve DVM-totaalexport met storingsrijen, bronidentiteit en `bronbeheer.signaalgeverTotaal.laatstePerVc`; die download kan via Data & export, Signaalgevers totaal of als volgende mapbasis worden geladen. De zware signaalgeverrijen blijven zoals voorheen buiten de compacte automatische opslag. Maak voor herstel na herladen een handmatige export.
+
+### Snelle openstaande MTM-dumps, BIdashActual 2.63 / DVM 142
+
+De standaardmethode van Signaalgevers uit map en van de losse importer is nu **Openstaande dumps, vergelijking na 48 uur**. De gebruiker kiest VC's en een bestandsperiode. Alleen namen eindigend op `openstaandestoringen.txt` (of log/dat/csv) worden gelezen, met een kalenderdatum in de bestandsnaam of het bestaande MTM-pad. BSS-gebeurtenislogs blijven bereikbaar via de expliciete oude importmethode. De snelle methode gebruikt het gedeelde `site/engines/dvm-mtm-open-dumps.js`; impactregels, assetkoppeling en kostenformules veranderen niet.
+
+Een bestand kan meerdere opeenvolgende blokken bevatten. Ieder blok begint met een datum-/tijdregel, gevolgd door pipe-gescheiden alarmregels. De parser splitst vóór verwerking op deze koppen, valideert alle blokken en gebruikt het laatste bronmoment als volledige openstaande lijst van dat bestand. Eerdere blokken worden niet met die lijst verenigd. Nederlandse tijd wordt expliciet via Europe/Amsterdam gelezen, onafhankelijk van de browserinstelling. Een alarm na zijn eigen kop, een afwijkende bestands-/mapdag, onbekende resttekst, een afgebroken rij, conflicterende inhoud op hetzelfde peilmoment of een onjuist opgegeven regelaantal stopt de import vóór toepassing. Een leeg blok met een geldige kop is een lege complete lijst binnen dit broncontract. De structurele controle bewijst niet dat het aanleverende systeem alle meldingen heeft geleverd.
+
+De actuele bron bevat uitsluitend de unieke meldingen uit de nieuwste volledige dump per VC. Bron-ID, VC, bronstart en foutcode vormen de nieuwe incidentidentiteit. Verschillende bron-ID's op hetzelfde asset met dezelfde code blijven aparte meldingen. Alleen identieke dubbele bronregels worden samengevoegd, met een sluitende bronbalans. Een herkende oude identiteit kan worden overgenomen zonder dubbel historie-incident. Onherleidbare oude light-historie blijft ongewijzigd bewaard. Andere VC's en onafhankelijke camera-/DRIP-bronnen blijven behouden.
+
+Per VC wordt ook de dichtstbijzijnde beschikbare dump van minstens 48 uur eerder geselecteerd. Doorgaans worden twee kleine bestanden gelezen. Is het tijdsverschil na het lezen korter dan 48 uur, bijvoorbeeld bij verschillende exporturen of de overgang naar zomertijd, dan wordt zo nodig één extra oudere kandidaat geprobeerd. Zonder een passende tweede dump of eerder bewaarde waarneming wordt geen herstel geconcludeerd. Nieuwere reeds bewaarde waarnemingen gaan vóór een oudere vergelijkingsdump. De 48 uur is geen minimumduur van een storing; oude nog aanwezige meldingen blijven open, ook wanneer hun start vóór de gekozen Vanaf-datum ligt.
+
+Een melding die in de nieuwste complete lijst ontbreekt staat niet meer in de actuele open lijst. De eerdere waarneming blijft in historie. Is die waarneming minstens 48 uur ouder dan de nieuwe dump, dan wordt de status HERSTELD_AFGELEID. Bij een korter interval blijft de historie VERDWENEN_UIT_SNAPSHOT totdat een latere dump de grens ondersteunt. Het herstelvenster loopt van de laatste waarneming tot de nieuwe dump. `hersteld_op` blijft null en `duurBetrouwbaar` false; het exacte herstelmoment is niet gemeten. Afwezigheid in twee bestanden bewijst geen continue afwezigheid of alle tussentijdse uitval/herstelcycli. Deze route bouwt geen volledige gebeurtenishistorie en voert geen prognose uit.
+
+De moderne mapkiezer doorloopt uitsluitend MTM, gekozen VC's en kandidaatjaren/maanden/dagen van nieuw naar oud. Tussendagen en oude jaarbomen worden niet op bestandsinhoud doorlopen. Alleen benodigde dumpbestanden krijgen een getFile-/leesaanroep. De alternatieve webkitdirectory-kiezer kan vooraf wel alle mapnamen/bestandsmetadata door de browser laten verzamelen; ook daar wordt alleen geselecteerde dumpinhoud gelezen. Ontbrekende VC's blijven onveranderd, niet storingsvrij. Een oudere mapsnede vervangt geen nieuwere stand; herimport van dezelfde stand is idempotent.
+
+De bestaande Signaalgevers totaal-JSON, integrale export, losse importer-overdracht en lokale opslag bewaren bron-ID's, herstelstatussen en `snapshotDekking`. Die dekking vermeldt methode, gelezen blokken/bronrijen, bronbalans, vergelijkingsbestand, tijdsafstand, afgeleid hersteld en nog onbevestigd verdwenen. De losse importer houdt de bestaande bewaartermijn voor gesloten historie en onbeperkte bewaring van open/onzekere incidenten. De dashboardroute neemt bestaande historie over; dit is geen nieuwe algemene opschoningsfunctie.
+
+Controles: `tests/mtm-open-dumps.test.js`, `tests/mtm-open-dumps-browser.cjs`, de bestaande legacy-map/BSS/importerbrowsertests en de volledige unitregressie. De synthetische mapcontrole verifieert daadwerkelijk twee bestandslezingen tussen duizenden niet te lezen BSS-kandidaten. De aangeleverde operationele bron wordt uitsluitend lokaal gecontroleerd en niet opgenomen in Git, release notes of openbare testlogs.
 
 ### MTM-BSS-gebeurtenissen vanaf 2.60 / DVM 140
 

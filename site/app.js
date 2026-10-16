@@ -1,14 +1,14 @@
-import {actualStand} from './core/actual-state.js?v=20261016-0834';
+import {actualStand} from './core/actual-state.js?v=20261016-0912';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261016-0834';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261016-0834';
-import {createFileDownload} from './core/file-download.js?v=20261016-0834';
-import {toonVersies} from './core/versie.js?v=20261016-0834';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261016-0912';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261016-0912';
+import {createFileDownload} from './core/file-download.js?v=20261016-0912';
+import {toonVersies} from './core/versie.js?v=20261016-0912';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
 import {applyQuery,operatorsFor} from './core/query-filter.js';
-import {createAssetRegisterView} from './core/asset-register-view.js?v=20261016-0834';
-import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261016-0834';
+import {createAssetRegisterView} from './core/asset-register-view.js?v=20261016-0912';
+import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261016-0912';
 const assetFlag=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 import {installQueryAssistant} from './core/query-assistant.js';
 import {buildBiDashContext} from './core/context-api.js';
@@ -22,7 +22,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261016-0834';
+const APP_BUILD='20261016-0912';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}

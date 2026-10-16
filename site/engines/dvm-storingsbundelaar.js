@@ -182,6 +182,7 @@
     }
   }
   async function sgVerzamelViaHandle(dirHandle,config,onVoortgang){
+    if(config.formaat==='open-dump-48h')return window.DVM_MTM_OPEN_DUMPS.collect(dirHandle,config,onVoortgang);
     const startNaam=String(dirHandle.name||'').toLowerCase();
     let startFase='root';
     if(startNaam==='mtm')startFase='mtm';
@@ -417,10 +418,11 @@
     let dlg=document.getElementById('sgMapDialog');
     if(!dlg){
       dlg=document.createElement('dialog');dlg.id='sgMapDialog';
-      dlg.style.cssText='max-width:520px;border:1px solid #d4dbe2;border-radius:10px;padding:0';
+      dlg.style.cssText='max-width:520px;max-height:90vh;overflow:auto;margin:auto;border:1px solid #d4dbe2;border-radius:10px;padding:0';
       dlg.innerHTML=`<form method="dialog" style="padding:18px 20px;font:13px/1.5 inherit">
         <h3 style="margin:0 0 4px">Signaalgevers uit map lezen (MTM)</h3>
         <p style="margin:0 0 10px;color:#566574">Beperk wat er in één keer wordt gelezen. Kies eerst regio('s) en eventueel een periode; kies daarna de map. In Edge/Chrome mag je gewoon de X-schijf kiezen — BiDash daalt zelf alleen af in <code>mtm</code> en de gekozen regio/periode. Lukt de moderne mapkiezer niet, kies dan <b>X:\\mtm</b> (niet heel X:), anders leest de browser de hele schijf in.</p>
+        <label>Importmethode<br><select id="sgFormaat"><option value="open-dump-48h">Openstaande dumps, vergelijking na 48 uur</option><option value="legacy">BSS-gebeurtenissen en oude storinglijsten</option></select></label><p>De snelle methode leest alleen *_openstaandestoringen.txt. Per VC worden de nieuwste dump en een vergelijkingsdump van minstens 48 uur eerder gelezen. Vanaf en Tot en met begrenzen de bestandsdagen, niet de startdatum van open storingen. Ontbrekende meldingen staan niet in de actuele open lijst; herstel blijft afgeleid, met een tijdvenster.</p>
         <div id="sgHuidig" style="margin:0 0 10px;padding:8px 10px;background:#f0f6fb;border:1px solid #cfe0ee;border-radius:6px;font-size:12px"></div>
         <fieldset style="border:1px solid #d4dbe2;border-radius:6px;margin:0 0 10px;padding:8px 10px"><legend style="font-weight:700">Verkeerscentrales</legend>
           ${SG_VCS.map(([v,l])=>`<label style="display:inline-block;margin:3px 14px 3px 0"><input type="checkbox" class="sgVc" value="${v}"> ${l}</label>`).join('')}
@@ -452,7 +454,7 @@
         if(!vcs.size){melding.textContent='Kies minstens één verkeerscentrale.';return;}
         const vanaf=dlg.querySelector('#sgVanaf').value||null,tot=dlg.querySelector('#sgTot').value||null;
         if(vanaf&&tot&&vanaf>tot){melding.textContent='De begindatum ligt na de einddatum.';return;}
-        const config={vcs,vanaf,tot};
+        const config={vcs,vanaf,tot,formaat:dlg.querySelector('#sgFormaat').value};
         const basisFile=dlg.querySelector('#sgBasis').files[0];
         if(basisFile){
           try{config.basisStand=sbSignaalgeverBasis(JSON.parse(await basisFile.text()));}
@@ -493,6 +495,7 @@
       huidig.style.display='';
       huidig.textContent='Nu geladen. '+s.open+' actuele meldingen (inclusief onzeker), '+s.historie+' historisch. Per VC, '+perVc+'.';
     }else{huidig.style.display='none';huidig.textContent='';}
+    try{window.frameElement?.scrollIntoView({block:'center'});}catch{}
     dlg.showModal();
   }
 
@@ -555,7 +558,9 @@
     sgLaatsteExport=null;
     if(typeof ASSET_REGISTER_STATE==='undefined'||!ASSET_REGISTER_STATE){alert('Laad eerst All Assets. De storingsmap wordt rechtstreeks aan dat stamregister gekoppeld.');if(typeof renderDataGereedheid==='function')renderDataGereedheid();return;}
     const alle=[...(fileList||[])];
-    const bestanden=sbFilterBestanden(alle,config);
+    const dumps=window.DVM_MTM_OPEN_DUMPS;
+    const snel=config.formaat==='open-dump-48h'||(!config.formaat&&dumps&&alle.some(dumps.isDump));
+    const bestanden=snel?dumps.select(alle,config).map(x=>x.file):sbFilterBestanden(alle,config);
     const regios=config.vcs&&config.vcs.size?[...config.vcs].map(v=>v.toUpperCase()).join(', '):'alle';
     const periode=config.vanaf||config.tot?` (${config.vanaf||'begin'} t/m ${config.tot||'nu'})`:'';
     if(!bestanden.length)throw new Error(`geen MTM-storinglijsten gevonden voor regio ${regios}${periode}. Van de ${alle.length.toLocaleString('nl-NL')} gekozen bestanden viel er geen onder mtm/<vc>/storinglijst/<jaar>/<maand>/<dag> met de gekozen regio en periode. Controleer de map (kies de X-hoofdmap of de mtm-map), de regiokeuze en de periode.`);
@@ -564,8 +569,12 @@
     sgMapVoortgang(2,startFase);
     if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,2,startFase,{direct:true});
     if(typeof uiPauze==='function')await uiPauze();
-    const invoer=[];
-    for(let n=0;n<bestanden.length;n++){
+    const invoer=[];let dumpResult=null;
+    if(snel){
+      dumpResult=await dumps.read(alle,config,{pause:typeof uiPauze==='function'?uiPauze:undefined,onProgress:(n,total,file)=>{const phase='Openstaande dumps lezen, '+n+' / circa '+total+' · '+file;sgMapVoortgang(5+65*Math.min(1,n/total),phase);if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,5+65*Math.min(1,n/total),phase,{direct:true});}});
+      invoer.push(...dumpResult.snapshots);
+    }
+    for(let n=0;!snel&&n<bestanden.length;n++){
       const f=bestanden[n],info=sbPadInfoMtm(sbPad(f));
       let text;
       try{text=await sbLeesTekst(f);}catch(err){throw new Error('Niet gelezen, de geladen stand is behouden. '+sbPad(f)+': '+err.message);}
@@ -578,15 +587,15 @@
       }
     }
     if(!invoer.length)throw new Error('de gevonden bestanden bevatten geen herkenbare storingsregels (regels beginnend met "|"). Controleer of dit MTM-storinglijsten zijn.');
-    sgMapVoortgang(74,'Alarmruns en storingen reconstrueren…');
-    if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,74,'Alarmruns en storingen reconstrueren',{direct:true});
+    sgMapVoortgang(74,snel?'Openstaande dumps vergelijken en herstel afleiden…':'Alarmruns en storingen reconstrueren…');
+    if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,74,snel?'Openstaande dumps vergelijken':'Alarmruns en storingen reconstrueren',{direct:true});
     if(typeof uiPauze==='function')await uiPauze();
     const huidig=sbSignaalgeverStand(STORINGSBRONNEN,LIVE_STORINGSBRONNEN,window.__BIDASH_SIGNAALGEVER_TOTAAL__);
     const extra=config.basisStand||(config.basisMtm?sbSignaalgeverBasis({datasets:{mtm:config.basisMtm}}):null);
     const basis=sbSignaalgeverCombineerStand(huidig,extra);
-    const resultaat=await window.DVM_MTM_BSS.process(basis,invoer,{historyCutoff:window.BIDASH_SIGNAALGEVER_IMPORT?.cutoff(),pause:typeof uiPauze==='function'?uiPauze:undefined,onProgress:(n,total)=>sgMapVoortgang(null,'BSS-gebeurtenissen verwerken, '+n.toLocaleString('nl-NL')+' van '+total.toLocaleString('nl-NL'))});
+    const resultaat=snel?dumps.process(basis,invoer):await window.DVM_MTM_BSS.process(basis,invoer,{historyCutoff:window.BIDASH_SIGNAALGEVER_IMPORT?.cutoff(),pause:typeof uiPauze==='function'?uiPauze:undefined,onProgress:(n,total)=>sgMapVoortgang(null,'BSS-gebeurtenissen verwerken, '+n.toLocaleString('nl-NL')+' van '+total.toLocaleString('nl-NL'))});
     const {open,historie,laatstePerVc,updates,dubbel,snapshotDekking,levenscyclusAudit}=resultaat;
-    const versie='maplezen-140';
+    const versie=snel?'open-dumps-48h-142':'maplezen-142';
     const tijdstip=new Date(),z=n=>String(n).padStart(2,'0');
     const stempel=`${tijdstip.getFullYear()}${z(tijdstip.getMonth()+1)}${z(tijdstip.getDate())}_${z(tijdstip.getHours())}${z(tijdstip.getMinutes())}`;
     sgMapVoortgang(88,'Open meldingen aan All Assets koppelen en doorrekenen…');
@@ -601,7 +610,9 @@
     window.__BIDASH_SG_MAP_CONFIG__=null;
     const laatste=laatsteEntry?new Date(laatsteEntry).toLocaleDateString('nl-NL'):'onbekend';
     const perVc=Object.entries(updates).map(([v,u])=>v.toUpperCase()+' tot '+new Date(u.tot).toLocaleString('nl-NL')+(u.ouder?' (oudere mapsnede, actuele stand behouden)':'')).join('; ');
-    const klaarTekst=`Klaar (${regios}): ${bestanden.length.toLocaleString('nl-NL')} bestanden, ${open.length.toLocaleString('nl-NL')} actuele meldingen inclusief onzeker (${herkendOpen.toLocaleString('nl-NL')} herkend), ${historie.length.toLocaleString('nl-NL')} historisch (${herkendHist.toLocaleString('nl-NL')} herkend). ${dubbel.toLocaleString('nl-NL')} overlappende regels samengevoegd. Per VC: ${perVc}.`;
+    const aantalGelezen=dumpResult?.selected??bestanden.length;
+    const dumpInfo=snel?' Alleen openstaande dumps. '+Object.entries(snapshotDekking).filter(([v,d])=>updates[v]&&!updates[v].ouder&&d.bronType===dumps.FORMAT).map(([v,d])=>v.toUpperCase()+': '+d.hersteldAfgeleid+' afgeleid hersteld, '+d.verdwenenNogOnbevestigd+' verdwenen zonder 48-uursbewijs'+(d.kopAfwijking?'; kopklok wijkt af, tijdstip op dag bekend':'')+(!d.sluitenToegestaan?'; geen sluitend 48-uursvergelijkingsbewijs beschikbaar':'')).join('. ')+(dumpResult.missing.length?' Geen dump voor '+dumpResult.missing.map(v=>v.toUpperCase()).join(', ')+', bestaande stand behouden.':''):'';
+    const klaarTekst=`Klaar (${regios}): ${aantalGelezen.toLocaleString('nl-NL')} bestanden, ${open.length.toLocaleString('nl-NL')} actuele meldingen inclusief onzeker (${herkendOpen.toLocaleString('nl-NL')} herkend), ${historie.length.toLocaleString('nl-NL')} historisch (${herkendHist.toLocaleString('nl-NL')} herkend). ${dubbel.toLocaleString('nl-NL')} overlappende regels samengevoegd. Per VC: ${perVc}.${dumpInfo}`;
     sgMapVoltooid(open.length&&!herkendOpen?klaarTekst+' Let op: geen enkele open melding werd als MSI herkend, dus het actuele dashboard blijft leeg.':klaarTekst,open.length&&!herkendOpen);
     if(typeof importKlaar==='function')importKlaar(label,'Signaalgevers per VC bijgewerkt. '+klaarTekst);
     /* Ook bij de showDirectoryPicker-route (die niet via de bron-inputhandler loopt)
@@ -609,7 +620,7 @@
        Signaalgevers totaal en het overzicht meteen bijwerken. */
     try{if(typeof renderDatasetBeheer==='function')renderDatasetBeheer();}catch(err){}
     try{if(parent!==window)parent.postMessage({type:'hub:changed',engine:'dvm',sourceSpecific:true,bron:'signaalgeverMap'},location.origin);}catch(err){}
-    return {bestanden:bestanden.length,open:open.length,historie:historie.length,herkendOpen,herkendHist,updates,dubbel};
+    return {bestanden:aantalGelezen,open:open.length,historie:historie.length,herkendOpen,herkendHist,updates,dubbel};
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
@@ -787,7 +798,7 @@
         if(!vcs.size){melding.textContent='Kies minstens één verkeerscentrale.';return;}
         const vanaf=dlg.querySelector('#dgVanaf').value||null,tot=dlg.querySelector('#dgTot').value||null;
         if(vanaf&&tot&&vanaf>tot){melding.textContent='De begindatum ligt na de einddatum.';return;}
-        const config={vcs,vanaf,tot};
+        const config={vcs,vanaf,tot,formaat:dlg.querySelector('#sgFormaat').value};
         const basisFile=dlg.querySelector('#dgBasis').files[0];
         if(basisFile){
           try{const j=JSON.parse(await basisFile.text());config.basisDrip=(j&&j.datasets&&j.datasets.drip)||{};}
