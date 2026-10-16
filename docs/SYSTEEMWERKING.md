@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.64 en DVM 143, bijgewerkt op 16 oktober 2026 voor de opeenvolgende import van openstaande MTM-dumps en 48 uur vanaf de eerste afwezigheid. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.65 en DVM 144, bijgewerkt op 16 oktober 2026 voor de zichtbaarheid van actuele technische meldingen bij ontbrekende assettypen. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -29,6 +29,10 @@ De dagstand gebruikt het peilmoment van de geladen bronnen. Het overzicht toont
 dat peilmoment en de laatst verwerkte bronmomenten per VC, plus onbekende dekking,
 veroudering en onzekere meldingen. Ontbrekende VC-bronnen zijn niet storingsvrij.
 Een refresh leest niet zelfstandig de lokale storingsmap.
+
+Vanaf 2.65 wordt de actuele verwerking gestart zodra een assetregister en een live bron zijn geladen. De vroegere voorwaarde dat ieder herkend meldingstype actief areaal in het register moest hebben, geldt niet voor BIdashActual. SYSTEEM en ONBEKEND zijn meldingscategorieën en hoeven geen zelfstandig assettype in All Assets te zijn. Ook een ontbrekend individueel assettype, een onzekere melding of ontbrekende locatie blokkeert de overige meldingen niet meer. De bestaande doorrekening houdt niet te berekenen meldingen in `STATE.nietDoorgerekend` met null-impact en een reden; de adapter en het assetregister tellen ze mee in de actuele meldingen. Bestaande koppelregels en impactformules blijven bepalend voor wat wel berekenbaar is. Ontkoppelde meldingen tellen landelijk mee en worden niet aan een willekeurig asset gehangen. De adapter normaliseert hun VC met dezelfde bestaande aliassen als gekoppelde meldingen, zodat bijvoorbeeld mn en MN onder hetzelfde schermfilter vallen.
+
+Een geladen lege live bron levert een leeg rekenbeeld met haar eigen bronpeildatum. Dat bewijst zonder de bestaande dekkingsinformatie geen volledige of storingsvrije operatie. Geen geladen bron of geen assetregister blijft onvoldoende voor deze doorrekening. Er wordt geen kloktijd als bronpeildatum verzonnen. De afzonderlijke analysevariant behoudt haar eerdere gereedheidspoort. `tests/actual-live-readiness.test.js` controleert deze grensgevallen; de echte actual- en MTM-dumpbrowsertests bewaken gemengde meldingscategorieën, peildatum, actuele lijst, register-KPI en import/herladen. De oude totaal-JSON kan aanvullend uitsluitend lokaal worden gecontroleerd; gebruikersbronnen worden niet opgenomen in Git.
 
 De apps delen op GitHub Pages een origin, daarom krijgt alle legacy localStorage
 én sessionStorage in iedere actual-realm de prefix `bidash-actual:`. `key`,

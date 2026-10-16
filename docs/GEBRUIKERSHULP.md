@@ -561,3 +561,9 @@ Een verdwenen melding blijft eerst open, met onzeker herstel. Vanaf de eerste du
 Ontbreekt een hele brondag, dan begint de termijn opnieuw bij de eerstvolgende afwezigheidswaarneming. De import trekt geen conclusies over dagen na de gekozen einddatum. Het exacte herstelmoment blijft onbekend. Je ziet aantallen gelezen bestanden, afgeleid herstel en meldingen die nog in de wachttijd staan.
 
 Download de bijgewerkte JSON om de stand en lopende timers over te dragen. De losse importer bewaart die ook lokaal en vervolgt ze bij de volgende import. Andere verkeerscentrales en DRIP-/camerabronnen blijven behouden. Om een stand uit 2.63 te corrigeren, importeer je de volledige relevante dagelijkse reeks opnieuw. Kies de oude methode alleen wanneer je BSS-gebeurtenissen en oude storinglijsten wilt verwerken.
+
+## Actuele storingen blijven zichtbaar, vanaf BIdashActual 2.65
+
+Een voedingsalarm of ander systeemalarm blokkeert de overige open storingen niet meer. Het assetregister en Open storingen tonen ook meldingen waarvan het assettype ontbreekt in All Assets. Een niet te berekenen melding blijft zichtbaar met onbekende impact en een reden. Zij krijgt geen verzonnen assetkoppeling of impactpercentage. Meldingen zonder assetkoppeling blijven ook onder het filter van hun verkeerscentrale zichtbaar, ongeacht hoofdletters of bekende VC-aliassen. De 48-uurswachttijd en opgeslagen timers veranderen niet.
+
+De bronpeildatum bepaalt het rekenmoment. Een geladen lege bron is iets anders dan geen geladen bron. Voor de doorrekening blijft All Assets nodig. Een ontbrekende of onvolledige bron bewijst niet dat de operatie storingsvrij is.

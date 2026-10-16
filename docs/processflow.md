@@ -378,3 +378,7 @@ Bij een probleem download je het log via de kopbalk of Data & export. In de loss
 ## MTM-dumpimport op volgorde, 2.64
 
 Kies VC en bestandsperiode. Zoek uitsluitend kleine openstaande dumps. Lees één brondag, valideer alle blokken en sorteer hun bronmomenten, ook over meerdere bestanden. Bouw de stand vanaf de eerste dump op en controleer iedere volgende dump. Aanwezig betekent open en wist de afwezigheidstimer. Eerste afwezigheid start de timer; de melding blijft onzeker open. Voortdurend afwezig gedurende 48 werkelijke uren betekent afgeleid hersteld. Een terugkeer annuleert de timer; een ontbrekende kalenderdag herstart hem. Herhaal tot het laatste bronmoment van de import. Pas daarna volgen assetkoppeling, dienstberekening, toepassing, opslag en JSON-export. Een fout houdt de vorige stand intact. De losse importer gebruikt dezelfde verwerking per dag, ondersteunt stoppen en bewaart lopende timers per VC voor een volgende import.
+
+## Actuele verwerkingspoort, 2.65
+
+Een geladen assetregister en live bron starten het actuele rekenbeeld. Het ontbreken van een registertype voor bijvoorbeeld een systeemalarm houdt de gehele stand niet meer tegen. De bestaande verwerking koppelt en rekent bruikbare meldingen door en bewaart de overige herkende technische meldingen met onbekende impact en een reden. De adapter levert beide groepen aan Open storingen en het gezamenlijke assetregister. De bronpeildatum blijft het rekenmoment. Een lege geladen bron houdt die datum; zonder bron blijft het rekenbeeld onbekend.

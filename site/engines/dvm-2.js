@@ -763,7 +763,12 @@ function berekenGereedheid(){
   const logsAlg=!!(STORINGSBRONNEN.length&&STORINGS_INSPECTIE&&STORINGS_INSPECTIE.herkenbaar);
   const liveAlg=heeftLiveStoringsdata();
   const contextBronnen=!!U_ROUTE_STATE&&!!WERK_STATE;
-  const basisAlgemeen=liveAlg&&regAlg.areaal;
+  // De dagstand vereist een register en een geladen live bron. Een systeemalarm,
+  // ontbrekend assettype of een lege complete dump mag andere meldingen niet
+  // blokkeren. De doorrekening bewaart zulke meldingen met onbekende impact.
+  const basisAlgemeen=globalThis.BIDASH_ACTUAL
+    ? !!ASSET_REGISTER_STATE&&LIVE_STORINGSBRONNEN.length>0
+    : liveAlg&&regAlg.areaal;
   const dripAreaal=!!(typeof DRIP_STATE!=='undefined'&&DRIP_STATE&&DRIP_STATE.drips&&DRIP_STATE.drips.length&&regDrip.areaal);
   const msiHist=STORINGS_INSPECTIE&&STORINGS_INSPECTIE.typen.MSI;
   // De Monte Carlo-prognose kalibreert op assetregister + storingshistorie. U-routes
@@ -1074,10 +1079,8 @@ function parseDatum(v){
 
 /* stap 1: classificeer assettype */
 function classificeer(m){
-  /* Een expliciete typehint gaat vóór de tekstherkenning. Signaalgeverstoringen (uit
-     de MTM-storinglijsten) zijn altijd MSI-installatiestoringen; hun omschrijving kan
-     woorden als "wisselbord" bevatten die anders naar een assettype zouden wijzen dat
-     niet in het register zit en de hele doorrekening zou blokkeren. */
+  /* Het expliciete type uit de bron gaat vóór tekstherkenning. MTM onderscheidt
+     individuele MSI- en detectiestoringen van systeem- en overige meldingen. */
   const hint=canoniekAssetType(m&&m.assetTypeHint);
   if(hint)return hint;
   const hay = (m.osid+' '+m.melding+' '+m.gevolg).toLowerCase();

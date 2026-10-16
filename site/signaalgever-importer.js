@@ -1,6 +1,6 @@
-import './core/signaalgever-import.js?v=20261016-1120';
-import {createWorkspaceStorage} from './core/storage.js?v=20261016-1120';
-import {BIDASH_VERSIE} from './core/versie.js?v=20261016-1120';
+import './core/signaalgever-import.js?v=20261016-1800';
+import {createWorkspaceStorage} from './core/storage.js?v=20261016-1800';
+import {BIDASH_VERSIE} from './core/versie.js?v=20261016-1800';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);
 const storage=createWorkspaceStorage(globalThis.BIDASH_ACTUAL?'bidash-actual-signaalgever-importer':'bidash-signaalgever-importer');
 let stands={},busy=false,cancelled=false,H,frame;

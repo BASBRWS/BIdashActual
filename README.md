@@ -5,7 +5,7 @@ verkeerskosten, formatie en bronkwaliteit. Zelfstandige overname van BASBRWS/BiD
 op commit 1229af3, inclusief de drie engines, imports, exports, planning,
 documentatie, tests en het technische storingslog.
 
-BIdashActual 2.64 / DVM 143 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
+BIdashActual 2.65 / DVM 144 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
 BASBRWS/BiDash blijft de aparte analyseomgeving. Beide repositories worden vanaf
 hier afzonderlijk beheerd; er is geen automatische broncodesynchronisatie.
 
@@ -15,6 +15,9 @@ Start met `npm run serve`. Laad je bestaande integrale JSON, DVM-totaalbestand o
 afzonderlijke bronnen. Persoonlijke brondata wordt niet naar GitHub gestuurd.
 De overname bevat geen browserwerkruimte of gekoppelde bronmap; laad je eigen
 export opnieuw en koppel de map in deze applicatie.
+
+Een systeemmelding of een meldingstype zonder asset in het register blokkeert de
+actuele storingslijst niet. Zulke meldingen blijven zichtbaar met onbekende impact.
 
 De bronpeildatum bepaalt de dagstand. Een oude export wordt niet actueel door
 hem vandaag te openen. Bronactualiteit per VC en onzekere meldingen blijven
@@ -51,4 +54,4 @@ naast de opgebouwde incidentstand. Om te vroeg afgeleid herstel uit 2.63 te
 corrigeren, importeer je de volledige relevante dagelijkse reeks opnieuw.
 
 Zie [Systeemwerking](docs/SYSTEEMWERKING.md), [Gebruikershulp](docs/GEBRUIKERSHULP.md)
-en [Release 2.64](docs/release-notes-2026-10-16-open-dumps-264.md).
+en [Release 2.65](docs/release-notes-2026-10-16-actuele-storingen-265.md).

@@ -106,7 +106,7 @@
   faults(){return [...(STATE?.meldingen||[]),...(STATE?.nietDoorgerekend||[])].map((m,i)=>({
     ...Object.fromEntries(['incident_id','incident_fingerprint','eerste_gezien','laatste_gezien','bron_peildatum','hersteld_op','levenscyclus_status','herstel_venster_van','herstel_venster_tot','technische_categorie','identiteit_volledig','bevestigd_tot','veroudering_na_uren'].filter(k=>m[k]!==undefined).map(k=>[k,m[k]])),
     liveOpen:m.liveOpen,strook:m.strook||'',id:m.eventId||i,eventId:m.eventId||'',assetKey:m.assetKey||'',naam:m.assetNaam||m.osid||m.asset||'',
-    netwerkschakel:m.netwerkschakel||'',netwerkKoppeling:m.netwerkKoppeling||'',typeId:m.typeId,weg:m.weg||'',richting:m.richting||'',vc:m.vc||'',rd:m.rd||'',district:m.district||'',hm:m.hm,
+    netwerkschakel:m.netwerkschakel||'',netwerkKoppeling:m.netwerkKoppeling||'',typeId:m.typeId,weg:m.weg||'',richting:m.richting||'',vc:normAssetVc(m.vc),rd:m.rd||'',district:m.district||'',hm:m.hm,
     code:m.code||m.foutcode||'',impact:m.avail??null,prestatie:m.perf??null,
     bijdrageAvail:m.trace?.bijdrageAvail??null,bijdragePerf:m.trace?.bijdragePerf??null,
     omschrijving:m.rekenStatus?[m.melding,m.rekenStatus].filter(Boolean).join(' · '):m.melding||m.omschrijving||'',
