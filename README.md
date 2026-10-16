@@ -5,7 +5,7 @@ verkeerskosten, formatie en bronkwaliteit. Zelfstandige overname van BASBRWS/BiD
 op commit 1229af3, inclusief de drie engines, imports, exports, planning,
 documentatie, tests en het technische storingslog.
 
-BIdashActual 2.62 / DVM 141 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
+BIdashActual 2.63 / DVM 142 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
 BASBRWS/BiDash blijft de aparte analyseomgeving. Beide repositories worden vanaf
 hier afzonderlijk beheerd; er is geen automatische broncodesynchronisatie.
 
@@ -39,9 +39,13 @@ De aanvullende dagstandtest staat in `tests/actual-browser.cjs`.
 
 De volledige bronconstructie is overgenomen, de bestaande Git-commitgeschiedenis
 niet. Prognosecode blijft als herkomst in de repository maar is in de actual-
-ingangen geblokkeerd. De eerder gevonden tegenstrijdige MTM-kopdatum is hiermee
-niet inhoudelijk opgelost. De importer weigert zulke bestanden nog; er worden
-geen bronpeildata of hersteltijden verzonnen.
+ingangen geblokkeerd. De snelle MTM-import herkent meerdere gedateerde dumpblokken per bestand en
+gebruikt de laatste complete lijst. De herstelstatus is afgeleid uit een
+vergelijking na minstens 48 uur; het exacte herstelmoment blijft onbekend.
+Werkelijk ongeldige brondata wordt geweigerd.
+
+De standaardmapimport leest alleen *_openstaandestoringen.txt, gewoonlijk twee
+kleine bestanden per VC. Kies de oude methode expliciet voor BSS-gebeurtenislogs.
 
 Zie [Systeemwerking](docs/SYSTEEMWERKING.md), [Gebruikershulp](docs/GEBRUIKERSHULP.md)
-en [Release 2.62](docs/release-notes-2026-10-16-bidash-actual-262.md).
+en [Release 2.63](docs/release-notes-2026-10-16-open-dumps-263.md).

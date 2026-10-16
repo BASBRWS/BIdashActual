@@ -1,6 +1,6 @@
-import './core/signaalgever-import.js?v=20261016-0834';
-import {createWorkspaceStorage} from './core/storage.js?v=20261016-0834';
-import {BIDASH_VERSIE} from './core/versie.js?v=20261016-0834';
+import './core/signaalgever-import.js?v=20261016-0912';
+import {createWorkspaceStorage} from './core/storage.js?v=20261016-0912';
+import {BIDASH_VERSIE} from './core/versie.js?v=20261016-0912';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);
 const storage=createWorkspaceStorage(globalThis.BIDASH_ACTUAL?'bidash-actual-signaalgever-importer':'bidash-signaalgever-importer');
 let stands={},busy=false,cancelled=false,H,frame;
@@ -9,20 +9,20 @@ const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+
 $('until').value=today();$('version').textContent='Versie '+BIDASH_VERSIE;
 const pause=()=>new Promise(r=>setTimeout(r,0));
 function status(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
-function controls(){for(const id of ['vc','from','until','basis','pick','folder'])$(id).disabled=busy||!H;$('cancel').hidden=!busy;$('cancel').disabled=!busy;$('download').disabled=busy||!Object.keys(stands).length;$('downloadVc').disabled=busy||!stands[$('vc').value];}
+function controls(){for(const id of ['vc','from','until','basis','pick','folder','mode'])$(id).disabled=busy||!H;$('cancel').hidden=!busy;$('cancel').disabled=!busy;$('download').disabled=busy||!Object.keys(stands).length;$('downloadVc').disabled=busy||!stands[$('vc').value];}
 function render(){
   $('results').replaceChildren();
   for(const vc of C.vcs){const s=stands[vc];if(!s)continue;
     const counts=frame.DVM_INCIDENT_LIFECYCLE.summary(s.open),uncertain=counts.onzeker;
     const tr=document.createElement('tr'),t=s.laatstePerVc[vc],d=s.snapshotDekking?.[vc];
-    const values=[vc.toUpperCase(),t?new Date(t).toLocaleString('nl-NL'):'Onbekend',counts.meldingen-uncertain,uncertain,s.historie.filter(C.closed).length,d?.volledig&&!d.bronGap&&!d.volumeVerdacht?'Structuur gecontroleerd':'Controle nodig'];
+    const values=[vc.toUpperCase(),t?new Date(t).toLocaleString('nl-NL',{timeZone:'Europe/Amsterdam'}):'Onbekend',counts.meldingen-uncertain,uncertain,s.historie.filter(C.closed).length,d?.volledig&&!d.bronGap&&!d.volumeVerdacht?'Structuur gecontroleerd':'Controle nodig'];
     for(const value of values){const td=document.createElement('td');td.textContent=String(value);tr.append(td);}$('results').append(tr);
   }
   controls();
 }
 function config(){
   const vanaf=$('from').value,tot=$('until').value;if(!vanaf||!tot||vanaf>tot)throw Error('Kies een geldige begin- en einddatum.');
-  return {vcs:new Set([$('vc').value]),vanaf,tot};
+  return {vcs:new Set([$('vc').value]),vanaf,tot,formaat:$('mode').value};
 }
 function checkCancel(){if(cancelled)throw Error('Verwerking gestopt. De vorige opgeslagen stand is behouden.');}
 async function process(files,cfg){
@@ -32,11 +32,13 @@ async function process(files,cfg){
     if(C.vc(parts[0])&&parts[1]?.toLowerCase()==='storinglijst')return {name:f.name,_pad:'mtm/'+path,_handle:{getFile:async()=>f}};
     return f;
   });
-  const vc=[...cfg.vcs][0],selected=H.sbFilterBestanden(normalized,cfg);if(!selected.length)throw Error('Geen MTM-storinglijsten gevonden voor '+vc.toUpperCase()+' in deze periode.');
+  const vc=[...cfg.vcs][0],snel=cfg.formaat==='open-dump-48h',D=frame.DVM_MTM_OPEN_DUMPS,selected=snel?D.select(normalized,cfg).map(x=>x.file):H.sbFilterBestanden(normalized,cfg);if(!selected.length)throw Error('Geen MTM-storinglijsten gevonden voor '+vc.toUpperCase()+' in deze periode.');
   const now=Date.now();let stand=stands[vc]||{open:[],historie:[],laatstePerVc:{},snapshotDekking:{},histRest:[],liveRest:[]};
   const basis=$('basis').files[0];
   if(basis){const b=H.sbSignaalgeverBasis(JSON.parse(await basis.text()));stand=H.sbSignaalgeverCombineerStand(stand,{...b,open:b.open.filter(r=>C.rowVc(r)===vc),historie:b.historie.filter(r=>C.rowVc(r)===vc),laatstePerVc:b.laatstePerVc[vc]?{[vc]:b.laatstePerVc[vc]}:{},snapshotDekking:b.snapshotDekking[vc]?{[vc]:b.snapshotDekking[vc]}:{},histRest:[],liveRest:[]});}
-  const days=new Map();for(const f of selected){const p=f.webkitRelativePath||f._pad||f.name,info=H.sbPadInfoMtm(p),key=+info.datum;if(!days.has(key))days.set(key,[]);days.get(key).push({f,info});}
+  let fastRead=null;
+  if(snel){fastRead=await D.read(normalized,cfg,{pause,checkCancel,onProgress:(n,total,file)=>{checkCancel();status(vc.toUpperCase()+', openstaande dumps '+n+' / circa '+total+', '+file);$('progress').value=5+80*Math.min(1,n/total);}});checkCancel();stand=C.retain(D.process(stand,fastRead.snapshots),now);}
+  const days=new Map();for(const f of snel?[]:selected){const p=f.webkitRelativePath||f._pad||f.name,info=H.sbPadInfoMtm(p),key=+info.datum;if(!days.has(key))days.set(key,[]);days.get(key).push({f,info});}
   let done=0,verwijderd=0;
   for(const [,items] of [...days].sort((a,b)=>a[0]-b[0])){
     checkCancel();const invoer=[];
@@ -50,9 +52,9 @@ async function process(files,cfg){
     const removed=stand.bssVerwijderd||0;stand=C.retain(stand,now);verwijderd+=stand.bewaring.verwijderd+removed;
     status(vc.toUpperCase()+', '+done+' van '+selected.length+' bestanden verwerkt.');await pause();
   }
-  checkCancel();stand.bewaring.verwijderd=verwijderd;
+  checkCancel();stand.bewaring.verwijderd=snel?stand.bewaring.verwijderd:verwijderd;verwijderd=stand.bewaring.verwijderd;
   const next={...stands,[vc]:stand};status('Stand lokaal opslaan.');$('progress').value=95;$('cancel').disabled=true;await storage.write({schema:1,stands:next});stands=next;render();$('progress').value=100;
-  status(vc.toUpperCase()+' opgeslagen. '+selected.length+' bestanden verwerkt. '+stand.open.length+' actuele meldingen inclusief onzeker. '+verwijderd+' afgesloten meldingen buiten de bewaartermijn verwijderd. Kies de volgende verkeerscentrale of download de JSON.');
+  status(vc.toUpperCase()+' opgeslagen. '+(fastRead?.selected??selected.length)+' bestanden verwerkt. '+stand.open.length+' actuele meldingen inclusief onzeker. '+verwijderd+' afgesloten meldingen buiten de bewaartermijn verwijderd. Kies de volgende verkeerscentrale of download de JSON.'+(snel?' '+stand.snapshotDekking[vc].reden+'. '+stand.snapshotDekking[vc].hersteldAfgeleid+' afgeleid hersteld.':''));
 }
 async function run(getFiles){
   if(busy||!H)return;let cfg;try{cfg=config();}catch(e){status(e.message,true);return;}
@@ -78,7 +80,7 @@ function download(selected){
 $('download').onclick=()=>download(stands);$('downloadVc').onclick=()=>download({[$('vc').value]:stands[$('vc').value]});
 try{
   const iframe=$('runtime');
-  await new Promise((resolve,reject)=>{const deadline=setTimeout(()=>reject(Error('De MTM-verwerking kon niet worden gestart. Herlaad de pagina.')),30000);const ready=()=>{if(iframe.contentWindow?.__BIDASH_STORINGSBUNDELAAR__&&iframe.contentWindow?.DVM_INCIDENT_LIFECYCLE&&iframe.contentWindow?.DVM_MTM_BSS){clearTimeout(deadline);resolve();}};iframe.addEventListener('load',ready,{once:true});ready();});
+  await new Promise((resolve,reject)=>{const deadline=setTimeout(()=>reject(Error('De MTM-verwerking kon niet worden gestart. Herlaad de pagina.')),30000);const ready=()=>{if(iframe.contentWindow?.__BIDASH_STORINGSBUNDELAAR__&&iframe.contentWindow?.DVM_INCIDENT_LIFECYCLE&&iframe.contentWindow?.DVM_MTM_BSS&&iframe.contentWindow?.DVM_MTM_OPEN_DUMPS){clearTimeout(deadline);resolve();}};iframe.addEventListener('load',ready,{once:true});ready();});
   frame=iframe.contentWindow;H=frame.__BIDASH_STORINGSBUNDELAAR__;
   const saved=await storage.read();if(saved&&saved.schema!==1)throw Error('Onbekende opslagversie van de importer.');
   stands=Object.fromEntries(Object.entries(saved?.stands||{}).filter(([v])=>C.vcs.includes(v)).map(([v,s])=>[v,C.retain(s)]));

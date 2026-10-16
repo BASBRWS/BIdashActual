@@ -374,3 +374,7 @@ Bronnen herstellen, werkruimte vastleggen, grote gegevens over opslagdelen verde
 Vanaf het openen loopt een begrensd lokaal storingslog mee in schil en modules. Een import of herstelactie registreert start, voltooiing of fout en looptijd. Technische waarschuwingen, browserfouten en langdurige taken komen erbij. Dit verandert geen brondata, uitkomsten of reguliere exports.
 
 Bij een probleem download je het log via de kopbalk of Data & export. In de losse signaalgeverimporter staat dezelfde knop. Herladen in hetzelfde tabblad bewaart opgeslagen meldingen. Controleer de JSON en stuur die mee bij jouw probleemomschrijving. Er wordt niets automatisch gedeeld. De laatste meldingen vóór een harde browserstop kunnen ontbreken.
+
+## Snelle MTM-maproute, 2.63
+
+Na de keuze van VC en periode zoekt de moderne mapkiezer van nieuw naar oud uitsluitend kandidaatdagen voor openstaande dumps. De leesstap splitst ieder gekozen bestand in gedateerde blokken. Alleen het laatste volledige blok bepaalt de open lijst. Een oudere complete dump of eerder bewaarde waarneming geeft de vergelijking na minstens 48 uur. Verdwenen meldingen gaan uit de actuele lijst; herstel wordt in historie afgeleid met een venster, zonder exact hersteltijdstip. Bij onvoldoende tijd blijft herstel onbevestigd. Een bronfout stopt vóór toepassing. Daarna volgen de bestaande assetkoppeling, dienstberekening, lokale opslag en JSON-export. De losse importer gebruikt dezelfde vergelijking en bewaart haar eigen VC-stand.
