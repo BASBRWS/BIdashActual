@@ -3,7 +3,7 @@
   const norm=v=>String(v??'').trim().toUpperCase();
   function time(v){if(v==null||v==='')return null;const t=typeof v==='number'?v:Date.parse(v);return Number.isFinite(t)?t:null;}
   function iso(v){const t=time(v);return t==null?null:new Date(t).toISOString();}
-  const labels={OPEN_BEVESTIGD:'Aanwezig in bronsnapshot',OPEN_VEROUDERD:'Open, bevestiging verouderd',HERSTELD_BEVESTIGD:'Hersteld, expliciete bronmelding',HERSTELD_AFGELEID:'Herstel afgeleid uit twee snapshots',VERDWENEN_UIT_SNAPSHOT:'Eenmaal afwezig, herstel onbevestigd',ONBEKEND_DOOR_BRONGAT:'Onbekend door brongat of onvolledige bron'};
+  const labels={OPEN_BEVESTIGD:'Aanwezig in bronsnapshot',OPEN_VEROUDERD:'Open, bevestiging verouderd',HERSTELD_BEVESTIGD:'Hersteld, expliciete bronmelding',HERSTELD_AFGELEID:'Herstel afgeleid uit snapshots',VERDWENEN_UIT_SNAPSHOT:'Afwezig, herstel nog onbevestigd',ONBEKEND_DOOR_BRONGAT:'Onbekend door brongat of onvolledige bron'};
   function fingerprint(row={}){return JSON.stringify([norm(row.vc||row.verkeerscentrale).replace(/^VC[\s_-]*/,''),norm(row.typeId||row.assetTypeHint||row.assettype),norm(row.weg),norm(row.zijdeBron||row.richting),row.hm==null||row.hm===''?'':Number(row.hm).toFixed(3),norm(row.hectoletter),norm(row.strook||row.MSI),norm(row.foutcode||row.code)]);}
   function read(row={},options={}){
     const open=row._liveOpen===true||row.liveOpen===true||/^(open|openstaand|actief)$/i.test(String(row.status||row.technischeToestand||''));

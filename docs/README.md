@@ -94,3 +94,5 @@ De simulatie gebruikt een vaste seed, dus dezelfde invoer geeft altijd dezelfde 
 [Release notes lokaal technisch storingslog 2.61](release-notes-2026-10-16-storingslog-261.md).
 
 [Release notes snelle openstaande MTM-dumps 2.63 / DVM 142](release-notes-2026-10-16-open-dumps-263.md).
+
+[Release notes 48 uur vanaf eerste afwezigheid, 2.64 / DVM 143](release-notes-2026-10-16-open-dumps-264.md).

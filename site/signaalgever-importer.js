@@ -1,6 +1,6 @@
-import './core/signaalgever-import.js?v=20261016-0912';
-import {createWorkspaceStorage} from './core/storage.js?v=20261016-0912';
-import {BIDASH_VERSIE} from './core/versie.js?v=20261016-0912';
+import './core/signaalgever-import.js?v=20261016-1120';
+import {createWorkspaceStorage} from './core/storage.js?v=20261016-1120';
+import {BIDASH_VERSIE} from './core/versie.js?v=20261016-1120';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);
 const storage=createWorkspaceStorage(globalThis.BIDASH_ACTUAL?'bidash-actual-signaalgever-importer':'bidash-signaalgever-importer');
 let stands={},busy=false,cancelled=false,H,frame;
@@ -37,7 +37,7 @@ async function process(files,cfg){
   const basis=$('basis').files[0];
   if(basis){const b=H.sbSignaalgeverBasis(JSON.parse(await basis.text()));stand=H.sbSignaalgeverCombineerStand(stand,{...b,open:b.open.filter(r=>C.rowVc(r)===vc),historie:b.historie.filter(r=>C.rowVc(r)===vc),laatstePerVc:b.laatstePerVc[vc]?{[vc]:b.laatstePerVc[vc]}:{},snapshotDekking:b.snapshotDekking[vc]?{[vc]:b.snapshotDekking[vc]}:{},histRest:[],liveRest:[]});}
   let fastRead=null;
-  if(snel){fastRead=await D.read(normalized,cfg,{pause,checkCancel,onProgress:(n,total,file)=>{checkCancel();status(vc.toUpperCase()+', openstaande dumps '+n+' / circa '+total+', '+file);$('progress').value=5+80*Math.min(1,n/total);}});checkCancel();stand=C.retain(D.process(stand,fastRead.snapshots),now);}
+  if(snel){fastRead=await D.run(stand,normalized,cfg,{pause,checkCancel,onProgress:(n,total,file)=>{checkCancel();status(vc.toUpperCase()+', openstaande dumps '+n+' / '+total+', '+file);$('progress').value=5+80*Math.min(1,n/total);}});checkCancel();stand=C.retain(fastRead.result,now);}
   const days=new Map();for(const f of snel?[]:selected){const p=f.webkitRelativePath||f._pad||f.name,info=H.sbPadInfoMtm(p),key=+info.datum;if(!days.has(key))days.set(key,[]);days.get(key).push({f,info});}
   let done=0,verwijderd=0;
   for(const [,items] of [...days].sort((a,b)=>a[0]-b[0])){
