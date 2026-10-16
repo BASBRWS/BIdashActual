@@ -5,7 +5,7 @@ verkeerskosten, formatie en bronkwaliteit. Zelfstandige overname van BASBRWS/BiD
 op commit 1229af3, inclusief de drie engines, imports, exports, planning,
 documentatie, tests en het technische storingslog.
 
-BIdashActual 2.63 / DVM 142 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
+BIdashActual 2.64 / DVM 143 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
 BASBRWS/BiDash blijft de aparte analyseomgeving. Beide repositories worden vanaf
 hier afzonderlijk beheerd; er is geen automatische broncodesynchronisatie.
 
@@ -39,13 +39,16 @@ De aanvullende dagstandtest staat in `tests/actual-browser.cjs`.
 
 De volledige bronconstructie is overgenomen, de bestaande Git-commitgeschiedenis
 niet. Prognosecode blijft als herkomst in de repository maar is in de actual-
-ingangen geblokkeerd. De snelle MTM-import herkent meerdere gedateerde dumpblokken per bestand en
-gebruikt de laatste complete lijst. De herstelstatus is afgeleid uit een
-vergelijking na minstens 48 uur; het exacte herstelmoment blijft onbekend.
-Werkelijk ongeldige brondata wordt geweigerd.
+ingangen geblokkeerd. De MTM-import verwerkt alle kleine openstaande dumps binnen
+de gekozen periode op volgorde, inclusief ieder blok binnen een bestand. Een
+verdwenen melding blijft onzeker open totdat zij 48 uur vanaf de eerste
+afwezigheid wegblijft. Terugkeer wist de wachttijd. Een ontbrekende brondag
+herstart die termijn. Herstel blijft afgeleid, zonder exact herstelmoment.
 
-De standaardmapimport leest alleen *_openstaandestoringen.txt, gewoonlijk twee
-kleine bestanden per VC. Kies de oude methode expliciet voor BSS-gebeurtenislogs.
+Grote BSS-bestanden worden overgeslagen; de eerdere BSS-import blijft als aparte
+methode beschikbaar. De verwerking bewaart één brondag tegelijk in geheugen,
+naast de opgebouwde incidentstand. Om te vroeg afgeleid herstel uit 2.63 te
+corrigeren, importeer je de volledige relevante dagelijkse reeks opnieuw.
 
 Zie [Systeemwerking](docs/SYSTEEMWERKING.md), [Gebruikershulp](docs/GEBRUIKERSHULP.md)
-en [Release 2.63](docs/release-notes-2026-10-16-open-dumps-263.md).
+en [Release 2.64](docs/release-notes-2026-10-16-open-dumps-264.md).
