@@ -1,0 +1,163 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {installNdwLoader} from '../site/core/ndw-loader.js';
+
+const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+
+test('NDW loader leest eerst bestaande of lokaal opgeslagen snapshot',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/ndw69Data\(\)\?\.sites\?\.length/);
+  assert.match(source,/import \{read as readWorkspace\} from '\.\/storage\.js/);
+  assert.match(source,/scope\.__BIDASH_READ_WORKSPACE__=readWorkspace/);
+  assert.match(source,/return globalThis\.__BIDASH_READ_WORKSPACE__\(\)/);
+  assert.doesNotMatch(source,/get\('current'\)/);
+  assert.match(source,/state\?\.dvm\?\.parameters\?\.kosten\?\.ndw69Snapshot/);
+});
+
+test('als lokale NDW data ontbreekt kan een oude dashboard- of DVM-export gericht worden gelezen',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/accept="\.xml,\.gz,\.json,\.html,\.htm"/);
+  assert.match(source,/"ndw69Snapshot"/);
+  assert.match(source,/const NDW69_DATA/);
+  assert.match(source,/file\.slice\(offset,end\)\.text\(\)/);
+  assert.match(source,/parseJsonWorker/);
+  assert.match(source,/JSON\.parse\(e\.data\)/);
+  assert.match(source,/bidashKiesNdwBestand/);
+  assert.match(source,/id="bidashNdwChooseButton"/);
+  assert.match(source,/input\.click\(\)/);
+  assert.doesNotMatch(source,/Geen lokale NDW-set gevonden[\s\S]{0,400}input\.click\(\)/);
+});
+
+test('NDW loader vult spitsuren en 30 procent alleen waar waarden ontbreken',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/local\.uren=6/);
+  assert.match(source,/local\.reductie=30/);
+  assert.match(source,/spits 07:00–10:00 en 16:00–19:00/);
+  assert.match(source,/hasValue\(local\.uren\)/);
+  assert.match(source,/hasValue\(local\.reductie\)/);
+});
+
+test('NDW loader koppelt meetpunten per wegdeel en toont voortgang',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/ndw69Link\(w\)/);
+  assert.match(source,/siteId:link\.s\.id/);
+  assert.match(source,/bidashNdwProgressBar/);
+  assert.match(source,/Wegdelen koppelen/);
+  assert.match(source,/hub:changed/);
+});
+
+test('signal forecast activeert de NDW loader',()=>{
+  const source=read('site/core/signal-forecast.js');
+  assert.match(source,/installNdwLoader\(globalThis\)/);
+});
+
+test('browserpatch is inert buiten browser',()=>{
+  assert.equal(installNdwLoader(globalThis),false);
+});
+
+
+test('NDW loader maakt verschil tussen gemeten intensiteit en scenarioaannames zichtbaar',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/NDW levert het voertuigaantal/);
+  assert.match(source,/6 hinderuren en 30% snelheidsreductie zijn scenarioaannames/);
+  assert.match(source,/andere bron dan de NDW CMDB-import/);
+});
+
+
+test('NDW loader exposeert directe file-handlers voor één of twee bronbestanden',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/globalThis\.bidashLaadNdwFiles=async function\(files,expectedKind\)/);
+  assert.match(source,/globalThis\.bidashLaadNdwFile=async function\(file\)/);
+  assert.match(source,/bidashLaadNdwFiles\(file\?\[file\]:\[\]\)/);
+  assert.match(source,/multiple style="display:none"/);
+});
+
+
+test('NDW loader accepteert het actuele gecombineerde DATEX II v3 bronbestand',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/snapshotFromRawNdw/);
+  assert.match(source,/ndwXmlSnapshot/);
+  assert.match(source,/physicalQuantity/);
+  assert.match(source,/measurementSite/);
+  assert.match(source,/vehicleFlowRate/);
+  assert.match(source,/snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties\.xml\.gz/);
+});
+
+
+test('NDW v3 configuratie zonder meetwaarden geeft gerichte fout',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/NDW-configuratiebestand herkend/);
+  assert.match(source,/snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties\.xml\.gz/);
+  assert.match(source,/bytes\[0\]===0x1f/);
+  assert.match(source,/ndwMonibasLocation/);
+  assert.match(source,/ndwWgs84ToRd/);
+  assert.match(source,/ndwAssetGrid/);
+});
+
+
+test('NDW DATEX II v2.3 combineert measurement_current en trafficspeed',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/snapshotFromV23Pair/);
+  assert.match(source,/measurement_current/);
+  assert.match(source,/trafficspeed/);
+  assert.match(source,/ndwConfigUitDoc/);
+  assert.match(source,/ndwMetingenUitDoc/);
+  assert.match(source,/vehicleFlowRate/);
+  assert.match(source,/speedSites/);
+  assert.match(source,/NDW DATEX II v2\.3: trafficspeed \+ measurement_current/);
+});
+
+test('één los v2.3 bestand geeft een gerichte melding dat beide nodig zijn',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/moet je measurement_current\.xml\.gz en trafficspeed\.xml\.gz tegelijk selecteren/);
+  assert.match(source,/NDW DATEX II v2\.3 niet compleet herkend/);
+  assert.match(source,/Selecteer de meetlocatieconfiguratie en trafficspeed samen/);
+});
+
+
+test('kostenmodel gebruikt NDW gemeten snelheid als automatische basissnelheid',()=>{
+  const source=read('site/engines/dvm-2.js');
+  assert.match(source,/useMeasuredSpeed/);
+  assert.match(source,/snelheid:Number\(s\.speed\),ndwSpeedAuto:true/);
+  assert.match(source,/Gemeten snelheid .*wordt als basissnelheid voorgesteld/);
+  assert.match(source,/snelheidsreductie door assetuitval blijven scenarioaannames/);
+});
+
+
+test('NDW v2.3 herkent hernoemde gzipbestanden op inhoud in plaats van alleen op naam',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/async function ndwProbeFile/);
+  assert.match(source,/head\[0\]===0x1f&&head\[1\]===0x8b/);
+  assert.match(source,/measurementsitetablepublication/);
+  assert.match(source,/measureddatapublication/);
+  assert.match(source,/ndwV23ConfigStream/);
+  assert.match(source,/ndwV23TrafficStream/);
+  assert.match(source,/De bestandsnaam hoeft niet exact measurement_current\.xml\.gz te zijn/);
+});
+
+test('grote v2.3 XML wordt blok voor blok verwerkt en niet als 350 MB DOM',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/ndwScanXmlBlocks/);
+  assert.match(source,/measurementSiteRecord/);
+  assert.match(source,/siteMeasurements/);
+  assert.match(source,/TextDecoderStream/);
+});
+
+
+test('NDW runtimeketen cache-bust signal-forecast en ndw-loader',()=>{
+  const forecast=read('site/core/signal-forecast.js');
+  const adapter=read('site/engines/dvm-adapter-original.js');
+  assert.match(adapter,/signal-forecast\.js\?v=\d{8}-\d{4}/);
+  assert.match(forecast,/ndw-loader\.js\?v=\d{8}-\d{4}/);
+  assert.doesNotMatch(forecast,/from '\.\/ndw-loader\.js';/);
+});
+
+
+test('NDW v2.3 deelbronnen mogen na elkaar worden geladen',()=>{
+  const source=read('site/core/ndw-loader.js');
+  assert.match(source,/__BIDASH_NDW_PENDING_V23__/);
+  assert.match(source,/pendingV23:true/);
+  assert.match(source,/Beide bestanden hoeven niet tegelijk geselecteerd te worden/);
+  assert.match(source,/return snapshotFromV23Pair\(pair\)/);
+});

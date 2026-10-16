@@ -1,0 +1,40 @@
+Integratie 2 — uitgevoerde controles
+
+Browser: Chromium, desktop en mobiele schermbreedte.
+- MS Project XML en P6 XML met resourcetoewijzing geïmporteerd.
+- Planning als zichtbare tijdlijn geopend, inclusief canvas met geldige afmetingen.
+- Planning na herladen uit browseropslag hersteld en zichtbaar geopend.
+- DVM-totaalimport met het aangeleverde bronbestand gecontroleerd.
+- Gezamenlijk register: filters, paginering, open storingen en detailvenster.
+- Navigatie langs dienstimpact, wegdelen, formatie, regels en planningonderdelen.
+- Selectieve export bevat uitsluitend de gekozen onderdelen.
+- Geen JavaScript-paginafouten of externe dataverzoeken in de geteste routes.
+- Mobiele hoofdpagina zonder horizontale pagina-overloop.
+- Modeltests voor deelimport, export, gekoppelde signalen en JSON-validatie geslaagd.
+
+De regressiecontrole gebruikt synthetische XML. Het echte aangeleverde DVM-bestand
+is uitsluitend lokaal getest en is niet opgenomen in de repository.
+Bestaande rekenengines zijn niet opnieuw statistisch of inhoudelijk gekalibreerd.
+
+Balkenplanning, correctie voor grote bestanden
+- Fout gereproduceerd met 4.000 activiteiten en schermschaal 2.
+- Oude canvas 7.160 bij 144.128 pixels tekende transparant.
+- Nieuwe renderer gebruikt uitsluitend het zichtbare scrollgebied.
+- Grote P6 XML-import, zichtbare pixels, beide scrollrichtingen, balk verslepen,
+  weekschaal, in- en uitklappen, schermformaat wijzigen en herladen gecontroleerd.
+- Test gebruikt synthetische gegevens. De exacte XML uit de laatste melding
+  is niet meegeleverd en is dus niet afzonderlijk getest.
+
+Integratie 2.2
+- Getest met het aangeleverde planningbestand. Dit bestand blijft lokaal.
+- Hele periode, volledig scherm via beide knoppen, sluiten en Escape gecontroleerd.
+- Wisselen van tijdschaal blijft behouden bij afsluiten van volledig scherm.
+- Horizontale navigatie en mobiele paginabreedte gecontroleerd.
+- Bestaande modeltests en import/export-browsercontrole geslaagd.
+
+Integratie 2.3
+- Cumulatieve VWM-grafiek gecontroleerd met het lokaal aangeleverde planningbestand.
+- Synthetische regressietest: overlappende taken, gewijzigde BI-formatie en herstel.
+- VWM- en CIV-grafieken blijven zichtbaar in volledig scherm.
+- Mobiele fullscreen-weergave en bestaande import/export-browsercontrole getest.
+- Geen bronbestanden of operationele gegevens opgenomen in de repository.

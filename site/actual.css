@@ -1,0 +1,4 @@
+[data-tab="prognose"],[data-tab="drips"],[data-page="sim"],#tab-prognose,#tab-drips,#page-sim,.hub-wis-rules,
+[onclick*="runMonteCarlo"],[onclick*="runDripMonteCarlo"],[onclick*="tmc70Open"],[onclick*="f71Open"],
+[onclick*="opentMemo('montecarlo')"],[onclick*="opentMemo('drip-montecarlo')"]{display:none!important}
+.actual-stand{background:#eef6fa;border-left:4px solid #007bc7;padding:14px 18px;margin-bottom:18px;line-height:1.5}.actual-stand p{margin:4px 0}.actual-stand strong{color:#003082}

@@ -1,0 +1,152 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
+const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const source=read('site/engines/dvm-source-manager.js');
+
+test('DVM-bronbeheer heeft voor elke bronsoort een eigen uploadroute',()=>{
+  const expected={
+    assetregister:['dripInput','leesDripBestand'],
+    ndwVerkeer:['ndwTrafficInput','ndw:verkeer'],
+    ndwMeetlocaties:['ndwConfigInput','ndw:config'],
+    ndwTrafficspeed:['ndwTrafficspeedInput','ndw:traffic'],
+    windDrips:['windDripListInput','special:wind'],
+    ria4Drips:['ria4DripListInput','special:ria4'],
+    storingshistorie:['autoLogInput','leesStoringsBestanden'],
+    uRoutes:['uRouteInput','leesURouteBestand'],
+    werkzaamheden:['werkInput','leesWerkBestand'],
+    liveStoringen:['liveLogInput','leesLiveStoringsBestanden'],
+    signaalgeverTotaal:['signaalgeverTotaalInput','leesSignaalgeverTotaal'],
+    signaalgeverMap:['signaalgeverMapInput','leesSignaalgeverMap'],
+    dripTotaal:['dripTotaalInput','leesDripTotaal'],
+    dripMap:['dripMapInput','leesDripMap']
+  };
+  for(const [type,[input,handler]] of Object.entries(expected)){
+    assert.match(source,new RegExp(`${type}:\\{input:'${input}'.*handler:'${handler}'`),type);
+  }
+});
+
+test('de losse DRIP-storingshistorie-upload is vervangen door DRIP totaal en DRIP uit map',()=>{
+  // De oude XLSX/CSV DRIP-historie-uploadbron bestaat niet meer.
+  assert.doesNotMatch(source,/dripHistorie:\{input:/);
+  assert.doesNotMatch(source,/leesDripHistorieBestanden/);
+  // De nieuwe bronnen zijn er wel: een JSON-totaal en een CDMS-maplezer.
+  assert.match(source,/dripTotaal:\{input:'dripTotaalInput'.*handler:'leesDripTotaal'/);
+  assert.match(source,/dripMap:\{input:'dripMapInput'.*directory:true.*handler:'leesDripMap'/);
+  assert.match(source,/type==='dripMap'&&typeof openDripMapDialog==='function'/);
+});
+
+test('speciale DRIP-lijsten zijn classificatiebronnen en geen storingshistorie',()=>{
+  assert.match(source,/Windwaarschuwing DRIP’s laden/);
+  assert.match(source,/RIA4 DRIP’s laden/);
+  assert.match(source,/window\.loadDripSpecialList\('wind'/);
+  assert.match(source,/window\.loadDripSpecialList\('ria4'/);
+  assert.match(source,/\['assetregister','dripTotaal','dripMap'\]\.includes\(type\).*window\.applyDripSpecialLists\(\)/);
+});
+
+test('historieknoppen omzeilen de generieke storingsherkenner',()=>{
+  assert.match(source,/storingshistorie:\{input:'autoLogInput'.*handler:'leesStoringsBestanden'/);
+  assert.doesNotMatch(source,/handler:'laadStoringsBestandenAutomatisch'/);
+});
+
+test('bronbeheer blijft ook zonder geladen datasets toegankelijk en toont lege bronkaarten',()=>{
+  assert.match(source,/tab==='datasets'\?true/);
+  for(const type of ['ndwVerkeer','windDrips','ria4Drips','storingshistorie','liveStoringen','dripTotaal','dripMap'])assert.match(source,new RegExp(`${type}:\\{titel:`));
+});
+
+test('DVM-bronbeheer verwijdert de generieke totaalimport uit de primaire beheeracties',()=>{
+  assert.match(source,/includes\('totaalImportInput'\)\)button\.remove\(\)/);
+  assert.match(source,/Bron-specifiek laden:/);
+});
+
+test('adapter laadt classificatielijsten vóór bronbeheer',()=>{
+  const adapter=read('site/engines/dvm-adapter.js');
+  const original=adapter.indexOf('dvm-adapter-original.js');
+  const special=adapter.indexOf('dvm-special-drip-lists.js');
+  const manager=adapter.indexOf('dvm-source-manager.js');
+  assert.ok(original>=0&&special>original&&manager>special);
+});
+
+
+test('EOL is geen losse bron meer; All Assets is de EOL-bron',()=>{
+  assert.doesNotMatch(source,/eolInputTop/);
+  assert.doesNotMatch(source,/leesEolReferentie/);
+  assert.doesNotMatch(source,/EOL-referentie laden/);
+});
+
+
+test('DRIP totaal biedt naast vervangen ook een complementaire Voeg JSON toe-route',()=>{
+  assert.match(source,/openDripTotaalToevoegen/);
+  assert.match(source,/dripTotaalAddInput/);
+  assert.match(source,/Voeg JSON toe/);
+  assert.match(source,/leesDripTotaalBestand\(files\[0\],'toevoegen'\)/);
+});
+
+
+test('bronbeheer toont regio-updates onder elkaar met vetgedrukte regio',()=>{
+  assert.match(source,/function regioUpdatesHtml/);
+  assert.match(source,/dataset-region-list/);
+  assert.match(source,/dataset-region-row/);
+  assert.match(source,/dataset-region-row"><b>/);
+  assert.match(source,/<\/b><span>Laatste update /);
+  assert.match(source,/Laatste update /);
+  const html=read('site/engines/dvm.html');
+  assert.match(html,/\.dataset-region-list\{/);
+  assert.match(html,/\.dataset-region-row b\{/);
+});
+
+test('totaalkaarten tonen geen lange bestandenlog maar wel inhoud en regio-updates',()=>{
+  assert.doesNotMatch(source,/function bronBestandenHtml/);
+  assert.doesNotMatch(source,/dataset-file/);
+  assert.match(source,/return samenvatting\+regioUpdatesHtml\(s\.laatstePerVc\)/);
+  assert.match(source,/dataset-meta-label">Inhoud/);
+  const html=read('site/engines/dvm.html');
+  assert.doesNotMatch(html,/\.dataset-file\{/);
+});
+
+
+test('secundaire bronbeheerknoppen zijn zichtbaar op witte kaarten',()=>{
+  const html=read('site/engines/dvm.html');
+  assert.match(html,/\.dataset-actions \.tb-btn:not\(\.primary\)\{background:#fff;border:1px solid var\(--rws-blauw\);color:var\(--rws-blauw\)\}/);
+  assert.match(source,/Voeg JSON toe/);
+});
+
+
+test('NDW verkeersdata staat als eigen meervoudige DVM-bron in bronbeheer',()=>{
+  assert.match(source,/ndwVerkeer:\{input:'ndwTrafficInput'.*multiple:true.*handler:'ndw:verkeer'.*accept:'\.xml,\.gz,\.json,\.html,\.htm'/);
+  assert.match(source,/NDW trafficspeed \/ verkeersdata voor kosten/);
+  assert.match(source,/window\.bidashLaadNdwFiles\(files\)/);
+  assert.match(source,/Gebruik uit werkruimte/);
+  assert.match(source,/meetlocatieconfiguratie/);
+  assert.match(source,/trafficspeed/);
+  assert.match(source,/snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties\.xml\.gz/);
+});
+
+
+test('NDW verkeersdata vereist All Assets en noemt exact het gecombineerde bestand',()=>{
+  assert.match(source,/ndwVerkeer:\{input:'ndwTrafficInput'.*requiresAsset:true.*handler:'ndw:verkeer'/);
+  assert.match(source,/snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties\.xml\.gz/);
+  assert.match(source,/All Assets moet eerst geladen zijn/);
+});
+
+
+test('NDW bronkaart toont intensiteit snelheid rijstroken en koppeling',()=>{
+  assert.match(source,/speedSites/);
+  assert.match(source,/geldige rijstrookintensiteiten/);
+  assert.match(source,/meetlocaties met weg\/richting\/hectometer/);
+  assert.match(source,/actuele wegdelen gekoppeld/);
+});
+
+
+test('NDW bronbeheer meldt dat hernoemde gzipbestanden op inhoud worden herkend',()=>{
+  assert.match(source,/bestandsnamen mogen afwijken/);
+  assert.match(source,/herkent gzip en de XML-inhoud/);
+});
+
+
+test('NDW bronbeheer toont wachtstatus wanneer één v2.3 deelbron is geladen',()=>{
+  assert.match(source,/__BIDASH_LAST_NDW_PENDING__/);
+  assert.match(source,/Je mag het tweede bestand apart laden/);
+  assert.match(source,/Dat mag tegelijk of na elkaar/);
+});

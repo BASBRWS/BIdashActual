@@ -1,0 +1,48 @@
+name: BIdashActual operationele dagstand
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'docs/**', 'scripts/**', 'tests/**', 'package.json', '.github/workflows/pages.yml']
+  workflow_dispatch:
+  schedule:
+    - cron: '2-57/5 * * * *'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  verify-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - name: JavaScript controleren
+        run: |
+          for file in site/*.js site/engines/*.js site/core/*.js site/ui/*.js; do
+            node --check "$file"
+          done
+      - uses: actions/configure-pages@v5
+        id: pages
+      - name: Actuele openbare NDW-bron ophalen
+        env:
+          NDW_PREVIOUS_BASE: ${{ steps.pages.outputs.base_url }}
+        run: python3 scripts/fetch-ndw.py --output site/ndw --previous-base "$NDW_PREVIOUS_BASE"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: verify-and-upload
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publiceren
+        id: deployment
+        uses: actions/deploy-pages@v4
