@@ -18,6 +18,7 @@ export function matchesRule(item,rule,fields){
   if(operator==='empty')return empty(value);
   if(operator==='notEmpty')return !empty(value);
   if(field.type==='number'){
+    if(empty(value)||String(rule.value??'').trim()==='')return false;
     const actual=Number(value),expected=Number(rule.value);if(!Number.isFinite(actual)||!Number.isFinite(expected))return false;
     if(operator==='equals')return actual===expected;if(operator==='notEquals')return actual!==expected;
     if(operator==='greater')return actual>expected;if(operator==='greaterEqual')return actual>=expected;

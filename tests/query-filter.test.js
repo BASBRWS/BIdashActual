@@ -50,3 +50,10 @@ test('querybouwers staan op beide assetmanagementtabbladen',()=>{
   assert.match(source,/id="faultQueryBuilder"/);
   assert.match(source,/Queryfilter bouwen/);
 });
+
+test('numerieke nul is een waarde, een lege of onbekende waarde is geen nul',()=>{
+ const data=[{impact:0},{impact:10},{impact:null},{impact:''},{impact:undefined}];
+ assert.deepEqual(applyQuery(data,{rules:[{field:'impact',operator:'equals',value:'0'}]},fields),[data[0]]);
+ assert.deepEqual(applyQuery(data,{rules:[{field:'impact',operator:'notEquals',value:'0'}]},fields),[data[1]]);
+ assert.deepEqual(applyQuery(data,{rules:[{field:'impact',operator:'empty',value:''}]},fields),data.slice(2));
+});

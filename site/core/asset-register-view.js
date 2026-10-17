@@ -1,4 +1,4 @@
-import {applyQuery} from './query-filter.js';
+import {applyQuery} from './query-filter.js?v=20261017-0820';
 import {operationalStatusForAsset} from './asset-operational-status.js?v=20261016-0834';
 const yes=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 

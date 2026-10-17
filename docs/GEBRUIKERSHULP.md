@@ -288,6 +288,12 @@ uitklapbare querybouwer. Voeg per regel een veld, operator en waarde toe. Vanaf 
 tweede regel kies je zelf **EN** of **OF**. Net als bij SQL wordt EN vóór OF uitgevoerd.
 Je kunt voorwaarden over verschillende kolommen combineren.
 
+Vanaf BIdashActual 2.66 krijgt het derde veld een keuzelijst uit de geladen data. Kies bijvoorbeeld Assettype om de aanwezige typen te zien, of Asset heeft foutcode voor de aanwezige foutcodes. Je kunt een waarde kiezen of zelf typen. Bij veel waarden worden maximaal 100 suggesties getoond; typ om andere waarden te vinden. De opties volgen de kolomkeuze, ook na een nieuwe bronimport.
+
+Geef jouw query een naam en klik Query opslaan. Kies haar later onder Opgeslagen queries om de voorwaarden opnieuw toe te passen. Pas de voorwaarden aan en sla onder dezelfde naam op om haar bij te werken. Een nieuwe naam maakt een tweede query. Assetregister en Open storingen bewaren elk hun eigen lijst. Query wissen maakt alleen de huidige filter leeg; Opgeslagen query verwijderen wist de gekozen opgeslagen definitie.
+
+De queries blijven in deze browser bewaard na herladen en bronimports. Ze gaan niet mee in een bron- of totaalexport. Je ziet na het openen eerst de gewone selectie en kiest zelf welke opgeslagen query je toepast. De andere schermfilters blijven naast de query gelden.
+
 Gebruik voor een combinatie van foutcodes het veld **Asset heeft foutcode**. Voorbeeld:
 
 1. Asset heeft foutcode is gelijk aan `1001`;

@@ -5,7 +5,7 @@ verkeerskosten, formatie en bronkwaliteit. Zelfstandige overname van BASBRWS/BiD
 op commit 1229af3, inclusief de drie engines, imports, exports, planning,
 documentatie, tests en het technische storingslog.
 
-BIdashActual 2.65 / DVM 144 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
+BIdashActual 2.66 / DVM 144 gebruikt geen prognoses, Monte Carlo of BI-simulaties.
 BASBRWS/BiDash blijft de aparte analyseomgeving. Beide repositories worden vanaf
 hier afzonderlijk beheerd; er is geen automatische broncodesynchronisatie.
 
@@ -24,6 +24,11 @@ hem vandaag te openen. Bronactualiteit per VC en onzekere meldingen blijven
 zichtbaar. Gesloten historie kan als herstelbewijs worden ingelezen en bewaard,
 maar wordt niet als huidige storing of prognose gebruikt. Dit is geen
 automatische historieopschoning. Planning en contracten blijven plancontext.
+
+Queries in Assetregister en Open storingen kun je per scherm onder een naam
+opslaan en opnieuw gebruiken. De waardekeuzes volgen de gekozen kolom en de
+geladen data. Eigen invoer blijft mogelijk. Opgeslagen queries blijven lokaal
+in deze browser bewaard, ook bij een nieuwe bronimport.
 
 ## Opslag en publicatie
 
@@ -54,4 +59,4 @@ naast de opgebouwde incidentstand. Om te vroeg afgeleid herstel uit 2.63 te
 corrigeren, importeer je de volledige relevante dagelijkse reeks opnieuw.
 
 Zie [Systeemwerking](docs/SYSTEEMWERKING.md), [Gebruikershulp](docs/GEBRUIKERSHULP.md)
-en [Release 2.65](docs/release-notes-2026-10-16-actuele-storingen-265.md).
+en [Release 2.66](docs/release-notes-2026-10-17-queryfilters-266.md).

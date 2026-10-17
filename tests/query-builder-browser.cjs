@@ -1,0 +1,39 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+(async()=>{
+ const root=path.join(__dirname,'../site'),server=require('node:http').createServer((req,res)=>{try{let p=path.join(root,new URL(req.url,'http://localhost').pathname);if(p.endsWith('/'))p+='index.html';res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(p));}catch{res.statusCode=404;res.end();}});await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
+ try{
+  browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),headless:true,args:['--no-sandbox','--disable-gpu']});const page=await browser.newPage(),errors=[];page.setDefaultTimeout(30000);page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
+  await page.goto('http://127.0.0.1:'+server.address().port+'/index.html#data');await page.waitForFunction(()=>document.getElementById('status').textContent.includes('Werkruimte gereed'));await page.locator('[data-group=data]').click();
+  const now=Date.now()-3600000,iso=new Date(now).toISOString(),assets=[1,2,3].map(i=>({entityid:'SYNTH-'+i,'ci-type':'VKS signaalgevers',asset:'MSI A77 R 12,000 '+i,wegnummer:'77','hm-bord':'12',baanpositie:'R',regio:'MN',status:'Operationeel'}));
+  const fault=(id,lane,code)=>({event_id:String(id),assetTypeHint:'MSI',vc:'MN',weg:'A77',richting:'R',hm:12,MSI:'MSI '+lane,foutcode:code,melding:'Fatale fout bij MSI '+lane,van:new Date(now-3600000).toISOString(),tot:iso,laatste_gezien:iso,bron_peildatum:iso,levenscyclus_status:'OPEN_BEVESTIGD',_liveOpen:true});
+  const bundle={formaat:'DVM-dienstimpact-totaal',assetregister:{bestand:'synthetic',rijen:assets},liveStoringen:[{key:'synthetic',naam:'synthetic',peildatum:now,rijen:[fault(1,1,'1001'),fault(2,1,'1003'),fault(3,2,'1001')]}],storingshistorie:[]};
+  await page.locator('#files').setInputFiles({name:'synthetic.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bundle))});await page.locator('#applyImport').click();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('Import voltooid'));
+  const idle=()=>page.waitForFunction(()=>document.getElementById('assetTable').getAttribute('aria-busy')==='false'&&document.getElementById('assetCount').textContent.includes('resultaten'));
+  await page.locator('[data-group=assets]').click();await idle();await page.locator('#assets .query-module summary').click();const a=page.locator('#assetQueryBuilder');
+  const values=async host=>host.locator('datalist option').evaluateAll(els=>els.map(el=>el.value));
+  await a.locator('[data-query-add]').click();await a.locator('[data-query-field]').selectOption('tp');await page.waitForFunction(()=>document.querySelector('#assets-query-0-options')?.options.length===1);assert.deepEqual(await values(a),['MSI']);
+  await a.locator('[data-query-field]').selectOption('assetFaultCodes');await page.waitForFunction(()=>document.querySelector('#assets-query-0-options')?.options.length===2);assert.deepEqual(await values(a),['1001','1003']);
+  await a.locator('[data-query-operator]').selectOption('equals');await a.locator('[data-query-value]').fill('1001');await a.locator('[data-query-add]').click();await a.locator('[data-query-field]').nth(1).selectOption('assetFaultCodes');await a.locator('[data-query-operator]').nth(1).selectOption('equals');await a.locator('[data-query-value]').nth(1).fill('1003');await idle();
+  await page.waitForFunction(()=>document.getElementById('assetCount').textContent.startsWith('1 resultaten'));
+  const name='Dubbele fout <voorbeeld>';await a.locator('[data-query-name]').fill(name);await a.locator('[data-query-save]').click();await page.waitForFunction(()=>document.querySelector('#assetQueryBuilder [data-query-message]').textContent==='Query opgeslagen.');
+  await a.locator('[data-query-reset]').click();await idle();assert.equal(await a.locator('[data-query-saved] option').count(),2);await a.locator('[data-query-saved]').selectOption({label:name});await idle();assert.equal(await a.locator('[data-query-rule]').count(),2);
+  await a.locator('[data-query-value]').first().fill('9999');await a.locator('[data-query-reset]').click();await a.locator('[data-query-saved]').selectOption({label:name});assert.equal(await a.locator('[data-query-value]').first().inputValue(),'1001');
+  await page.reload();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('Werkruimte gereed'));await page.locator('[data-group=assets]').click();await idle();await page.locator('#assets .query-module summary').click();await a.locator('[data-query-saved]').selectOption({label:name});await page.waitForFunction(()=>document.getElementById('assetCount').textContent.startsWith('1 resultaten'));
+  assert.equal(await a.locator('voorbeeld').count(),0);
+  await page.locator('[data-route=faults]').click();await page.waitForFunction(()=>document.getElementById('faultFilterSummary')?.textContent.includes('3 van 3'));
+  await page.locator('#faults .query-module summary').click();const f=page.locator('#faultQueryBuilder');assert.equal(await f.locator('[data-query-saved] option').count(),1);
+  await f.locator('[data-query-add]').click();await f.locator('[data-query-field]').selectOption('code');await page.waitForFunction(()=>document.querySelector('#faults-query-0-options')?.options.length===2);assert.deepEqual(await values(f),['1001','1003']);
+  await f.locator('[data-query-operator]').selectOption('equals');await f.locator('[data-query-value]').fill('1001');await f.locator('[data-query-name]').fill('Mijn storingen');await f.locator('[data-query-save]').click();await page.waitForFunction(()=>document.querySelector('#faultQueryBuilder [data-query-message]').textContent==='Query opgeslagen.');
+  await page.waitForFunction(()=>document.getElementById('faultFilterSummary').textContent.includes('2 van 3'));
+  const frame=page.frames().find(frame=>frame.url().includes('/dvm.html'));
+  const next={...bundle,liveStoringen:[{...bundle.liveStoringen[0],rijen:[fault(4,1,'1002')]}]};await frame.evaluate(async data=>HUB.import(data),next);
+  await f.locator('[data-query-value]').focus();await page.waitForFunction(()=>{const options=document.querySelector('#faults-query-0-options')?.options;return options?.length===0;});
+  assert.equal(await f.locator('[data-query-value]').inputValue(),'1001');await f.locator('[data-query-value]').fill('');await page.waitForFunction(()=>[...document.querySelector('#faults-query-0-options').options].some(o=>o.value==='1002'));const expected=await frame.evaluate(()=>[...new Set(HUB.faults().map(r=>r.code).filter(Boolean))].sort());assert.deepEqual(await values(f),expected);
+  await f.locator('[data-query-operator]').selectOption('empty');assert.equal(await f.locator('[data-query-value]').isDisabled(),true);
+  await f.locator('[data-query-delete]').click();await page.waitForFunction(()=>document.querySelector('#faultQueryBuilder [data-query-message]').textContent.includes('verwijderd'));
+  await page.locator('[data-group=assets]').click();await idle();assert.equal(await a.locator('[data-query-saved] option').count(),2);
+  const saved=await page.evaluate(async()=>await(await import('/core/storage.js')).readValue('assetmanagement-query-presets'));assert.equal(saved.assets.length,1);assert.equal(saved.faults.length,0);
+  assert.deepEqual(errors,[]);console.log('Querybouwer: bewaren/herladen, EN-foutcodes, onafhankelijke lijsten, veilige namen, kolomkeuzes, bronverversing en verwijderen geslaagd.');
+ }finally{await browser?.close();await new Promise(r=>server.close(r));}
+})().catch(e=>{console.error(e);process.exitCode=1;});

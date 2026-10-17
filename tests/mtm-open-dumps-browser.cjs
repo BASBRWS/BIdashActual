@@ -51,14 +51,14 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   // Losse importer gebruikt dezelfde snelle methode, zonder All Assets.
   const importer=await context.newPage();importer.on('pageerror',e=>errors.push(e.message));await importer.goto(base+'/signaalgever-importer.html');await importer.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Gereed.'));
   assert.equal(await importer.locator('#mode').inputValue(),'open-dump-48h');await importer.locator('#until').fill('2026-10-14');await importer.locator('#folder').setInputFiles(fixture);await importer.waitForFunction(()=>document.getElementById('status').textContent.startsWith('MN opgeslagen.'));
-  const saved=await importer.evaluate(async()=>await(await import('/core/storage.js?v=20261016-1800')).createWorkspaceStorage('bidash-actual-signaalgever-importer').read());assert.deepEqual(saved.stands.mn.open.map(r=>r.event_id).sort(),['2','3','8']);assert.equal(saved.stands.mn.historie.find(r=>r.event_id==='1').levenscyclus_status,'HERSTELD_AFGELEID');
+  const saved=await importer.evaluate(async()=>await(await import('/core/storage.js?v=20261017-0820')).createWorkspaceStorage('bidash-actual-signaalgever-importer').read());assert.deepEqual(saved.stands.mn.open.map(r=>r.event_id).sort(),['2','3','8']);assert.equal(saved.stands.mn.historie.find(r=>r.event_id==='1').levenscyclus_status,'HERSTELD_AFGELEID');
   await importer.reload();await importer.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Gereed.'));assert.equal(await importer.locator('#results tr').count(),1);
   const exportPromise=importer.waitForEvent('download');await importer.locator('#download').click();const exported=await exportPromise,bundle=JSON.parse(fs.readFileSync(await exported.path(),'utf8'));assert.equal(bundle.bronbeheer.signaalgeverTotaal.snapshotDekking.mn.bronType,'open-dump-48h');
   assert.equal(bundle.liveStoringen.flatMap(b=>b.rijen).find(r=>r.event_id==='8').afwezig_sinds,'2026-10-14T21:30:00.000Z');
   const continuation=path.join(fixture,'next');
   for(const d of ['15','16']){const dir=path.join(continuation,'mtm/mn/storinglijst/2026/10',d);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,d+'1026_1_openstaandestoringen.txt'),`${d}-10-2026 23:30\n`+[2,3].map(id=>`|${id}|1003|1003 Fatale fout bij MSI ${id}|A77 R 12,000|01-01-2024 00:00|`).join('\n'));}
   await importer.locator('#until').fill('2026-10-16');await importer.locator('#folder').setInputFiles(continuation);await importer.waitForFunction(()=>document.getElementById('status').textContent.startsWith('MN opgeslagen.'));
-  const resumed=await importer.evaluate(async()=>await(await import('/core/storage.js?v=20261016-1800')).createWorkspaceStorage('bidash-actual-signaalgever-importer').read());
+  const resumed=await importer.evaluate(async()=>await(await import('/core/storage.js?v=20261017-0820')).createWorkspaceStorage('bidash-actual-signaalgever-importer').read());
   assert.deepEqual(resumed.stands.mn.open.map(r=>r.event_id).sort(),['2','3']);assert.equal(resumed.stands.mn.historie.find(r=>r.event_id==='8').herstel_bevestiging_op,'2026-10-16T21:30:00.000Z');
   await frame.evaluate(async()=>{
     document.getElementById('sgMapProgress')?.close();
