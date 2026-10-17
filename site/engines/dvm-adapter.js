@@ -1,5 +1,5 @@
 /* DVM-adapter startguard voor grote integrale imports.
-   De oorspronkelijke adapter blijft ongewijzigd in dvm-adapter-original.js.
+   De oorspronkelijke adapter staat in dvm-adapter-original.js.
    Deze wrapper zorgt dat de performancepatches echt actief zijn voordat HUB.import start,
    voorkomt een volledige structuredClone van het DVM-deel van de werkruimte en laat
    grote opgeslagen DVM-werkruimtes niet opnieuw via de totaalimport lopen tijdens opstart. */
@@ -135,17 +135,17 @@
 
   window.addEventListener('load',installeerImportGuard,{once:true});
 
-  document.write('<script src="dvm-adapter-original.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-fault-rule-manager.js?v=20261016-1120"></script>');
+  document.write('<script src="dvm-adapter-original.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-fault-rule-manager.js?v=20261017-0820"></script>');
   // Classificatielijsten zijn aparte lichte bronnen en worden vóór bronbeheer geladen.
-  document.write('<script src="dvm-special-drip-lists.js?v=20261016-1120"></script>');
+  document.write('<script src="dvm-special-drip-lists.js?v=20261017-0820"></script>');
   // De signaalgeverbundelaar (maplezen) definieert leesSignaalgeverMap vóór bronbeheer.
-  document.write('<script src="dvm-storingsbundelaar.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-mtm-open-dumps.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-mtm-bss.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-netwerkschakels.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-source-manager.js?v=20261016-1120"></script>');
-  document.write('<script src="../core/signaalgever-import.js?v=20261016-1120"></script>');
-  document.write('<script src="dvm-source-export-completeness.js?v=20261016-1120"></script>');
+  document.write('<script src="dvm-storingsbundelaar.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-mtm-open-dumps.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-mtm-bss.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-netwerkschakels.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-source-manager.js?v=20261017-0820"></script>');
+  document.write('<script src="../core/signaalgever-import.js?v=20261017-0820"></script>');
+  document.write('<script src="dvm-source-export-completeness.js?v=20261017-0820"></script>');
 })();

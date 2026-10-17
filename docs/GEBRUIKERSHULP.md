@@ -288,6 +288,12 @@ uitklapbare querybouwer. Voeg per regel een veld, operator en waarde toe. Vanaf 
 tweede regel kies je zelf **EN** of **OF**. Net als bij SQL wordt EN vóór OF uitgevoerd.
 Je kunt voorwaarden over verschillende kolommen combineren.
 
+Vanaf BIdashActual 2.66 krijgt het derde veld een keuzelijst uit de geladen data. Kies bijvoorbeeld Assettype om de aanwezige typen te zien, of Asset heeft foutcode voor de aanwezige foutcodes. Je kunt een waarde kiezen of zelf typen. Bij veel waarden worden maximaal 100 suggesties getoond; typ om andere waarden te vinden. De opties volgen de kolomkeuze, ook na een nieuwe bronimport.
+
+Geef jouw query een naam en klik Query opslaan. Kies haar later onder Opgeslagen queries om de voorwaarden opnieuw toe te passen. Pas de voorwaarden aan en sla onder dezelfde naam op om haar bij te werken. Een nieuwe naam maakt een tweede query. Assetregister en Open storingen bewaren elk hun eigen lijst. Query wissen maakt alleen de huidige filter leeg; Opgeslagen query verwijderen wist de gekozen opgeslagen definitie.
+
+De queries blijven in deze browser bewaard na herladen en bronimports. Ze gaan niet mee in een bron- of totaalexport. Je ziet na het openen eerst de gewone selectie en kiest zelf welke opgeslagen query je toepast. De andere schermfilters blijven naast de query gelden.
+
 Gebruik voor een combinatie van foutcodes het veld **Asset heeft foutcode**. Voorbeeld:
 
 1. Asset heeft foutcode is gelijk aan `1001`;
@@ -561,3 +567,9 @@ Een verdwenen melding blijft eerst open, met onzeker herstel. Vanaf de eerste du
 Ontbreekt een hele brondag, dan begint de termijn opnieuw bij de eerstvolgende afwezigheidswaarneming. De import trekt geen conclusies over dagen na de gekozen einddatum. Het exacte herstelmoment blijft onbekend. Je ziet aantallen gelezen bestanden, afgeleid herstel en meldingen die nog in de wachttijd staan.
 
 Download de bijgewerkte JSON om de stand en lopende timers over te dragen. De losse importer bewaart die ook lokaal en vervolgt ze bij de volgende import. Andere verkeerscentrales en DRIP-/camerabronnen blijven behouden. Om een stand uit 2.63 te corrigeren, importeer je de volledige relevante dagelijkse reeks opnieuw. Kies de oude methode alleen wanneer je BSS-gebeurtenissen en oude storinglijsten wilt verwerken.
+
+## Actuele storingen blijven zichtbaar, vanaf BIdashActual 2.65
+
+Een voedingsalarm of ander systeemalarm blokkeert de overige open storingen niet meer. Het assetregister en Open storingen tonen ook meldingen waarvan het assettype ontbreekt in All Assets. Een niet te berekenen melding blijft zichtbaar met onbekende impact en een reden. Zij krijgt geen verzonnen assetkoppeling of impactpercentage. Meldingen zonder assetkoppeling blijven ook onder het filter van hun verkeerscentrale zichtbaar, ongeacht hoofdletters of bekende VC-aliassen. De 48-uurswachttijd en opgeslagen timers veranderen niet.
+
+De bronpeildatum bepaalt het rekenmoment. Een geladen lege bron is iets anders dan geen geladen bron. Voor de doorrekening blijft All Assets nodig. Een ontbrekende of onvolledige bron bewijst niet dat de operatie storingsvrij is.

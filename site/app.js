@@ -1,14 +1,15 @@
-import {actualStand} from './core/actual-state.js?v=20261016-1120';
+import {actualStand} from './core/actual-state.js?v=20261017-0820';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261016-1120';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261016-1120';
-import {createFileDownload} from './core/file-download.js?v=20261016-1120';
-import {toonVersies} from './core/versie.js?v=20261016-1120';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261017-0820';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261017-0820';
+import {createFileDownload} from './core/file-download.js?v=20261017-0820';
+import {toonVersies} from './core/versie.js?v=20261017-0820';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
-import {applyQuery,operatorsFor} from './core/query-filter.js';
-import {createAssetRegisterView} from './core/asset-register-view.js?v=20261016-1120';
-import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261016-1120';
+import {applyQuery} from './core/query-filter.js?v=20261017-0820';
+import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261017-0820';
+import {createAssetRegisterView} from './core/asset-register-view.js?v=20261017-0820';
+import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261017-0820';
 const assetFlag=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 import {installQueryAssistant} from './core/query-assistant.js';
 import {buildBiDashContext} from './core/context-api.js';
@@ -22,7 +23,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261016-1120';
+const APP_BUILD='20261017-0820';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -450,18 +451,15 @@ function queryFaults(rows){
  const codes=faultCodesByAsset(rows);
  return rows.map(fault=>({...fault,assetFaultCodes:[...(codes.get(fault.assetKey)||[])]}));
 }
-function queryField(type,key){return (type==='assets'?ASSET_QUERY_FIELDS:FAULT_QUERY_FIELDS).find(field=>field.key===key);}
-function renderQueryBuilder(type){
- const host=$('#'+(type==='assets'?'assetQueryBuilder':'faultQueryBuilder'));if(!host)return;const query=queries[type],fields=type==='assets'?ASSET_QUERY_FIELDS:FAULT_QUERY_FIELDS;
- const rules=query.rules.map((rule,index)=>{const field=queryField(type,rule.field)||fields[0],operators=operatorsFor(field.type),noValue=['empty','notEmpty'].includes(rule.operator),basis=`${type}-query-${index}`,join=index?`<select name="${basis}-join" data-query-join aria-label="Logische koppeling"><option value="and" ${rule.join!=='or'?'selected':''}>EN</option><option value="or" ${rule.join==='or'?'selected':''}>OF</option></select>`:'<span class="query-where">WAAR</span>';return `<div class="query-rule" data-query-rule="${index}">${join}<select name="${basis}-field" data-query-field aria-label="Veld">${fields.map(item=>`<option value="${esc(item.key)}" ${item.key===field.key?'selected':''}>${esc(item.label)}</option>`).join('')}</select><select name="${basis}-operator" data-query-operator aria-label="Vergelijking">${operators.map(([value,label])=>`<option value="${esc(value)}" ${value===rule.operator?'selected':''}>${esc(label)}</option>`).join('')}</select><input name="${basis}-value" data-query-value aria-label="Filterwaarde" value="${esc(rule.value||'')}" placeholder="Waarde" ${noValue?'disabled':''}><button data-query-remove="${index}" aria-label="Filterregel verwijderen">Verwijderen</button></div>`;}).join('');
- host.innerHTML=`<div class="query-toolbar"><button data-query-add>Voorwaarde toevoegen</button><button data-query-reset ${query.rules.length?'':'disabled'}>Query wissen</button><span>SQL-logica, EN wordt vóór OF uitgevoerd.</span></div>${rules}<div class="query-summary">${query.rules.length?`${query.rules.length} voorwaarde${query.rules.length===1?'':'n'} actief. Filters boven deze module blijven ook gelden.`:'Nog geen queryvoorwaarden.'}</div>`;
-}
-function queryChanged(type){assetPage=0;renderQueryBuilder(type);if(type==='assets')renderAssets();else{renderFaults();document.dispatchEvent(new CustomEvent('bidash:query-change',{detail:{type}}));}}
+const queryEditors={};
+const queryPresetStore=createQueryPresetStore({read:()=>readValue('assetmanagement-query-presets'),write:value=>writeValue('assetmanagement-query-presets',value)});
+function renderQueryBuilder(type){queryEditors[type]?.render();}
 function installQueryBuilder(type){
- const host=$('#'+(type==='assets'?'assetQueryBuilder':'faultQueryBuilder'));if(!host||host.dataset.ready)return;host.dataset.ready='1';renderQueryBuilder(type);
- host.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-query-add'))queries[type].rules.push({join:'and',field:(type==='assets'?ASSET_QUERY_FIELDS:FAULT_QUERY_FIELDS)[0].key,operator:'contains',value:''});else if(button.hasAttribute('data-query-reset'))queries[type]={rules:[]};else if(button.dataset.queryRemove!==undefined)queries[type].rules.splice(Number(button.dataset.queryRemove),1);queryChanged(type);});
- host.addEventListener('change',event=>{if(!event.target.matches('[data-query-join],[data-query-field],[data-query-operator]'))return;const row=event.target.closest('[data-query-rule]'),index=row?Number(row.dataset.queryRule):-1;if(index>=0&&event.target.matches('[data-query-join]'))queries[type].rules[index].join=event.target.value;else if(index>=0&&event.target.matches('[data-query-field]')){const field=queryField(type,event.target.value),join=queries[type].rules[index].join;queries[type].rules[index]={join,field:event.target.value,operator:operatorsFor(field?.type)[0][0],value:''};}else if(index>=0&&event.target.matches('[data-query-operator]'))queries[type].rules[index].operator=event.target.value;queryChanged(type);});
- host.addEventListener('input',event=>{const row=event.target.closest('[data-query-rule]');if(!row||!event.target.matches('[data-query-value]'))return;queries[type].rules[Number(row.dataset.queryRule)].value=event.target.value;assetPage=0;if(type==='assets')scheduleAssetSearch();else{renderFaults({resetPage:true,debounce:150});document.dispatchEvent(new CustomEvent('bidash:query-change',{detail:{type,debounce:150}}));}});
+ queryEditors[type]=createQueryEditor({host:$('#'+(type==='assets'?'assetQueryBuilder':'faultQueryBuilder')),type,fields:type==='assets'?ASSET_QUERY_FIELDS:FAULT_QUERY_FIELDS,
+  getQuery:()=>queries[type],setQuery:query=>queries[type]=query,store:queryPresetStore,
+  getRows:async()=>type==='assets'?(await assetRegisterView.ensure(sourceApi('dvm'),sourceApi('bi')))?.rows||[]:document.__bidashOpenFaultRows?await document.__bidashOpenFaultRows():queryFaults(allFaults()),
+  onChange:({debounce})=>{assetPage=0;if(type==='assets'){if(debounce)scheduleAssetSearch();else renderAssets();}else{renderFaults({resetPage:true,debounce});document.dispatchEvent(new CustomEvent('bidash:query-change',{detail:{type,debounce}}));}}
+ });
 }
 
 function renderNative(){
