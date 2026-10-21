@@ -592,3 +592,12 @@ Het vinkje Volledige actuele storingsbron voor dit areaal blijft staan als je de
 Aanvinken van Volledige actuele storingsbron voor dit areaal berekent de dienstband direct opnieuw. Bevestigde uitval beperkt de bovengrens. Een onzeker gekoppeld asset kan in de ondergrens volledig uitvallen en in de bovengrens beschikbaar zijn. De rest van het bevestigde areaal blijft meetellen. Bij tien assets, één bevestigde volledige uitval en één ander onzeker asset is de band 80 tot 90 procent. Meerdere meldingen op hetzelfde asset maken geen extra onzekere assets.
 
 De brontabel toont ook de beschikbaarheidsband per assettype. Onbekende assetkoppelingen, ontbrekende VC's, onvolledige bronnen en stapeling kunnen een ruime band houden. Een MTM-import voor één VC bevestigt geen gezonde assets in andere VC's. Ontbrekende Camera- of DRIP-bronnen houden hun eigen deel van de dienstband open. De band is geen voorspelling of kansinterval. Aanvinken sluit geen storingen. Uitvinken trekt jouw volledigheidsbevestiging in; bekende uitval blijft in de bovengrens meetellen.
+
+
+## Dienstimpact en regiofocus, versie 2.70
+
+Bovenaan Dienstimpact staat Berekening uitgevoerd met het aantal doorgerekende meldingen, onbekende impact en actieve assets. Kies bij Verkeerscentrale voor dienstimpact jouw geladen centrale om haar eigen dienstband te bekijken. Landelijk gebruikt het volledige register en houdt ontbrekende centrales onbekend. Een band van 0 tot 99,89 procent betekent niet dat er niets is berekend. De bevestigde uitval begrenst de bovengrens; ontbrekende gegevens houden de ondergrens ruim. Open Waarom is de band breed voor de oorzaken.
+
+Onder Diensten en subprocessen zie je beschikbaarheid, prestatie, norm, bekende dekking, subprocesaandelen en assetafhankelijkheden. Bronbevestigingen gelden voor de bronnen voor het hele register. De VC-keuze is alleen een schermselectie.
+
+Regio bevat weer een VC- en RD-keuze, assetverdeling, datakwaliteit, districtduiding, contracten, leveranciers, werkzaamheden, U-routes en geraakte netwerkschakels of wegdelen. De dienstband voor dezelfde VC is gelijk aan Dienstimpact. Een centrale zonder geladen bron krijgt geen exact 100 procent. De regiofocus telt ook niet doorgerekende meldingen en toont de redenen. Klik op een wegdeel voor de berekenbare meldingen erachter. Die detailwaarden zijn een berekening van de bekende subset; de dienstband houdt ook ontbrekende dekking vast.

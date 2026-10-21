@@ -2280,6 +2280,7 @@ function toonTab(t){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   document.querySelectorAll('.tabpage').forEach(p=>p.classList.add('hidden'));
   document.getElementById('tab-'+t).classList.remove('hidden');
+  if(globalThis.BIDASH_ACTUAL&&t==='rapport'&&typeof scrollTo==='function')scrollTo(0,0);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2333,6 +2334,7 @@ function groepeerWegdelenPerVc(wegdelen){
   return [...groepen.entries()].map(([vc,wds])=>({vc,wds}));
 }
 function vwmLandelijkDienstHtml(){
+  if(globalThis.BIDASH_ACTUAL&&typeof actualDienstScherm==='function'){const s=actualDienstScherm();return `<div class="card"><h3>Diensten en subprocessen, ${s.vc?'VC '+esc(s.vc):'landelijk'}</h3>${actualDienstTabelHtml(s.model)}${actualSubprocessenHtml(s.model)}</div>`;}
   const bron=bronGemiddeldUitWegdelen(STATE.wegdelen);
   const sub=subprocessenVoorBron(bron);
   return `<div class="card"><h3>VWM landelijk, prestatie per dienstverlening en subproces</h3>
@@ -2364,6 +2366,7 @@ function vcWerkRouteContext(vc){
   return {werk,werkAssets,route,routeAssets};
 }
 function vwmVcUitvoeringHtml(){
+  if(globalThis.BIDASH_ACTUAL&&typeof actualRegioRows==='function')return actualRegioVergelijkingHtml(actualRegioRows());
   const rows=groepeerWegdelenPerVc(STATE.wegdelen).map(({vc,wds})=>{
     const bron=bronGemiddeldUitWegdelen(wds);
     const diensten=DIENSTEN.map(d=>{
@@ -2464,8 +2467,8 @@ function renderOverzicht(){
   h+=vwmVcUitvoeringHtml();
   h+=liveSignaalgeverGevolgenHtml('overzicht');
 
-  h+=`<div class="card"><h3 style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Netwerkbrede dienstprestatie ${tip('Areaalgewogen gemiddelde over alle geraakte wegdelen, naar het aantal geregistreerde signaalgevers. <b>Beschikbaarheid</b> = kans dat de dienst geleverd kan worden; <b>prestatie</b> = kwaliteit/effectiviteit bij storing. Verkeersintensiteiten ontbreken in de brondata en worden daarom niet gesuggereerd.')}</span><button class="memo-knop" onclick="opentMemo('overzicht')">📄 Memo genereren</button></h3>
-    <p class="muted" style="margin:-6px 0 14px;font-size:12px">Areaalgewogen gemiddelde over alle geraakte wegdelen. Beschikbaarheid = kans dat de dienst kan worden geleverd; prestatie = kwaliteit/effectiviteit bij storing.</p>
+  h+=`<div class="card"><h3 style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>${globalThis.BIDASH_ACTUAL?'Rekenwaarden voor doorgerekende meldingen':'Netwerkbrede dienstprestatie'} ${tip('Areaalgewogen gemiddelde over alle geraakte wegdelen, naar het aantal geregistreerde signaalgevers. <b>Beschikbaarheid</b> = kans dat de dienst geleverd kan worden; <b>prestatie</b> = kwaliteit/effectiviteit bij storing. Verkeersintensiteiten ontbreken in de brondata en worden daarom niet gesuggereerd.')}</span><button class="memo-knop" onclick="opentMemo('overzicht')">📄 Memo genereren</button></h3>
+    <p class="muted" style="margin:-6px 0 14px;font-size:12px">${globalThis.BIDASH_ACTUAL?'Deze detailwaarden gebruiken alleen doorgerekende meldingen. Ze bewijzen geen volledige brondekking. De dienstband bovenaan bevat ook onzekerheid en ontbrekende bronnen.':'Areaalgewogen gemiddelde over alle geraakte wegdelen. Beschikbaarheid = kans dat de dienst kan worden geleverd; prestatie = kwaliteit/effectiviteit bij storing.'}</p>
     <div class="grid4">`;
   DIENSTEN.forEach(d=>{
     const n=STATE.netwerk[d.id];
@@ -2608,7 +2611,7 @@ function renderOverzicht(){
   h+=operationeleContextHtml(maakOperationeleContext(contextT,contextT+86400e3,STATE.meldingen),'Impact op werkzaamheden en U-routes');
 
   h=h.replaceAll('VWM landelijk, prestatie per dienstverlening en subproces','Dienstprestatie binnen geraakte wegdelen en subprocessen').replaceAll('Netwerkbrede dienstprestatie','Dienstprestatie binnen geraakte wegdelen').replaceAll('netwerkbrede beschikbaarheid','beschikbaarheid binnen geraakte wegdelen');
-  document.getElementById('tab-overzicht').innerHTML=storingsLevenscyclusHtml()+v68LandelijkHtml()+kostenDagOverzicht()+h;
+  document.getElementById('tab-overzicht').innerHTML=globalThis.BIDASH_ACTUAL?v68LandelijkHtml()+storingsLevenscyclusHtml()+v68NietDoorgerekendHtml()+kostenDagOverzicht()+h:storingsLevenscyclusHtml()+v68LandelijkHtml()+kostenDagOverzicht()+h;
 }
 
 /* Bereken de subprocesbeschikbaarheid voor een gegeven bron-tabel (per wegdeel of netwerk). */
@@ -3563,6 +3566,7 @@ function rapportRegioBasisMap(){
       bronnen.forEach(bron=>{const r=maak(bron);rapportVoegBestuurEnContract(r,bron);r.uRouteIds.add(route.uRoute||route.id||route.relationId);assets.forEach(a=>r.uRouteAssets.add(a.key));});
     });
   }
+  if(globalThis.BIDASH_ACTUAL)for(const melding of STATE?.nietDoorgerekend||[]){const r=maak(melding);r.liveStoringen++;rapportVoegBestuurEnContract(r,melding);}
   return m;
 }
 function rapportRegioRows(){
