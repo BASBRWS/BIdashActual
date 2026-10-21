@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.67 en DVM 145, bijgewerkt op 21 oktober 2026 voor afzonderlijke tellingen van storingslocaties en technische meldingen. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.68 en DVM 146, bijgewerkt op 21 oktober 2026 voor blijvende bronbevestiging bij onzekere meldingen. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -170,6 +170,14 @@ De oude KPI Open storingen in Assetmanagement telde alle technische meldingen ui
 De uitsplitsing toont per type locaties inclusief onzeker, locaties aanwezig in de bron, technische meldingen, aanwezig, verdwenen maar nog onbevestigd, overig onbekend en zonder volledige locatie. Locatietotalen per type kunnen overlappen en zijn niet optelbaar. Open storingen gebruikt dezelfde telling voor de actuele filterselectie en de memo. Aanwezig in bron betekent bevestigd op die bronstand, niet automatisch bevestigd op de klok van vandaag. De levenscyclus blijft ouderdom afzonderlijk aangeven. Het bestaande technische storingslog bevat een geaggregeerd `faults.counts`-record zonder locaties of bronregels.
 
 De combinatie van 1.387 meldingen en 72 locaties is met een synthetische bron getest, inclusief meerdere codes en stroken, detectie, onzekerheid, aparte historie en JSON-herstel. Dit is geen verificatie van het nieuwe operationele bestand van de gebruiker; dat laatste importbestand was niet aangeleverd. Een verschil in teldefinitie bewijst niet dat alle operationele bronregels correct zijn.
+
+### Bronbevestiging blijft zichtbaar, BIdashActual 2.68 / DVM 146
+
+Het vinkje Volledige actuele storingsbron voor dit areaal toont `liveDekking[type]`, de opgeslagen gebruikerskeuze. Het afgeleide veld `compleet` blijft alleen waar als die keuze bevestigd is en de meldingstoestand niet onzeker is. Eerder gebruikte de checkbox `compleet` als aangevinkte toestand: bij verdwenen of verouderde meldingen sprong het zichtbare vinkje na tekenen terug, ondanks de opgeslagen keuze.
+
+`v68TypeStatus()` levert nu `bevestigd` en `compleet` afzonderlijk. Een aangevinkte bron met onzekerheid toont Bevestiging opgeslagen en houdt haar databand; een bevestiging sluit geen incident en maakt een blinde bron niet gezond. `v68DekkingBewaar()` houdt het actieve DVM-tabblad, geopende details en de scrollpositie vast, verandert geen analysesignatuur of impactuitkomst en meldt de parameterwijziging direct aan de bestaande opslagqueue in de schil. Dezelfde `cfg.liveDekking` blijft via parameters en totaalexport overdraagbaar. Beide bronbevestigingstabellen gebruiken dezelfde keuze.
+
+Regressiecontrole: verdwenen melding, aanvinken, uitvinken, behoud van ruwe incidenten en impact, parameter-/totaalexport en herladen. De browsercontrole gebruikt de echte schil en DVM-module, inclusief de tabel onder Dienstimpact en de tabel onder Impactregels. Geen operationele brongegevens in Git opgenomen.
 
 ### Status en open storingen vanaf BiDash 2.51 / DVM 131
 
