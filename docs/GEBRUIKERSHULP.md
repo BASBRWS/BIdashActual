@@ -573,3 +573,10 @@ Download de bijgewerkte JSON om de stand en lopende timers over te dragen. De lo
 Een voedingsalarm of ander systeemalarm blokkeert de overige open storingen niet meer. Het assetregister en Open storingen tonen ook meldingen waarvan het assettype ontbreekt in All Assets. Een niet te berekenen melding blijft zichtbaar met onbekende impact en een reden. Zij krijgt geen verzonnen assetkoppeling of impactpercentage. Meldingen zonder assetkoppeling blijven ook onder het filter van hun verkeerscentrale zichtbaar, ongeacht hoofdletters of bekende VC-aliassen. De 48-uurswachttijd en opgeslagen timers veranderen niet.
 
 De bronpeildatum bepaalt het rekenmoment. Een geladen lege bron is iets anders dan geen geladen bron. Voor de doorrekening blijft All Assets nodig. Een ontbrekende of onvolledige bron bewijst niet dat de operatie storingsvrij is.
+
+
+## Storingslocaties vergelijken met meldingen, versie 2.67
+
+Assetmanagement toont afzonderlijk Storingslocaties, Technische meldingen en MSI-storingslocaties. Eén fysieke locatie kan meerdere rijstroken, detectoren, foutcodes en incidenten bevatten. Een aantal technische meldingen is daarom niet hetzelfde als het aantal storingslocaties. Onder Verschil tussen storingslocaties en technische meldingen staat de uitsplitsing per assettype en verkeerscentrale, inclusief aanwezige en nog onzekere meldingen. De KPI's volgen alle geladen meldingen; de assetfilters beperken alleen de tabel.
+
+Op Open storingen volgt de telling je actuele filters. Een verdwenen melding blijft onzeker tot de 48-uursregel herstel afleidt; een terugkeer onderbreekt die wachttijd. Meldingen en hun impact worden niet samengevoegd om de locatieteller lager te maken. Aanwezig in bron verwijst naar de geladen bronstand, niet naar een nieuwe meting op dit moment. Voor controle kun je het bestaande storingslog downloaden; dit bevat de geaggregeerde telling per type.

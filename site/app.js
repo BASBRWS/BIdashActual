@@ -1,15 +1,16 @@
-import {actualStand} from './core/actual-state.js?v=20261017-0820';
+import {actualStand} from './core/actual-state.js?v=20261021-1000';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261017-0820';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261017-0820';
-import {createFileDownload} from './core/file-download.js?v=20261017-0820';
-import {toonVersies} from './core/versie.js?v=20261017-0820';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261021-1000';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261021-1000';
+import {createFileDownload} from './core/file-download.js?v=20261021-1000';
+import {toonVersies} from './core/versie.js?v=20261021-1000';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
-import {applyQuery} from './core/query-filter.js?v=20261017-0820';
-import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261017-0820';
-import {createAssetRegisterView} from './core/asset-register-view.js?v=20261017-0820';
-import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261017-0820';
+import {applyQuery} from './core/query-filter.js?v=20261021-1000';
+import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261021-1000';
+import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261021-1000';
+import {createAssetRegisterView} from './core/asset-register-view.js?v=20261021-1000';
+import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261021-1000';
 const assetFlag=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 import {installQueryAssistant} from './core/query-assistant.js';
 import {buildBiDashContext} from './core/context-api.js';
@@ -23,7 +24,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261017-0820';
+const APP_BUILD='20261021-1000';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -489,8 +490,11 @@ async function renderAssets(){
   const rows=await assetRegisterView.select(data,filters,queries.assets,ASSET_QUERY_FIELDS,{isCurrent});
   if(!rows||!isCurrent())return;
   assetPage=Math.max(0,Math.min(assetPage,Math.max(0,Math.ceil(rows.length/pageSize)-1)));
-  $('#assetKpis').innerHTML=[['Assets in register',num(data.rows.length,0),'Alle geladen assets, inclusief niet-operationele'],['Open storingen',num(data.faultCount,0),'Op de brondag '+date(summaries.dvm?.peildatum)],['Bronnen','DVM + BI','Impactregels en identiteit blijven bij hun bron']].map(c=>`<div class="card">${c[0]}<strong>${c[1]}</strong><small>${esc(c[2])}</small></div>`).join('');
-  host.innerHTML=rows.length?`<table><thead><tr><th>Asset</th><th>Type / bron</th><th>Locatie</th><th>VC</th><th>Status</th><th>Open</th></tr></thead><tbody>${rows.slice(assetPage*pageSize,(assetPage+1)*pageSize).map(a=>`<tr><td><button data-asset="${esc(a.key)}" data-source="${a.source}">${esc(a.naam)}</button></td><td>${esc(a.tp)} <span class="pill">${a.source}</span></td><td>${esc(a.weg)}</td><td>${esc(a.vc||'Onbekend')}</td><td>${esc(a.status)}</td><td>${a.source==='DVM'?a.openFaults:'—'}</td></tr>`).join('')}</tbody></table>`:empty('Geen assets in deze selectie',data.rows.length?'Pas de filters aan.':'Laad je DVM-totaalbestand of BI-assets.');
+  const counts=data.faultSummary;
+  $('#assetKpis').innerHTML=[['Assets in register',num(data.rows.length,0),'Alle geladen assets, inclusief niet-operationele'],['Storingslocaties',num(counts.locaties,0),num(counts.bevestigdeLocaties,0)+' locaties aanwezig in bron; overige locaties onzeker'],['Technische meldingen',num(counts.meldingen,0),num(counts.aanwezig,0)+' aanwezig in bron · '+num(counts.verdwenen+counts.onbekend,0)+' verdwenen of onbekend'],['MSI-storingslocaties',num(counts.perType.MSI?.locaties||0,0),'Alleen signaalgevers, inclusief onzeker; zonder detectielussen of systeemmeldingen']].map(c=>`<div class="card">${c[0]}<strong>${c[1]}</strong><small>${esc(c[2])}</small></div>`).join('');
+  $('#assetFaultCounts').innerHTML=faultCountBreakdown(counts);
+  $('#assetFaultCountScope').textContent='Tellingen over alle geladen meldingen op de brondag '+date(summaries.dvm?.peildatum)+'. De zoekfilters hieronder beperken alleen de assettabel.';
+  host.innerHTML=rows.length?`<table><thead><tr><th>Asset</th><th>Type / bron</th><th>Locatie</th><th>VC</th><th>Status</th><th>Technische meldingen</th></tr></thead><tbody>${rows.slice(assetPage*pageSize,(assetPage+1)*pageSize).map(a=>`<tr><td><button data-asset="${esc(a.key)}" data-source="${a.source}">${esc(a.naam)}</button></td><td>${esc(a.tp)} <span class="pill">${a.source}</span></td><td>${esc(a.weg)}</td><td>${esc(a.vc||'Onbekend')}</td><td>${esc(a.status)}</td><td>${a.source==='DVM'?a.openFaults:'—'}</td></tr>`).join('')}</tbody></table>`:empty('Geen assets in deze selectie',data.rows.length?'Pas de filters aan.':'Laad je DVM-totaalbestand of BI-assets.');
   $('#assetCount').textContent=`${num(rows.length,0)} resultaten · pagina ${assetPage+1} van ${Math.max(1,Math.ceil(rows.length/pageSize))}`;$('#assetPrev').disabled=assetPage===0;$('#assetNext').disabled=(assetPage+1)*pageSize>=rows.length;
  }catch(error){if(isCurrent()){host.innerHTML=empty('Assetregister kon niet worden bijgewerkt','Probeer Uitkomsten vernieuwen.');fail(error);}}
  finally{if(ticket===assetRenderTicket)host.setAttribute('aria-busy','false');}

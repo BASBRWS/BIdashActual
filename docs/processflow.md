@@ -388,3 +388,10 @@ Een geladen assetregister en live bron starten het actuele rekenbeeld. Het ontbr
 Open de querybouwer van Assetregister of Open storingen. De gekozen kolom bepaalt welke unieke waarden in het derde veld verschijnen. De editor leest de bestaande presentatielijst, maakt per veld een herbruikbare index en toont maximaal 100 passende suggesties. Vrije invoer en de bestaande EN/OF-logica blijven beschikbaar. Een bronwijziging vernieuwt de datakeuzes.
 
 Een naam met Query opslaan bewaart alleen de querydefinitie in de lokale applicatieopslag. De gebruiker kan de query na herladen kiezen, bijwerken of verwijderen. De lijsten per scherm zijn onafhankelijk. Bronimports behouden deze browserinstelling; de bestaande bron- en totaalexports veranderen niet. Opslaan van een query herberekent of herschrijft de bronwerkruimte niet.
+
+
+## Storingslocaties vergelijken met meldingen, versie 2.67
+
+Assetmanagement toont afzonderlijk Storingslocaties, Technische meldingen en MSI-storingslocaties. Eén fysieke locatie kan meerdere rijstroken, detectoren, foutcodes en incidenten bevatten. Een aantal technische meldingen is daarom niet hetzelfde als het aantal storingslocaties. Onder Verschil tussen storingslocaties en technische meldingen staat de uitsplitsing per assettype en verkeerscentrale, inclusief aanwezige en nog onzekere meldingen. De KPI's volgen alle geladen meldingen; de assetfilters beperken alleen de tabel.
+
+Op Open storingen volgt de telling je actuele filters. Een verdwenen melding blijft onzeker tot de 48-uursregel herstel afleidt; een terugkeer onderbreekt die wachttijd. Meldingen en hun impact worden niet samengevoegd om de locatieteller lager te maken. Aanwezig in bron verwijst naar de geladen bronstand, niet naar een nieuwe meting op dit moment. Voor controle kun je het bestaande storingslog downloaden; dit bevat de geaggregeerde telling per type.
