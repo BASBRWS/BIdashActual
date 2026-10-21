@@ -400,3 +400,10 @@ Op Open storingen volgt de telling je actuele filters. Een verdwenen melding bli
 ## Bronbevestiging, versie 2.68
 
 Het vinkje Volledige actuele storingsbron voor dit areaal blijft staan als je de bron bevestigt. Bij onzekere, verdwenen of verouderde meldingen verschijnt Bevestiging opgeslagen. Die meldingen houden hun onzekerheid en het dienstpercentage houdt een databand. Bevestigen is een uitspraak over de volledigheid van je bron; het verklaart geen storing opgelost. Je keuze blijft bewaard in de lokale werkruimte, parameters en totaalexport. Uitvinken trekt die keuze weer in. Het geopende tabblad en de details blijven staan.
+
+
+## Dienstband na bronbevestiging, versie 2.69
+
+Aanvinken van Volledige actuele storingsbron voor dit areaal berekent de dienstband direct opnieuw. Bevestigde uitval beperkt de bovengrens. Een onzeker gekoppeld asset kan in de ondergrens volledig uitvallen en in de bovengrens beschikbaar zijn. De rest van het bevestigde areaal blijft meetellen. Bij tien assets, één bevestigde volledige uitval en één ander onzeker asset is de band 80 tot 90 procent. Meerdere meldingen op hetzelfde asset maken geen extra onzekere assets.
+
+De brontabel toont ook de beschikbaarheidsband per assettype. Onbekende assetkoppelingen, ontbrekende VC's, onvolledige bronnen en stapeling kunnen een ruime band houden. Een MTM-import voor één VC bevestigt geen gezonde assets in andere VC's. Ontbrekende Camera- of DRIP-bronnen houden hun eigen deel van de dienstband open. De band is geen voorspelling of kansinterval. Aanvinken sluit geen storingen. Uitvinken trekt jouw volledigheidsbevestiging in; bekende uitval blijft in de bovengrens meetellen.

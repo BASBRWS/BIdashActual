@@ -56,7 +56,7 @@ function context({liveRijen,meldingen,dekking}){
   vm.runInContext(haalConst(bron,'V68_LABEL'),ctx);
   // OBJ_BRON staat in dvm-1.js; v68Subproces vertaalt er de subprocesafhankelijkheden mee naar assettypen.
   vm.runInContext(read('site/engines/dvm-1.js').match(/^const OBJ_BRON = \{.*$/m)[0],ctx);
-  for(const naam of ['v68DekkingCfg','v68Assets','v68LiveBronnenVoorType','v68BronRijenPerType','v68TypeStatus','v68ObjType','v68Subproces'])
+  for(const naam of ['v68DekkingCfg','v68Assets','v68LiveBronnenVoorType','v68BronRijenPerType','v68MeldingOnzeker','v68TypeBand','v68TypeStatus','v68ObjType','v68Subproces'])
     vm.runInContext(haalFunctie(bron,naam),ctx,{filename:naam});
   return ctx;
 }
@@ -100,10 +100,10 @@ test('een blind type — open meldingen, geen enkele doorgerekend — is onbeken
   assert.match(t.DRIP.status,/beschikbaarheid onbekend/);
 });
 
-test('een type met een deel doorgerekend levert nog steeds een waarde',()=>{
+test('een deels doorgerekend type behoudt het bekende verlies in de bovengrens',()=>{
   /* Dit is de regressie: 8 open meldingen in de bron, 5 doorgerekend. Eerder werd
      besch dan null gezet, waardoor de hele dienstverlening naar 0,00–100,00% met
-     0% brondekking terugviel. De 5 doorgerekende meldingen horen wel te tellen. */
+     0% brondekking terugviel. De 5 doorgerekende meldingen horen in de bovengrens te blijven meetellen. */
   const ctx=context({
     liveRijen:Array.from({length:8},()=>({typeId:'MSI'})),
     meldingen:Array.from({length:5},msiMelding),
@@ -114,23 +114,24 @@ test('een type met een deel doorgerekend levert nog steeds een waarde',()=>{
   assert.equal(t.MSI.events,5);
   assert.equal(t.MSI.nietDoorgerekend,3);
   assert.equal(t.MSI.blindeMeldingen,false);
-  assert.notEqual(t.MSI.besch,null,'een deels doorgerekend type moet een waarde houden');
-  assert.ok(t.MSI.besch>99.5&&t.MSI.besch<99.6,'onverwacht percentage: '+t.MSI.besch);
+  assert.equal(t.MSI.besch,null,'een gat zonder bekende identiteit mag geen exact percentage geven');
+  assert.equal(t.MSI.loB,0);
+  assert.ok(t.MSI.hiB>99.5&&t.MSI.hiB<99.6,'de bovengrens moet het bekende verlies bevatten: '+t.MSI.hiB);
 });
 
 test('een bevestigd type met een gat blijft de dienstverlening voeden',()=>{
   /* Reproductie van de gemelde storing: MSI bevestigd met een gat (435 van 657),
      DRIP bevestigd maar blind (0 doorgerekend). Een subproces dat op beide leunt,
-     hoort dekking uit MSI te halen en niet op nul te blijven staan. */
+     hoort de bekende MSI-uitval in zijn bovengrens te behouden. */
   const ctx=context({
     liveRijen:[...Array.from({length:8},()=>({typeId:'MSI'})),...Array.from({length:14},()=>({typeId:'DRIP'}))],
     meldingen:Array.from({length:5},msiMelding),
     dekking:{MSI:true,DRIP:true}
   });
   const r=subproces(ctx,{signalering:0.5,drip:0.5});
-  assert.ok(r.bekend>0.49&&r.bekend<0.51,'de MSI-helft moet als bekend meetellen: '+r.bekend);
-  assert.ok(r.loB>0,'de ondergrens mag niet nul zijn: '+r.loB);
-  assert.ok(r.hiB>r.loB,'DRIP is blind, dus de band moet open blijven aan de bovenkant');
+  assert.equal(r.bekend,0,'zonder identiteit voor het gat is geen gezonde areaalfractie bewezen');
+  assert.equal(r.loB,0,'de drie onplaatsbare meldingen houden een ruime ondergrens');
+  assert.ok(r.hiB>99.7&&r.hiB<99.8,'het bekende MSI-verlies moet de bovengrens beperken: '+r.hiB);
   assert.equal(r.exact,false,'met een blinde DRIP-helft is het subproces geen exacte waarde');
 });
 
