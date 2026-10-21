@@ -580,3 +580,8 @@ De bronpeildatum bepaalt het rekenmoment. Een geladen lege bron is iets anders d
 Assetmanagement toont afzonderlijk Storingslocaties, Technische meldingen en MSI-storingslocaties. Eén fysieke locatie kan meerdere rijstroken, detectoren, foutcodes en incidenten bevatten. Een aantal technische meldingen is daarom niet hetzelfde als het aantal storingslocaties. Onder Verschil tussen storingslocaties en technische meldingen staat de uitsplitsing per assettype en verkeerscentrale, inclusief aanwezige en nog onzekere meldingen. De KPI's volgen alle geladen meldingen; de assetfilters beperken alleen de tabel.
 
 Op Open storingen volgt de telling je actuele filters. Een verdwenen melding blijft onzeker tot de 48-uursregel herstel afleidt; een terugkeer onderbreekt die wachttijd. Meldingen en hun impact worden niet samengevoegd om de locatieteller lager te maken. Aanwezig in bron verwijst naar de geladen bronstand, niet naar een nieuwe meting op dit moment. Voor controle kun je het bestaande storingslog downloaden; dit bevat de geaggregeerde telling per type.
+
+
+## Bronbevestiging, versie 2.68
+
+Het vinkje Volledige actuele storingsbron voor dit areaal blijft staan als je de bron bevestigt. Bij onzekere, verdwenen of verouderde meldingen verschijnt Bevestiging opgeslagen. Die meldingen houden hun onzekerheid en het dienstpercentage houdt een databand. Bevestigen is een uitspraak over de volledigheid van je bron; het verklaart geen storing opgelost. Je keuze blijft bewaard in de lokale werkruimte, parameters en totaalexport. Uitvinken trekt die keuze weer in. Het geopende tabblad en de details blijven staan.
