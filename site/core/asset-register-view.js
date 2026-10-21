@@ -1,5 +1,6 @@
-import {applyQuery} from './query-filter.js?v=20261017-0820';
+import {applyQuery} from './query-filter.js?v=20261021-1000';
 import {operationalStatusForAsset} from './asset-operational-status.js?v=20261016-0834';
+import {createFaultCounter} from './fault-counts.js?v=20261021-1000';
 const yes=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 
 const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
@@ -13,8 +14,10 @@ export function createAssetRegisterView({yieldControl=pause}={}){
  async function build(dvm,bi,version){
   const faults=(dvm?.faultsAsync?await dvm.faultsAsync({isCurrent:()=>version===revision}):dvm?.faults?.())||[],counts=new Map(),codes=new Map(),linked=new Map();
   if(version!==revision)return null;
+  const counter=createFaultCounter();
   for(let i=0;i<faults.length;i++){
    const fault=faults[i];
+   counter.add(fault);
    if(fault.assetKey){
     counts.set(fault.assetKey,(counts.get(fault.assetKey)||0)+1);
     if(!linked.has(fault.assetKey))linked.set(fault.assetKey,[]);linked.get(fault.assetKey).push(fault);
@@ -41,7 +44,8 @@ export function createAssetRegisterView({yieldControl=pause}={}){
    }
   }
   if(version!==revision)return null;
-  snapshot={rows,faultCount:faults.length,vcs:[...vcs].sort(),revision:version};
+  snapshot={rows,faultCount:faults.length,faultSummary:counter.value(),vcs:[...vcs].sort(),revision:version};
+  globalThis.BIDASH_DIAGNOSTICS?.record('info','faults.counts',snapshot.faultSummary);
   return snapshot;
  }
  function ensure(dvm,bi){

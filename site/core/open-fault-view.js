@@ -1,3 +1,4 @@
+import {countFaults} from './fault-counts.js?v=20261021-1000';
 import './incident-lifecycle.js';
 export const OPEN_FAULT_TYPES=Object.freeze([
   ['', 'Alle assettypen'],
@@ -65,6 +66,7 @@ export function buildOpenFaultMemo(rows,context={}){
     created:new Date().toISOString(),
     peildatum:context.peildatum||null,
     total:list.length,
+    counts:countFaults(list),
     lifecycle:globalThis.DVM_INCIDENT_LIFECYCLE.summary(list),
     byType:countBy(list,'typeId'),
     byStatus:countBy(list,'operationeleStatus'),

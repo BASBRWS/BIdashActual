@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.66 en DVM 144, bijgewerkt op 17 oktober 2026 voor opgeslagen queryfilters en datakeuzes per kolom binnen Assetmanagement. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.67 en DVM 145, bijgewerkt op 21 oktober 2026 voor afzonderlijke tellingen van storingslocaties en technische meldingen. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -160,6 +160,16 @@ Opbouw en filtering verwerken blokken van maximaal 512 regels met een browserpau
 `hub:changed`, werkruimteherstel en Uitkomsten vernieuwen maken de presentatielijst ongeldig, ook als een bronobject op dezelfde plek is gewijzigd. Alleen dezelfde origin en bekende bronframes mogen zo'n melding leveren. Openen en bladeren wijzigen geen dienstberekening. De cache wordt niet geëxporteerd of opgeslagen. De eerste opbouw en een nieuwe zoekselectie kunnen kort Assetregister bijwerken tonen; grote bronimports blijven aparte bewerkingen.
 
 `npm run test:assets` controleert het echte schilscherm met een synthetisch register van 50.000 assets, paginering, foutcodeselecties met EN, zoeken, mutaties en lege storingen. `tests/asset-register-view.test.js` bewaakt bronbehoud, nul-HMP, foutcodegroepering, hergebruik en afbreken van oude taken. Een lokale vergelijking is aanvullend uitgevoerd met de aangeleverde DVM-totaal-JSON; die bron en afgeleide tellingen zijn niet opgenomen in Git. Browsertijden zijn omgevingsafhankelijk; deze wijziging is geen garantie voor importtijden of mobiele apparaten.
+
+### Storingslocaties en technische meldingen, BIdashActual 2.67 / DVM 145
+
+De oude KPI Open storingen in Assetmanagement telde alle technische meldingen uit de actuele DVM-adapter. Dat aantal is geen telling van unieke fysieke locaties en omvat ook detectielussen, systeemmeldingen en onzeker behouden meldingen. De KPI heet nu Technische meldingen. Daarnaast staan Storingslocaties en MSI-storingslocaties, met een afzonderlijk aantal locaties dat daadwerkelijk aanwezig is op de laatst geladen bronstand. De telling gebruikt de volledige geladen populatie; assetzoekfilters wijzigen alleen de assettabel.
+
+`core/fault-counts.js` groepeert uitsluitend voor presentatie op canonieke VC, weg, bronrijrichting, hectoletter en HMP met drie decimalen. Een rijstrook, detector, foutcode of incident maakt geen extra fysieke locatie. Tegengestelde richtingen, zijbanen en VC's blijven gescheiden. HMP nul is geldig; een ontbrekende VC, richting, weg of HMP telt als melding zonder volledige locatie en wordt niet aan een gegokte locatie toegevoegd. De adapter bewaart hiervoor bronzijde en hectoletter. Er worden geen meldingen samengevoegd of herstel-, impact-, kosten- of 48-uursregels gewijzigd.
+
+De uitsplitsing toont per type locaties inclusief onzeker, locaties aanwezig in de bron, technische meldingen, aanwezig, verdwenen maar nog onbevestigd, overig onbekend en zonder volledige locatie. Locatietotalen per type kunnen overlappen en zijn niet optelbaar. Open storingen gebruikt dezelfde telling voor de actuele filterselectie en de memo. Aanwezig in bron betekent bevestigd op die bronstand, niet automatisch bevestigd op de klok van vandaag. De levenscyclus blijft ouderdom afzonderlijk aangeven. Het bestaande technische storingslog bevat een geaggregeerd `faults.counts`-record zonder locaties of bronregels.
+
+De combinatie van 1.387 meldingen en 72 locaties is met een synthetische bron getest, inclusief meerdere codes en stroken, detectie, onzekerheid, aparte historie en JSON-herstel. Dit is geen verificatie van het nieuwe operationele bestand van de gebruiker; dat laatste importbestand was niet aangeleverd. Een verschil in teldefinitie bewijst niet dat alle operationele bronregels correct zijn.
 
 ### Status en open storingen vanaf BiDash 2.51 / DVM 131
 
