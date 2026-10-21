@@ -96,3 +96,7 @@ De simulatie gebruikt een vaste seed, dus dezelfde invoer geeft altijd dezelfde 
 [Release notes snelle openstaande MTM-dumps 2.63 / DVM 142](release-notes-2026-10-16-open-dumps-263.md).
 
 [Release notes 48 uur vanaf eerste afwezigheid, 2.64 / DVM 143](release-notes-2026-10-16-open-dumps-264.md).
+
+[Release notes actuele storingen zichtbaar, 2.65 / DVM 144](release-notes-2026-10-16-actuele-storingen-265.md).
+
+[Release notes opgeslagen queryfilters en datakeuzes, 2.66 / DVM 144](release-notes-2026-10-17-queryfilters-266.md).

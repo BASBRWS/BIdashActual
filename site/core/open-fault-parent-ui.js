@@ -1,5 +1,5 @@
 import {OPEN_FAULT_TYPES,OPEN_OPERATIONAL_STATUSES,filterOpenFaults,formatFaultDuration,buildOpenFaultMemo} from './open-fault-view.js?v=20261016-0834';
-import {applyQuery} from './query-filter.js';
+import {applyQuery} from './query-filter.js?v=20261017-0820';
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hmFormat=new Intl.NumberFormat('nl-NL',{maximumFractionDigits:3}),impactFormat=new Intl.NumberFormat('nl-NL',{maximumFractionDigits:1}),countFormat=new Intl.NumberFormat('nl-NL');
@@ -47,6 +47,8 @@ export function installOpenFaultParentUi(scope=globalThis){
     if(!pending){const version=revision;pending=build(version).finally(()=>{if(version===revision)pending=null;});}
     return pending;
   }
+  // Deel de bestaande presentatielijst met de querykeuzes, zonder tweede adapterlezing.
+  doc.__bidashOpenFaultRows=async()=> (await data())?.rows||[];
   async function filtered(source,isCurrent=()=>true){
     if(!source)return null;
     const f=filters(),query=doc.__bidashQueries?.faults,key=JSON.stringify([f,query]);

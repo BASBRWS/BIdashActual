@@ -17,11 +17,13 @@ test('de hoofdschil maakt dynamische onderdelen zonder geblokkeerde inline stijl
 });
 
 test('queryvelden krijgen een naam en een toegankelijke omschrijving',()=>{
-  const app=read('site/app.js');
-  for(const suffix of ['join','field','operator','value'])assert.match(app,new RegExp('name="\\$\\{basis\\}-'+suffix+'"'));
-  assert.match(app,/data-query-field aria-label="Veld"/);
-  assert.match(app,/data-query-operator aria-label="Vergelijking"/);
-  assert.match(app,/data-query-value aria-label="Filterwaarde"/);
+  const app=read('site/app.js'),editor=read('site/core/query-builder.js');
+  assert.match(app,/createQueryEditor/);
+  assert.doesNotMatch(editor,/<[^>]+style=/);
+  for(const suffix of ['join','field','operator','value'])assert.match(editor,new RegExp('name="\\$\\{basis\\}-'+suffix+'"'));
+  assert.match(editor,/data-query-field aria-label="Veld"/);
+  assert.match(editor,/data-query-operator aria-label="Vergelijking"/);
+  assert.match(editor,/data-query-value aria-label="Filterwaarde"/);
 });
 
 test('DVM-regelvelden krijgen stabiele namen en tips zijn niet interactief in summary',()=>{

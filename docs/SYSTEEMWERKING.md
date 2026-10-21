@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.64 en DVM 143, bijgewerkt op 16 oktober 2026 voor de opeenvolgende import van openstaande MTM-dumps en 48 uur vanaf de eerste afwezigheid. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.66 en DVM 144, bijgewerkt op 17 oktober 2026 voor opgeslagen queryfilters en datakeuzes per kolom binnen Assetmanagement. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -29,6 +29,10 @@ De dagstand gebruikt het peilmoment van de geladen bronnen. Het overzicht toont
 dat peilmoment en de laatst verwerkte bronmomenten per VC, plus onbekende dekking,
 veroudering en onzekere meldingen. Ontbrekende VC-bronnen zijn niet storingsvrij.
 Een refresh leest niet zelfstandig de lokale storingsmap.
+
+Vanaf 2.65 wordt de actuele verwerking gestart zodra een assetregister en een live bron zijn geladen. De vroegere voorwaarde dat ieder herkend meldingstype actief areaal in het register moest hebben, geldt niet voor BIdashActual. SYSTEEM en ONBEKEND zijn meldingscategorieën en hoeven geen zelfstandig assettype in All Assets te zijn. Ook een ontbrekend individueel assettype, een onzekere melding of ontbrekende locatie blokkeert de overige meldingen niet meer. De bestaande doorrekening houdt niet te berekenen meldingen in `STATE.nietDoorgerekend` met null-impact en een reden; de adapter en het assetregister tellen ze mee in de actuele meldingen. Bestaande koppelregels en impactformules blijven bepalend voor wat wel berekenbaar is. Ontkoppelde meldingen tellen landelijk mee en worden niet aan een willekeurig asset gehangen. De adapter normaliseert hun VC met dezelfde bestaande aliassen als gekoppelde meldingen, zodat bijvoorbeeld mn en MN onder hetzelfde schermfilter vallen.
+
+Een geladen lege live bron levert een leeg rekenbeeld met haar eigen bronpeildatum. Dat bewijst zonder de bestaande dekkingsinformatie geen volledige of storingsvrije operatie. Geen geladen bron of geen assetregister blijft onvoldoende voor deze doorrekening. Er wordt geen kloktijd als bronpeildatum verzonnen. De afzonderlijke analysevariant behoudt haar eerdere gereedheidspoort. `tests/actual-live-readiness.test.js` controleert deze grensgevallen; de echte actual- en MTM-dumpbrowsertests bewaken gemengde meldingscategorieën, peildatum, actuele lijst, register-KPI en import/herladen. De oude totaal-JSON kan aanvullend uitsluitend lokaal worden gecontroleerd; gebruikersbronnen worden niet opgenomen in Git.
 
 De apps delen op GitHub Pages een origin, daarom krijgt alle legacy localStorage
 én sessionStorage in iedere actual-realm de prefix `bidash-actual:`. `key`,
@@ -848,6 +852,16 @@ uit. Iedere regel kan een andere kolom gebruiken en wordt vanaf de tweede regel 
 EN of OF verbonden. EN krijgt volgens SQL-logica voorrang. Het afgeleide veld `assetFaultCodes` groepeert
 alle actuele foutcodes per `assetKey`, zodat een EN-query op code 1001 en 1003 een
 combinatie op hetzelfde asset betekent en niet een onmogelijke combinatie op één melding.
+
+Vanaf BIdashActual 2.66 verzorgt `site/core/query-builder.js` de editor voor beide queryfilters. Assetregister en Open storingen hebben ieder een eigen lijst met benoemde queries. Opslaan bewaart velden, operatoren, waarden en EN/OF-koppelingen als een onafhankelijke kopie. Dezelfde naam binnen hetzelfde scherm bijwerken vervangt die definitie; een andere naam maakt een nieuwe query. Query wissen reset alleen de huidige filter. Een opgeslagen query verwijderen laat de huidige filter staan. Onbekende velden of operatoren worden bij laden geweigerd, zodat een onbruikbare definitie niet stil tot een ruimere selectie leidt.
+
+De kleine querylijst staat in dezelfde applicatiegebonden IndexedDB onder de aparte sleutel `assetmanagement-query-presets`. Een schrijfactie voor een query kloont of herberekent geen bronwerkruimte. Schrijfacties worden op volgorde afgehandeld en de bewaarde lijst verandert pas na succesvolle opslag. Een onleesbare lijst wordt niet automatisch overschreven. Deze browserinstelling blijft bij bronimport behouden en gaat niet mee met de bestaande bron-/totaalexports; exportformaten en bronselecties veranderen niet. De actieve, nog niet opgeslagen filter wordt niet automatisch hersteld bij het openen van de app; de gebruiker kiest een opgeslagen query.
+
+Het derde veld gebruikt een native datalist met unieke niet-lege waarden uit de gekozen kolom van de volledige geladen presentatielijst. Andere queryvoorwaarden en schermfilters beperken die keuzelijst niet. `assetFaultCodes` levert afzonderlijke codes uit de arrays; echte nulwaarden blijven beschikbaar, null wordt geen optie nul. Vrij typen blijft mogelijk voor deelteksten of numerieke grenzen. Is leeg en Is niet leeg schakelen het waardeveld uit. De bestaande EN/OF-volgorde verandert niet. Numerieke queryvergelijkingen onderscheiden lege en onbekende waarden van een echte nul. Alleen de operatoren Is leeg en Is niet leeg behandelen ontbrekende waarden als een aparte toestand.
+
+De registerkeuzes hergebruiken `asset-register-view`; storingskeuzes delen de bestaande parent-UI-presentatielijst via `document.__bidashOpenFaultRows`. Unieke waarden worden per bronlijst en veld in blokken van 512 rijen opgebouwd en gecachet. Kleine lijsten worden gesorteerd; grote lijsten met unieke namen/IDs blijven in bronvolgorde om een lange sortering te voorkomen. De datalist bevat maximaal 100 bij de invoer passende suggesties; zoeken blijft over alle geïndexeerde waarden gaan. Vernieuwde bronnen maken de waardenindex ongeldig doordat zij een nieuwe presentatielijst opleveren. Achterhaalde leesacties mogen geen opties van een later gekozen veld overschrijven. Er wordt geen tweede impactberekening gestart.
+
+Controles: `tests/query-builder.test.js` bewaakt opslag/herladen, EN/OF, onafhankelijke lijsten, bijwerken/verwijderen, schrijffouten, onleesbare opslag, unieke waarden, arrays, nul en indexhergebruik. `tests/query-builder-browser.cjs` controleert de echte import, datakeuzes, bronverversing, veilige namen, herladen en beide schermen. De bestaande register-/assetresponsiviteitscontroles blijven de grote presentatielijst en zoekprestaties bewaken.
 
 `site/engines/dvm-fault-rule-manager.js` bewaart expliciete melding-codekoppelingen in
 `RULES.cfg.foutToewijzingen`. De toewijzing krijgt voorrang op patroonherkenning,
