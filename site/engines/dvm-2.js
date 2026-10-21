@@ -3051,10 +3051,10 @@ const V68_TYPES=['MSI','CAM','LUS','DRIP','WISSELBORD','COMM'];
 const V68_LABEL={MSI:'Signalering',CAM:'Camera',LUS:'Detectie',DRIP:'DRIP',WISSELBORD:'Wisselbord',COMM:'Communicatie'};
 function v68DekkingCfg(){RULES.cfg.liveDekking=RULES.cfg.liveDekking||{};return RULES.cfg.liveDekking;}
 function v68Assets(){return (ASSET_REGISTER_STATE?.assets||[]).filter(a=>a.prognoseActief!==false);}
-function v68LiveBronnenVoorType(tp){
+function v68LiveBronnenVoorType(tp,scope){
   const out=[];
   for(const bron of LIVE_STORINGSBRONNEN||[]){
-    const heeft=(bron.rijen||[]).some(raw=>{try{return classificeer(normRij(raw))===tp;}catch(error){return false;}});
+    const heeft=(bron.rijen||[]).some(raw=>{try{const m=normRij(raw);return classificeer(m)===tp&&(!scope||scope(m));}catch(error){return false;}});
     if(!heeft)continue;
     const basisNamen=Array.isArray(bron.bronNamen)?bron.bronNamen.filter(Boolean):[];
     out.push({naam:basisNamen.length?basisNamen.join(' + '):(bron.naam||bron.name||bron.key||'Open-storingenbron'),afgeleidVan:bron.afgeleidVan||'',peildatum:bron.peildatum||null});
@@ -3066,11 +3066,11 @@ function v68LiveBronnenVoorType(tp){
    zonder locatie of zonder passende foutregel; zulke meldingen zijn wel zichtbaar
    in Open storingen. Zonder deze telling meldt de brondekking nul open meldingen
    terwijl de storingslijst ze toont. */
-function v68BronRijenPerType(){
+function v68BronRijenPerType(scope){
   const uit={};V68_TYPES.forEach(tp=>{uit[tp]=0;});
   let rijen=[];try{rijen=gecombineerdeLiveStoringsRijen();}catch(error){return uit;}
   for(const raw of rijen){
-    let tp='';try{tp=classificeer(normRij(raw))||'';}catch(error){continue;}
+    let tp='';try{const m=normRij(raw);if(scope&&!scope(m))continue;tp=classificeer(m)||'';}catch(error){continue;}
     if(uit[tp]!=null)uit[tp]++;
   }
   return uit;
@@ -3123,17 +3123,17 @@ function v68TypeBand(tp,areaal,events,overig,inBron,bevestigd,uren){
     dekking:begrensbaar?Math.max(0,(n-onbekendeAssets.size)/n):0,compleet,
     onbekendeAssets:onbekendeAssets.size,onplaatsbaar,combiOnzeker,bekendAvailLoss:bekendA,bekendPerfLoss:bekendP};
 }
-function v68TypeStatus(){
-  const cfg=v68DekkingCfg(),assets=v68Assets(),meldingen=STATE?.meldingen||[],bronRijen=v68BronRijenPerType(),uit={};
+function v68TypeStatus(scope){
+  const kies=scope||(()=>true),cfg=v68DekkingCfg(),assets=v68Assets().filter(kies),meldingen=(STATE?.meldingen||[]).filter(kies),niet=(STATE?.nietDoorgerekend||[]).filter(kies),bronRijen=v68BronRijenPerType(scope),uit={};
   V68_TYPES.forEach(tp=>{
-    const virtueel=tp==='COMM',n=virtueel?1:assets.filter(a=>a.tp===tp).length,events=meldingen.filter(m=>m.typeId===tp),bronnen=v68LiveBronnenVoorType(tp);
-    const bewaard=(STATE?.nietDoorgerekend||[]).filter(m=>m.typeId===tp).length;
+    const virtueel=tp==='COMM',n=virtueel?1:assets.filter(a=>a.tp===tp).length,events=meldingen.filter(m=>m.typeId===tp),bronnen=scope&&!bronRijen[tp]?[]:v68LiveBronnenVoorType(tp,scope);
+    const bewaard=niet.filter(m=>m.typeId===tp).length;
     const inBron=Math.max(Number(bronRijen[tp])||0,events.length+bewaard);
     /* Niet berekenbare meldingen houden hun eigen onzekerheid in de band;
        het verlies uit wel berekenbare bevestigde meldingen blijft meetellen. */
     const nietDoorgerekend=Math.max(0,inBron-events.length);
     const aangeleverd=inBron>0||events.length>0;
-    const overig=(STATE?.nietDoorgerekend||[]).filter(m=>m.typeId===tp);
+    const overig=niet.filter(m=>m.typeId===tp);
     const onzeker=[...events,...overig].some(v68MeldingOnzeker);
     const bevestigd=cfg[tp]===true;
     const availLoss=events.reduce((s,m)=>s+(Number(m.trace?.bijdrageAvail)||0),0),perfLoss=events.reduce((s,m)=>s+(Number(m.trace?.bijdragePerf)||0),0),uren=STATE?.stats?.periodeUren||24;
@@ -3175,7 +3175,7 @@ function v68Dienst(d,typen){
   const detail=subs.map(sp=>{const r=v68Subproces(sp,typen),w=aandeel(sp)/som;loB+=w*r.loB;hiB+=w*r.hiB;loP+=w*r.loP;hiP+=w*r.hiP;dekking+=w*r.bekend;return {...r,w};});
   const exact=detail.some(r=>r.w>0)&&detail.every(r=>!r.w||r.exact);return {d,exact,besch:exact?loB:null,prestatie:exact?loP:null,loB,hiB,loP,hiP,dekking,detail};
 }
-function v68LandelijkModel(){const typen=v68TypeStatus();return {typen,diensten:DIENSTEN.map(d=>v68Dienst(d,typen)),assets:v68Assets().length};}
+function v68LandelijkModel(scope){const typen=v68TypeStatus(scope);return {typen,diensten:DIENSTEN.map(d=>v68Dienst(d,typen)),assets:v68Assets().filter(scope||(()=>true)).length};}
 function v68Pct(v){return v==null?'Onbekend':fmt(v,2)+'%';}
 function v68Bereik(r){return r.exact?v68Pct(r.besch):`${fmt(r.loB,2)} tot ${fmt(r.hiB,2)}%`;}
 function v68DekkingBewaar(el){
@@ -3196,6 +3196,7 @@ function v68NietDoorgerekendHtml(){
 }
 function v68BronnenHtml(model){return `<div class="tbl-scroll" style="max-height:none"><table class="tbl"><thead><tr><th>Assetbron</th><th class="num">Actief areaal</th><th class="num">Open meldingen</th><th>Status en herkomst</th><th>Bevestiging</th></tr></thead><tbody>${V68_TYPES.map(tp=>{const b=model.typen[tp],bronTekst=(b.bronnen||[]).map(x=>x.naam+(x.afgeleidVan==='dripHistorie'?' · actuele selectie afgeleid uit DRIP-historie':'')).join(' + ');return `<tr><td><b>${V68_LABEL[tp]}</b></td><td class="num">${b.n.toLocaleString('nl-NL')}</td><td class="num">${b.inBron.toLocaleString('nl-NL')}${b.nietDoorgerekend?`<br><small>${b.events.toLocaleString('nl-NL')} doorgerekend</small>`:''}</td><td>${esc(b.status)}<br><small>Beschikbaarheid ${v68Bereik({exact:b.compleet,besch:b.besch,loB:b.loB,hiB:b.hiB})}</small>${bronTekst?`<br><small>${esc(bronTekst)}</small>`:''}</td><td><label><input type="checkbox" data-v68-type="${tp}" ${b.bevestigd?'checked':''} onchange="v68DekkingBewaar(this)"> Volledige actuele storingsbron voor dit areaal</label>${b.bevestigd&&b.onzeker?'<br><small>Bevestiging opgeslagen. Bekende uitval telt mee; onzekere assets en ontbrekende dekking houden de band open.</small>':''}</td></tr>`;}).join('')}</tbody></table></div>`;}
 function v68LandelijkHtml(){
+ if(globalThis.BIDASH_ACTUAL&&typeof actualDienstOverzichtHtml==='function')return actualDienstOverzichtHtml();
  const m=v68LandelijkModel(),gekoppeld=STATE?.stats?.assetGekoppeld||0,toegepast=STATE?.stats?.toegepast||0;
  return v68NietDoorgerekendHtml()+`<div class="card" style="border-left:5px solid var(--rws-blauw)"><h3>Landelijke beschikbaarheid over het volledige assetregister</h3><p>Dit blok gebruikt alle ${m.assets.toLocaleString('nl-NL')} actieve DVM-assets in het geladen register als areaalbasis. De tabellen verderop tonen de geraakte wegdelen. Een exact landelijk dienstpercentage verschijnt alleen als alle benodigde actuele storingsbronnen als volledig zijn bevestigd.</p><div class="grid4">${m.diensten.map(r=>`<div class="kpi"><div class="k-val" style="font-size:${r.exact?'25px':'17px'}">${v68Bereik(r)}</div><div class="k-lab">${r.d.naam.replace(/&amp;/g,'&')}<br>brondekking ${fmt(r.dekking*100,1)}%</div></div>`).join('')}</div><p>${gekoppeld} van ${toegepast} doorgerekende meldingen zijn gekoppeld aan een specifiek asset. Een brede band betekent dat één of meer benodigde bronnen onbekend zijn. Bekende uitval beperkt de bovengrens. Bij een bevestigde volledige bron loopt de toestand van een onzeker gekoppeld asset van volledig uitgevallen tot beschikbaar. Niet geladen VC’s blijven onbekend. Een onbekende assetkoppeling houdt een ruime ondergrens. Deze databand is geen statistische onzekerheidsmarge.</p><details><summary>Brondekking bekijken en bevestigen</summary>${v68BronnenHtml(m)}<p>Vink alleen volledig aan wanneer de bron voor het volledige bedoelde areaal en de getoonde peildatum alle open storingen bevat. De bevestigingen gaan mee in parameterexport en totaalexport.</p></details></div>`;
 }

@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.69 en DVM 147, bijgewerkt op 21 oktober 2026 voor dienstbanden die bekende uitval en onzekerheid per asset combineren. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.70 en DVM 148, bijgewerkt op 21 oktober 2026 voor inzichtelijke Dienstimpact en herstelde regiofocus met dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -194,6 +194,20 @@ Bij MTM-bronnen voor MSI en LUS beperkt het aanwezige manifest `laatstePerVc` de
 `dekking` is de gewogen fractie zonder onzekere assettoestand binnen de bevestigde bron. Een exact percentage vereist volledige bevestiging én geen ontbrekende of onzekere toestand, ook als een interval toevallig gelijke eindpunten heeft. Niet berekenbare meldingen worden niet meer als een exact optimistisch puntpercentage gepresenteerd. De brontabel toont de typeband naast de dienstbanden; memo's gebruiken dezelfde eindpunten en uitleg.
 
 Regressiecontrole met synthetische data: handmatig narekenbare eindpunten, gewichten, afzonderlijke prestatie, onzekere en verouderde meldingen, meerdere codes op één asset, volgorde van overlapcorrecties, onzekere combipartners, onbekende koppeling, ontbrekende VC, onvolledige bron, stapeling en behoud van ruwe bronnen en impact. De echte browsercontrole klikt het vinkje, controleert gewijzigde zichtbare dienstbanden en gelijke uitkomsten na export en herladen. Het oude operationele totaalbestand is niet de actuele MTM-bron van het screenshot en is niet gebruikt om die broninhoud te valideren.
+
+### Dienstimpact en regiofocus, BIdashActual 2.70 / DVM 148
+
+Het operationele regioscherm was bij het maken van BIdashActual vervangen door één tabel. Die tabel gebruikte de oude puntwaarden uit `rapportRegioRows()`, terwijl Dienstimpact de databand uit `v68LandelijkModel()` gebruikte. Zo kon een centrale zonder geladen bron 100 procent tonen. Bovendien telde de regiokolom alleen de doorgerekende meldingen en ontbraken selectie, context en verdieping.
+
+`v68LandelijkModel(scope)` en de bijbehorende type-/brontellingen accepteren nu een selectiepredicaat. Areaal, berekenbare meldingen en niet doorgerekende meldingen worden voor dezelfde selectie gelezen. De bestaande bandformules, bronbevestigingen, verliesuren en conservatieve combibewaking blijven leidend. Er wordt geen `STATE` tijdelijk vervangen en geen nieuwe impactdoorrekening gebouwd. Zonder selectie behouden de landelijke adapter, memo en overige afnemers dezelfde volledige populatie.
+
+Dienstimpact begint met de melding Berekening uitgevoerd, de aantallen berekenbare en niet berekenbare meldingen, het actieve areaal en bronmomenten. De expliciete VC-keuze is een schermfilter; standaard blijft het landelijke register gekozen. De diensttabel toont beschikbaarheid, prestatie, norm en bekende dekking, met subprocesaandelen en assetafhankelijkheden in uitklapbare details. Waarom is de band breed benoemt niet bevestigde bronnen, onbekende assetkoppelingen, onzekere assets, ontbrekend areaal en eventuele combinaties. Een nulondergrens is geen bewezen volledige uitval. De broncheckboxes blijven zichtbaar voor het gehele geladen register; een VC-schermselectie verandert hun betekenis of opgeslagen keuze niet.
+
+Regio heeft weer VC-/RD-groepering, selectie, actieve assets, assettypen, bouwjaar-/levensduur-/EOL-dekking, mediane leeftijd, RD-/districtduiding en bron, aannemer, contract, leverancier, geraakte netwerkschakels/wegdelen, werkzaamheden, U-routes en redenen voor niet berekenbare meldingen. De eerste focus kiest de regio met de meeste geladen meldingen; een expliciete keuze blijft tijdens de sessie staan. De vergelijkingstabel gebruikt per regio dezelfde scoped dienstband als Dienstimpact, inclusief niet doorgerekende meldingen. Een bronloze VC wordt niet storingsvrij genoemd. De regionale basisgroepering neemt ook niet berekenbare meldingen zonder registerregio op, zodat die niet verdwijnen. De kaartknop en wegdeeldetails blijven bereikbaar. Prognoses en simulaties blijven geblokkeerd.
+
+De oudere numerieke detailberekeningen blijven behouden, maar zijn herkenbaar als rekenwaarden voor doorgerekende meldingen. Zij bewijzen geen volledige brondekking en vervangen de databand niet. De herstelde regiovergelijking geeft geen rangorde op onbewezen puntpercentages. Dienstimpact en de regiofocus gebruiken dezelfde bronmomenten en onderscheiden aangetroffen bron van bevestigde volledigheid.
+
+Controles: handmatig narekenbare gelijke VC-banden en noemers, nationale populatie blijft behouden, RD-selectie, ontbrekende VC, onbekende melding zonder registerregio, werkzaamheden, redenen voor onbekende impact en bron-/impact-/parameterbehoud. De echte browsertest importeert synthetische bronnen, kiest VC en RD, vergelijkt zichtbare diensten, controleert context en ontbrekende bronnen, herlaadt en controleert de kleinere weergave. Het actuele MTM-bestand uit de schermafbeeldingen is niet beschikbaar; deze controles valideren niet de inhoud van dat operationele bestand.
 
 ### Status en open storingen vanaf BiDash 2.51 / DVM 131
 
