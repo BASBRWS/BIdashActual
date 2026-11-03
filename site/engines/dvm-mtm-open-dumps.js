@@ -64,15 +64,19 @@
     const count=nonRows.match(/(?:totaal|aantal)(?:\s+(?:storingen|alarmen|meldingen|regels))?\s*[:=]\s*(\d+)/i);
     if(count&&Number(count[1])!==rows.length)throw Error('Regelaantal klopt niet in '+path(file));
     if(nonRows.trim()&&!/^(?:(?:geen\s+(?:openstaande\s+)?(?:storingen|alarmen|meldingen)|(?:totaal|aantal)(?:\s+(?:storingen|alarmen|meldingen|regels))?\s*[:=]\s*\d+)\s*[.\s]*)+$/i.test(nonRows.trim()))throw Error('Onbekende of afgebroken dumpregels in '+path(file));
-    const seen=new Map();
+    const seen=new Map();let alarmAfterHeader=0,latestAlarm=head.time;
     for(let n=0;n<rows.length;n++){
       const columns=raw[n].trim().replace(/^\||\|$/g,'').split('|'),start=date(columns.at(-1)),r=rows[n];
       if(!start||!r.locatie||!/^\d+$/.test(r.event_id)||start.day>p.stamp)throw Error('Ongeldige alarmdatum of locatie in '+path(file));
-      if(start.time>head.time)throw Error('Alarmdatum ligt na de eigen dumpkop in '+path(file));r.start=iso(start.time);
+      if(start.time>head.time){alarmAfterHeader++;latestAlarm=Math.max(latestAlarm,start.time);}r.start=iso(start.time);
       r._syncKey=sourceKey(r,p.vc);
       const payload=JSON.stringify([r.locatie,r.unit,r.description]);if(seen.has(r._syncKey)&&seen.get(r._syncKey)!==payload)throw Error('Tegenstrijdige alarmidentiteit in '+path(file));seen.set(r._syncKey,payload);
     }
-    return {vc:p.vc,rows,snapshot:iso(head.time),bestand:path(file),precision:'minuut',observedFrom:iso(head.time),observedTo:iso(head.time),header:iso(head.time),headerConflict:false,day:p.stamp,format:FORMAT};
+    const headerConflict=alarmAfterHeader>0;
+    if(headerConflict)scope.BIDASH_DIAGNOSTICS?.record('warn','mtm.dump.clock-conflict',{file:path(file),vc:p.vc,header:iso(head.time),alarmAfterHeader,latestAlarm:iso(latestAlarm),differenceMinutes:(latestAlarm-head.time)/60000});
+    // De kop en alarmstart blijven ongewijzigd. Een tegenstrijdige klok bewijst
+    // geen precies waarnemingsmoment en mag nooit herstel uit afwezigheid afleiden.
+    return {vc:p.vc,rows,snapshot:iso(head.time),bestand:path(file),precision:headerConflict?'onzeker':'minuut',observedFrom:headerConflict?null:iso(head.time),observedTo:headerConflict?null:iso(head.time),header:iso(head.time),headerConflict,alarmAfterHeader,latestAlarm:headerConflict?iso(latestAlarm):null,day:p.stamp,format:FORMAT};
   }
   function parseAll(text,file,p){
     p=p||info(file);const parts=[];let current=null;
@@ -111,7 +115,7 @@
         const reset=replay&&when(row.bron_peildatum)>=first;
         active.set(sourceKey(row,vc),reset?{...row,afwezig_sinds:when(row.afwezig_sinds)<first?row.afwezig_sinds:null,laatste_afwezig:null,laatste_gezien:when(row.laatste_gezien)<first?row.laatste_gezien:null,laatste_snapshot:when(row.laatste_snapshot)<first?row.laatste_snapshot:null}:row);
       }
-      return {vc,first,old,vcRows,active,previousTime:replay?NaN:old||NaN,previousDay:!replay&&old?dayKey(...wall(old)):null,previousSignature:null,lastPresent:new Map(),resolved:new Set(),processed:0,gaps:0,latest:snap};
+      return {vc,first,old,vcRows,active,previousTime:replay?NaN:old||NaN,previousDay:!replay&&old?dayKey(...wall(old)):null,previousSignature:null,lastPresent:new Map(),resolved:new Set(),processed:0,gaps:0,clockWarnings:0,latest:snap};
     }
     function add(snap){
       if(snap.format!==FORMAT)throw Error('Geen volledige openstaande dump.');
@@ -128,18 +132,24 @@
       const gap=state.previousDay!=null&&day-state.previousDay>DAY;
       if(gap)state.gaps++;
       if(!repeat){
+        if(snap.headerConflict)state.clockWarnings++;
         for(const [key,row] of present){
           const prior=active.get(key)||history.get(key)||aliases.get(key)?.row;
           const firstSeen=when(prior?.eerste_gezien)<=t?prior.eerste_gezien:snap.observedFrom;
           const next=L.stamp({...prior,...row},{_mtmSleutel:key,incident_id:prior?.incident_id||'MTM|'+key,eerste_gezien:firstSeen,laatste_gezien:snap.snapshot,bron_peildatum:snap.snapshot,bron_waarneming_van:snap.observedFrom,bron_waarneming_tot:snap.observedTo,bron_kopdatum:snap.header,bron_tijdprecisie:snap.precision,bron_kop_afwijking:false,bron_formaat:FORMAT,levenscyclus_status:'OPEN_BEVESTIGD',status:'open',_liveOpen:true,_mtmKwaliteit:'open_aan_einde',hersteld_op:null,herstel_venster_van:null,herstel_venster_tot:null,herstel_bevestiging_op:null,afwezig_sinds:null,laatste_afwezig:null,ontbrekend_volledige_snapshots:0,_afgeslotenDoorNieuweMomentopname:false,_mtmEindeBovengrens:null,duurBetrouwbaar:false});
+          if(snap.headerConflict)Object.assign(next,{eerste_gezien:prior?.eerste_gezien||null,laatste_gezien:prior?.laatste_gezien||null,laatste_snapshot:prior?.laatste_snapshot||null,tot:prior?.tot||'',bevestigd_tot:prior?.bevestigd_tot||null,bron_kop_afwijking:true,levenscyclus_status:'ONBEKEND_DOOR_BRONGAT',status:'onbekend',_liveOpen:false,_mtmKwaliteit:'kopklok_afwijkend'});
           active.set(key,next);save(key,next);state.resolved.delete(key);
         }
         for(const [key,row] of active){
           if(present.has(key))continue;
+          if(snap.headerConflict){
+            const next=L.stamp(row,{bron_peildatum:snap.snapshot,bron_formaat:FORMAT,bron_kopdatum:snap.header,bron_tijdprecisie:'onzeker',bron_kop_afwijking:true,bron_waarneming_van:null,bron_waarneming_tot:null,levenscyclus_status:'ONBEKEND_DOOR_BRONGAT',status:'onbekend',_liveOpen:false,_mtmKwaliteit:'kopklok_afwijkend',afwezig_sinds:null,laatste_afwezig:null,ontbrekend_volledige_snapshots:0,hersteld_op:null,herstel_venster_van:null,herstel_venster_tot:null,herstel_bevestiging_op:null,_mtmEindeBovengrens:null,duurBetrouwbaar:false});
+            save(key,next);active.set(key,next);continue;
+          }
           // Een ontbrekende kalenderdag bewijst geen doorlopende afwezigheid.
           const since=!gap&&Number.isFinite(when(row.afwezig_sinds))?row.afwezig_sinds:snap.snapshot;
           const closed=t-when(since)>=HOURS*36e5,lastSeen=row.laatste_gezien||row.laatste_snapshot||null;
-          const next=L.stamp(row,{_mtmSleutel:key,incident_id:row.incident_id||'MTM|'+key,bron_formaat:FORMAT,bron_peildatum:snap.snapshot,levenscyclus_status:closed?'HERSTELD_AFGELEID':'VERDWENEN_UIT_SNAPSHOT',status:closed?'gesloten_afgeleid':'onbekend',_liveOpen:false,_mtmKwaliteit:closed?'gesloten':'verdwenen_uit_snapshot',afwezig_sinds:since,laatste_afwezig:snap.snapshot,ontbrekend_volledige_snapshots:since===row.afwezig_sinds?(row.ontbrekend_volledige_snapshots||0)+1:1,hersteld_op:null,herstel_venster_van:Number.isFinite(when(lastSeen))?lastSeen:null,herstel_venster_tot:since,herstel_bevestiging_op:closed?snap.snapshot:null,herstel_afgeleid_na_uren:HOURS,_mtmEindeBovengrens:closed?since:null,duurBetrouwbaar:false});
+          const next=L.stamp(row,{_mtmSleutel:key,incident_id:row.incident_id||'MTM|'+key,bron_formaat:FORMAT,bron_peildatum:snap.snapshot,bron_kop_afwijking:false,bron_kopdatum:snap.header,bron_tijdprecisie:snap.precision,bron_waarneming_van:snap.observedFrom,bron_waarneming_tot:snap.observedTo,levenscyclus_status:closed?'HERSTELD_AFGELEID':'VERDWENEN_UIT_SNAPSHOT',status:closed?'gesloten_afgeleid':'onbekend',_liveOpen:false,_mtmKwaliteit:closed?'gesloten':'verdwenen_uit_snapshot',afwezig_sinds:since,laatste_afwezig:snap.snapshot,ontbrekend_volledige_snapshots:since===row.afwezig_sinds?(row.ontbrekend_volledige_snapshots||0)+1:1,hersteld_op:null,herstel_venster_van:Number.isFinite(when(lastSeen))?lastSeen:null,herstel_venster_tot:since,herstel_bevestiging_op:closed?snap.snapshot:null,herstel_afgeleid_na_uren:HOURS,_mtmEindeBovengrens:closed?since:null,duurBetrouwbaar:false});
           save(key,next);if(closed){active.delete(key);state.resolved.add(key);}else active.set(key,next);
         }
       }
@@ -147,7 +157,7 @@
     }
     function finish(){
       for(const [vc,state] of groups){
-        const {old,first,vcRows,active,lastPresent,resolved,processed,gaps,latest}=state,end=when(latest.snapshot);
+        const {old,first,vcRows,active,lastPresent,resolved,processed,gaps,clockWarnings,latest}=state,end=when(latest.snapshot);
         if(end<old){
           // Een oude mapsnede mag ook de bewaarde historie niet terugdraaien.
           for(const [key,row] of history)if(rowVc(row)===vc)history.delete(key);
@@ -165,6 +175,8 @@
         live.push(...active.values());
         const pending=[...active.values()].filter(r=>r.afwezig_sinds).length;
         coverage[vc]={vc,snapshot:latest.snapshot,bestand:latest.bestand,bronType:FORMAT,logicaVersie:143,bronSignatuur:signature([...lastPresent.values()]),volledig:true,structuurVolledig:true,aantal:latest.rows.length,uniekeMeldingen:lastPresent.size,dubbeleBronrijen:latest.rows.length-lastPresent.size,verantwoordeRijen:latest.rows.length,bronGap:gaps>0,bronGaten:gaps,volumeVerdacht:false,sluitenToegestaan:resolved.size>0,vergelijkingBestand:null,vergelijkingPeildatum:iso(first),vergelijkingUren:(end-first)/36e5,vergelijkingVensterUren:HOURS,verwerkteSnapshots:processed,hersteldAfgeleid:resolved.size,verdwenenNogOnbevestigd:pending,kopAfwijking:false,deelSnapshots:latest.deelSnapshots,gelezenBronRijen:latest.gelezenBronRijen,tijdprecisie:latest.precision,waarnemingVan:latest.observedFrom,waarnemingTot:latest.observedTo,bronKopdatum:latest.header,reden:'Alle dumps op volgorde; herstel na 48 uur afwezig sinds de eerste ontbrekende waarneming'+(gaps?'; wachttijd herstart na ontbrekende brondag':'')};
+        if(clockWarnings)Object.assign(coverage[vc],{kopAfwijkendeSnapshots:clockWarnings,reden:coverage[vc].reden+'; '+clockWarnings+' dumpblok(ken) met tijdsafwijking, geen herstelbewijs uit die blokken'});
+        if(latest.headerConflict)Object.assign(coverage[vc],{volledig:false,kopAfwijking:true,sluitenToegestaan:false,alarmNaKop:latest.alarmAfterHeader,laatsteAlarmdatum:latest.latestAlarm,reden:coverage[vc].reden+'; actuele dumpkop ligt vóór een alarmstart, toestand onzeker en wachttijd gewist'});
         watermarks[vc]=end;updates[vc]={van:old||null,tot:end,ouder:false,dekking:coverage[vc]};
       }
       const vcs=new Set(groups.keys());live.push(...(basis.open||[]).filter(r=>!vcs.has(rowVc(r))));

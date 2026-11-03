@@ -77,8 +77,10 @@ test('zelfde bronmoment met andere meldingen wordt niet als nieuwere stand geacc
  const conflict=(await read(c,[file('2026-10-16',[2])])).snapshots;assert.throws(()=>D.process(r,conflict),/Tegenstrijdige/);assert.deepEqual(plain(r),before);
  const changed=(await read(c,[file('2026-10-16',[],{text:'16-10-2026 12:00\n|1|1003|1003 Fatale fout bij MSI 2|A77 R 12,000|01-01-2024 00:00|'})])).snapshots;assert.throws(()=>D.process(r,changed),/Tegenstrijdige/);
 });
-test('een alarm na zijn eigen dumpkop blijft een bronfout en wordt niet met een verzonnen peiltijd geaccepteerd',async()=>{
- const c=runtime();await assert.rejects(read(c,[file('2025-10-26',[1],{hour:'00:30',start:'26-10-2025 23:29'})]),/eigen dumpkop/);
+test('een alarm na de eigen dumpkop krijgt onzekere tijd zonder verzonnen peiltijd of herstelbewijs',async()=>{
+ const c=runtime(),D=c.DVM_MTM_OPEN_DUMPS,{snapshots}=await read(c,[file('2025-10-26',[1],{hour:'00:30',start:'26-10-2025 23:29'})]);
+ assert.equal(snapshots[0].snapshot,'2025-10-25T22:30:00.000Z');assert.equal(snapshots[0].header,snapshots[0].snapshot);assert.equal(snapshots[0].observedFrom,null);assert.equal(snapshots[0].observedTo,null);assert.equal(snapshots[0].headerConflict,true);
+ const r=D.process(empty(),snapshots);assert.equal(r.open.length,1);assert.equal(r.open[0].van,'2025-10-26T22:29:00.000Z');assert.equal(r.open[0].levenscyclus_status,'ONBEKEND_DOOR_BRONGAT');assert.equal(r.open[0].laatste_gezien,null);assert.equal(r.snapshotDekking.mn.volledig,false);assert.equal(r.snapshotDekking.mn.sluitenToegestaan,false);
 });
 test('Nederlandse zomer/wintertijd wordt onafhankelijk van browsertijdzone gelezen',async()=>{
  const c=runtime(),D=c.DVM_MTM_OPEN_DUMPS;

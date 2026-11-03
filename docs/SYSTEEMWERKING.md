@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.71 en DVM 149, bijgewerkt op 3 november 2026 voor compacte totaalexports en hervatten van MTM-mapimport na totaalherstel. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.72 en DVM 150, bijgewerkt op 3 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -47,8 +47,7 @@ planning toont het geladen plan, niet een voorspelling van storingsontwikkeling.
 De documentatie hieronder beschrijft ook de geërfde analysefuncties; waar die
 prognose betreffen, zijn ze in deze variant geblokkeerd. Bronkwaliteit blijft een voorwaarde. De snelle MTM-import herkent meerdere
 gedateerde dumpblokken binnen één bestand en beoordeelt iedere alarmregel tegen
-haar eigen dumpkop. Een werkelijke tegenstrijdigheid blijft een bronfout; er
-worden geen datums of hersteltijden verzonnen.
+haar eigen dumpkop. Een foutieve structuur of kalenderdatum blijft een bronfout. Een alarmstart na de eigen kopklok op dezelfde bestandsdag wordt vanaf 2.72 als tijdsonzekere bron verwerkt. Er worden geen datums, waarnemingsmomenten of hersteltijden verzonnen.
 
 ## Compacte bestanden en hervatten, versie 2.71 / DVM 149
 
@@ -65,6 +64,18 @@ Uitvinken leest de gekozen periode opnieuw, inclusief oudere dagen, via de besta
 Een bewuste import via Data & export herstelt ook grote assetregisters volledig, inclusief wanneer Bronbeheer actief is. De automatische opstartbeveiliging voor grote opgeslagen werkruimtes blijft bestaan. Een refresh haalt nog steeds geen nieuwe mapbestanden op. De volledige werkroute is exporteren, later totaalbestand importeren, daarna opnieuw de bronmap kiezen en hervatten.
 
 Controles: verliesloze codec-roundtrip, gedeeltelijke/integrale import, corrupte bestanden vóór mutatie, oude light-historie, nul/null, async snapshotconsistentie, 48-uurswachttijd over export/import, gelijk incident-ID, herhaling, terugkeer, tijdgat, andere VC en overslaan van oude bestandsinhoud. De browsertest gebruikt echte downloads en een schone werkruimte, met een synthetisch register boven de automatische herstelgrens. Groottewinst hangt af van de inhoud; de codec comprimeert geen assetregister of NDW-metingen.
+
+## MTM-kopklok en alarmstart, versie 2.72 / DVM 150
+
+Een openstaande dump kan alarmstarttijden bevatten die na de eigen kopklok liggen, maar op dezelfde bestandsdag vallen. De bron bewijst dan niet welk precies waarnemingsmoment geldig is. De parser bewaart de originele kopdatum en alarmstart. `snapshot` en het VC-watermerk blijven de kopdatum. Het maximum van de alarmdatums wordt niet als verzonnen peildatum gebruikt. De volledige structuur, afzonderlijke blokken, regelaantallen en unieke alarmidentiteiten worden nog steeds gecontroleerd.
+
+Zo’n blok krijgt `headerConflict`, onzekere tijdprecisie en geen bevestigd waarnemingsvenster. Alle aanwezige meldingen blijven in de actuele lijst, met `ONBEKEND_DOOR_BRONGAT`, `bron_kop_afwijking` en zonder nieuwe bevestigde eerste/laatste waarneming. Reeds eerder bevestigde waarnemingen blijven behouden. De oorspronkelijke alarmstart blijft onderdeel van dezelfde incidentidentiteit. Ook bestaande meldingen die in dit blok ontbreken blijven onzeker open. Hun afwezigheidsklok en herstelvenster worden gewist; dit blok levert geen herstelbewijs, ook niet op de 48-uursgrens.
+
+Een later foutvrij dumpblok bevestigt de aanwezige meldingen opnieuw. Voor dan nog ontbrekende meldingen begint de 48-uurswachttijd bij dat geldige blok opnieuw. Herhaling, terugkeer, kalendergaten en hervatten gebruiken verder de bestaande regels. Een alarm op een volgende kalenderdag, kapotte regel, ontbrekende kop, afwijkende mapdatum of tegenstrijdige inhoud bij dezelfde kop blijft een fout vóór vervanging van de opgeslagen VC-stand.
+
+Brondekking bewaart `kopAfwijking`, het aantal afwijkende blokken, `alarmNaKop` en `laatsteAlarmdatum`. De actuele afwijkende dump krijgt geen volledige tijdsdekking en mag geen sluiting aantonen. Bij een latere correcte laatste dump kan de dekking weer volledig zijn; de rapportage meldt dan nog welke blokken tijdens die import onzeker waren. Dashboard en losse importer tonen de tijdswaarschuwing. Het technische storingslog bewaart bestandsnaam, VC, bronkop, aantal afwijkende regels en grootste tijdverschil, zonder de volledige bronregels. De onzekerheid en oorspronkelijke tijden gaan mee in de compacte export en worden bij import hersteld.
+
+Tests controleren behoud van alle meldingen, bronklokken, andere VC’s en incidentidentiteiten, geen vervroegd herstel bij 48 uur, herstart na een geldige dump, meerdere blokken, herhaling, logmelding en export/import. De browsercontrole voert de beide echte importers uit. Operationele bronbestanden blijven buiten Git; de aangeleverde bron kan aanvullend lokaal via `MTM_CLOCK_PRIVATE_FILE` worden getest.
 
 ## 1. Doel en grenzen
 
