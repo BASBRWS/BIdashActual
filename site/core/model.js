@@ -1,3 +1,4 @@
+import './dvm-compact.js';
 import './signaalgever-import.js?v=20261017-0820';
 import './import-known-json-fastpath.js';
 import './universal-importer.js';
@@ -33,6 +34,7 @@ export function makeExport(state,selection){
 }
 export function mergeImport(current,bundle){
  validate(bundle);
+ bundle=globalThis.DVM_COMPACT.unpackAny(bundle);
  const next={...current};
  if(Array.isArray(current?.links))next.links=current.links.slice();
  if(Array.isArray(current?.expertReviews))next.expertReviews=current.expertReviews.slice();

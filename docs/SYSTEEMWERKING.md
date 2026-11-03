@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.69 en DVM 147, bijgewerkt op 21 oktober 2026 voor dienstbanden die bekende uitval en onzekerheid per asset combineren. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.71 en DVM 149, bijgewerkt op 3 november 2026 voor compacte totaalexports en hervatten van MTM-mapimport na totaalherstel. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -49,6 +49,22 @@ prognose betreffen, zijn ze in deze variant geblokkeerd. Bronkwaliteit blijft ee
 gedateerde dumpblokken binnen één bestand en beoordeelt iedere alarmregel tegen
 haar eigen dumpkop. Een werkelijke tegenstrijdigheid blijft een bronfout; er
 worden geen datums of hersteltijden verzonnen.
+
+## Compacte bestanden en hervatten, versie 2.71 / DVM 149
+
+`core/dvm-compact.js` verandert uitsluitend de JSON-opslag van `storingshistorie` en `liveStoringen`. De bestandsgrens gebruikt `compacteStoringen`, formaat `BiDash-storingen-compact`, versie 1. Bronmetadata blijft staan; `rijenRefs` verwijst naar gedeelde records, kolomschema’s en teksten. Identieke regels worden eenmaal opgeslagen. Afwijkende regels met dezelfde incidentidentiteit worden verliesloos als verschillen bewaard. Alle oorspronkelijke velden, null, nul, booleans, historie en bronmomenten blijven behouden. Bij uitpakken krijgt iedere bron eigen mutable regels. Gesloten incidenten worden niet verwijderd. Andere exportonderdelen blijven inhoudelijk gelijk.
+
+Actual voegt tijdens export geen afgeleide levenscyclusvelden meer toe aan oude light-historie. Reeds aanwezige velden blijven behouden. Een oude export wordt nog steeds gelezen. Compacte exports vereisen versie 2.71 / DVM 149 of nieuwer. Interne werkruimte, berekeningen en autosave gebruiken uitgepakte regels. Er is geen gewijzigde herstel- of impactformule.
+
+Integrale export, DVM-totaalexport, mapresultaat en losse importer gebruiken dezelfde codec. Ook de export naar een gekoppelde map bevat de compacte vorm. Import valideert alle verwijzingen en kolommen vóór werkruimtevervanging. Een ontbrekende pool, ongeldige versie of kapotte verwijzing stopt de import. Deelimport en selectieve export behouden hun bestaande betekenis. Voor volledig hervatten zijn zowel historie als open storingen met bronbeheer nodig; Alles selecteren neemt die samen mee.
+
+Een volledige import herstelt `bronbeheer.signaalgeverTotaal.laatstePerVc` en `snapshotDekking`, incidentidentiteiten, de eerste afwezigheid en de lopende herstelwachttijd. De gebruiker kiest daarna de MTM-map opnieuw. Verder vanaf laatst verwerkte bronmoment per VC staat standaard aan. Bestandsdagen vóór het opgeslagen VC-bronmoment worden niet inhoudelijk gelezen. De laatste kalenderdag wordt wel gelezen om meerdere dumpblokken en latere bestanden van die dag te herkennen. Oudere blokken veranderen de herstelde stand niet; dezelfde laatste snapshot controleert overlap en tegenstrijdigheden. Alleen nieuwere snapshots schuiven de stand vooruit. Niet geselecteerde VC’s blijven behouden. Geen nieuwe bestanden betekent geen extra afwezigheidswaarneming.
+
+Uitvinken leest de gekozen periode opnieuw, inclusief oudere dagen, via de bestaande synchronisatie voor historische aanvullingen. Het leegt de basis niet. Een nieuwe lege werkruimte met alle relevante bronnen is nodig als ook de bestaande incidentbasis moet worden vervangen. De bestaande 48 uur vanaf eerste afwezigheid, vereiste volledige snapshots, terugkeer en brononderbrekingen blijven bepalend. Een ontbrekende dag bewijst geen onafgebroken afwezigheid.
+
+Een bewuste import via Data & export herstelt ook grote assetregisters volledig, inclusief wanneer Bronbeheer actief is. De automatische opstartbeveiliging voor grote opgeslagen werkruimtes blijft bestaan. Een refresh haalt nog steeds geen nieuwe mapbestanden op. De volledige werkroute is exporteren, later totaalbestand importeren, daarna opnieuw de bronmap kiezen en hervatten.
+
+Controles: verliesloze codec-roundtrip, gedeeltelijke/integrale import, corrupte bestanden vóór mutatie, oude light-historie, nul/null, async snapshotconsistentie, 48-uurswachttijd over export/import, gelijk incident-ID, herhaling, terugkeer, tijdgat, andere VC en overslaan van oude bestandsinhoud. De browsertest gebruikt echte downloads en een schone werkruimte, met een synthetisch register boven de automatische herstelgrens. Groottewinst hangt af van de inhoud; de codec comprimeert geen assetregister of NDW-metingen.
 
 ## 1. Doel en grenzen
 
@@ -194,6 +210,20 @@ Bij MTM-bronnen voor MSI en LUS beperkt het aanwezige manifest `laatstePerVc` de
 `dekking` is de gewogen fractie zonder onzekere assettoestand binnen de bevestigde bron. Een exact percentage vereist volledige bevestiging én geen ontbrekende of onzekere toestand, ook als een interval toevallig gelijke eindpunten heeft. Niet berekenbare meldingen worden niet meer als een exact optimistisch puntpercentage gepresenteerd. De brontabel toont de typeband naast de dienstbanden; memo's gebruiken dezelfde eindpunten en uitleg.
 
 Regressiecontrole met synthetische data: handmatig narekenbare eindpunten, gewichten, afzonderlijke prestatie, onzekere en verouderde meldingen, meerdere codes op één asset, volgorde van overlapcorrecties, onzekere combipartners, onbekende koppeling, ontbrekende VC, onvolledige bron, stapeling en behoud van ruwe bronnen en impact. De echte browsercontrole klikt het vinkje, controleert gewijzigde zichtbare dienstbanden en gelijke uitkomsten na export en herladen. Het oude operationele totaalbestand is niet de actuele MTM-bron van het screenshot en is niet gebruikt om die broninhoud te valideren.
+
+### Dienstimpact en regiofocus, BIdashActual 2.70 / DVM 148
+
+Het operationele regioscherm was bij het maken van BIdashActual vervangen door één tabel. Die tabel gebruikte de oude puntwaarden uit `rapportRegioRows()`, terwijl Dienstimpact de databand uit `v68LandelijkModel()` gebruikte. Zo kon een centrale zonder geladen bron 100 procent tonen. Bovendien telde de regiokolom alleen de doorgerekende meldingen en ontbraken selectie, context en verdieping.
+
+`v68LandelijkModel(scope)` en de bijbehorende type-/brontellingen accepteren nu een selectiepredicaat. Areaal, berekenbare meldingen en niet doorgerekende meldingen worden voor dezelfde selectie gelezen. De bestaande bandformules, bronbevestigingen, verliesuren en conservatieve combibewaking blijven leidend. Er wordt geen `STATE` tijdelijk vervangen en geen nieuwe impactdoorrekening gebouwd. Zonder selectie behouden de landelijke adapter, memo en overige afnemers dezelfde volledige populatie.
+
+Dienstimpact begint met de melding Berekening uitgevoerd, de aantallen berekenbare en niet berekenbare meldingen, het actieve areaal en bronmomenten. De expliciete VC-keuze is een schermfilter; standaard blijft het landelijke register gekozen. De diensttabel toont beschikbaarheid, prestatie, norm en bekende dekking, met subprocesaandelen en assetafhankelijkheden in uitklapbare details. Waarom is de band breed benoemt niet bevestigde bronnen, onbekende assetkoppelingen, onzekere assets, ontbrekend areaal en eventuele combinaties. Een nulondergrens is geen bewezen volledige uitval. De broncheckboxes blijven zichtbaar voor het gehele geladen register; een VC-schermselectie verandert hun betekenis of opgeslagen keuze niet.
+
+Regio heeft weer VC-/RD-groepering, selectie, actieve assets, assettypen, bouwjaar-/levensduur-/EOL-dekking, mediane leeftijd, RD-/districtduiding en bron, aannemer, contract, leverancier, geraakte netwerkschakels/wegdelen, werkzaamheden, U-routes en redenen voor niet berekenbare meldingen. De eerste focus kiest de regio met de meeste geladen meldingen; een expliciete keuze blijft tijdens de sessie staan. De vergelijkingstabel gebruikt per regio dezelfde scoped dienstband als Dienstimpact, inclusief niet doorgerekende meldingen. Een bronloze VC wordt niet storingsvrij genoemd. De regionale basisgroepering neemt ook niet berekenbare meldingen zonder registerregio op, zodat die niet verdwijnen. De kaartknop en wegdeeldetails blijven bereikbaar. Prognoses en simulaties blijven geblokkeerd.
+
+De oudere numerieke detailberekeningen blijven behouden, maar zijn herkenbaar als rekenwaarden voor doorgerekende meldingen. Zij bewijzen geen volledige brondekking en vervangen de databand niet. De herstelde regiovergelijking geeft geen rangorde op onbewezen puntpercentages. Dienstimpact en de regiofocus gebruiken dezelfde bronmomenten en onderscheiden aangetroffen bron van bevestigde volledigheid.
+
+Controles: handmatig narekenbare gelijke VC-banden en noemers, nationale populatie blijft behouden, RD-selectie, ontbrekende VC, onbekende melding zonder registerregio, werkzaamheden, redenen voor onbekende impact en bron-/impact-/parameterbehoud. De echte browsertest importeert synthetische bronnen, kiest VC en RD, vergelijkt zichtbare diensten, controleert context en ontbrekende bronnen, herlaadt en controleert de kleinere weergave. Het actuele MTM-bestand uit de schermafbeeldingen is niet beschikbaar; deze controles valideren niet de inhoud van dat operationele bestand.
 
 ### Status en open storingen vanaf BiDash 2.51 / DVM 131
 

@@ -1,6 +1,7 @@
-import './core/signaalgever-import.js?v=20261017-0820';
-import {createWorkspaceStorage} from './core/storage.js?v=20261017-0820';
-import {BIDASH_VERSIE} from './core/versie.js?v=20261017-0820';
+import './core/dvm-compact.js';
+import './core/signaalgever-import.js?v=20261103-0900';
+import {createWorkspaceStorage} from './core/storage.js?v=20261103-0900';
+import {BIDASH_VERSIE} from './core/versie.js?v=20261103-0900';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);
 const storage=createWorkspaceStorage(globalThis.BIDASH_ACTUAL?'bidash-actual-signaalgever-importer':'bidash-signaalgever-importer');
 let stands={},busy=false,cancelled=false,H,frame;
@@ -9,7 +10,7 @@ const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+
 $('until').value=today();$('version').textContent='Versie '+BIDASH_VERSIE;
 const pause=()=>new Promise(r=>setTimeout(r,0));
 function status(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
-function controls(){for(const id of ['vc','from','until','basis','pick','folder','mode'])$(id).disabled=busy||!H;$('cancel').hidden=!busy;$('cancel').disabled=!busy;$('download').disabled=busy||!Object.keys(stands).length;$('downloadVc').disabled=busy||!stands[$('vc').value];}
+function controls(){for(const id of ['vc','from','until','basis','pick','folder','mode','resume'])$(id).disabled=busy||!H;$('cancel').hidden=!busy;$('cancel').disabled=!busy;$('download').disabled=busy||!Object.keys(stands).length;$('downloadVc').disabled=busy||!stands[$('vc').value];}
 function render(){
   $('results').replaceChildren();
   for(const vc of C.vcs){const s=stands[vc];if(!s)continue;
@@ -22,7 +23,7 @@ function render(){
 }
 function config(){
   const vanaf=$('from').value,tot=$('until').value;if(!vanaf||!tot||vanaf>tot)throw Error('Kies een geldige begin- en einddatum.');
-  return {vcs:new Set([$('vc').value]),vanaf,tot,formaat:$('mode').value};
+  return {vcs:new Set([$('vc').value]),vanaf,tot,formaat:$('mode').value,hervatten:$('resume').checked};
 }
 function checkCancel(){if(cancelled)throw Error('Verwerking gestopt. De vorige opgeslagen stand is behouden.');}
 async function process(files,cfg){
@@ -54,7 +55,7 @@ async function process(files,cfg){
   }
   checkCancel();stand.bewaring.verwijderd=snel?stand.bewaring.verwijderd:verwijderd;verwijderd=stand.bewaring.verwijderd;
   const next={...stands,[vc]:stand};status('Stand lokaal opslaan.');$('progress').value=95;$('cancel').disabled=true;await storage.write({schema:1,stands:next});stands=next;render();$('progress').value=100;
-  status(vc.toUpperCase()+' opgeslagen. '+(fastRead?.selected??selected.length)+' bestanden verwerkt. '+stand.open.length+' actuele meldingen inclusief onzeker. '+verwijderd+' afgesloten meldingen buiten de bewaartermijn verwijderd. Kies de volgende verkeerscentrale of download de JSON.'+(snel?' '+stand.snapshotDekking[vc].reden+'. '+stand.snapshotDekking[vc].hersteldAfgeleid+' afgeleid hersteld.':''));
+  status(vc.toUpperCase()+' opgeslagen. '+(fastRead?.selected??selected.length)+' bestanden verwerkt. '+(fastRead?.hervatten?fastRead.overgeslagenBestanden+' eerdere bestanden overgeslagen, '+fastRead.nieuweSnapshots+' nieuwe bronmomenten. ':'')+stand.open.length+' actuele meldingen inclusief onzeker. '+verwijderd+' afgesloten meldingen buiten de bewaartermijn verwijderd. Kies de volgende verkeerscentrale of download de JSON.'+(snel?' '+stand.snapshotDekking[vc].reden+'. '+stand.snapshotDekking[vc].hersteldAfgeleid+' afgeleid hersteld.':''));
 }
 async function run(getFiles){
   if(busy||!H)return;let cfg;try{cfg=config();}catch(e){status(e.message,true);return;}
@@ -71,9 +72,9 @@ $('pick').onclick=()=>run(async cfg=>{
 $('folder').onchange=event=>{const files=[...event.target.files];event.target.value='';if(files.length)run(()=>files);};
 $('cancel').onclick=()=>{cancelled=true;status('Stoppen na de lopende bestandslezing.');};
 $('vc').onchange=controls;
-function download(selected){
+async function download(selected){
   if(busy)return;try{
-    const now=Date.now(),kept=Object.fromEntries(Object.entries(selected).map(([v,s])=>[v,C.retain(s,now)]));const data=C.bundle(kept,{now});
+    const now=Date.now(),kept=Object.fromEntries(Object.entries(selected).map(([v,s])=>[v,C.retain(s,now)]));const raw=C.bundle(kept,{now}),data=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(raw):raw;
     const url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='signaalgevers_'+data.signaalgeverImport.vcs.join('-')+'_'+today()+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
   }catch(e){status(e.message,true);}
 }

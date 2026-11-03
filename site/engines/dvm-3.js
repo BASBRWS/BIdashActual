@@ -781,6 +781,7 @@ async function leesSignaalgeverTotaalBestand(file){
   let json;
   try{json=JSON.parse(new TextDecoder('utf-8').decode(buffer));}
   catch(err){throw new Error('geen geldige JSON: '+(err.message||String(err)));}
+  if(globalThis.DVM_COMPACT)json=DVM_COMPACT.unpackAny(json);
   zetImportVoortgang(file.name,45,'Records omzetten naar storingsrijen',{direct:true});await uiPauze();
   let {open,historie,versie}=signaalgeverTotaalBronnen(json),laatstePerVc;
   if(json.formaat==='DVM-dienstimpact-totaal'){
@@ -790,7 +791,7 @@ async function leesSignaalgeverTotaalBestand(file){
     laatstePerVc=window.__BIDASH_STORINGSBUNDELAAR__.sbSignaalgeverBasis(json).laatstePerVc;
   }
   if(!open.length&&!historie.length&&!Object.keys(laatstePerVc||{}).length)throw new Error('geen signaalgevermomentopname of historie gevonden');
-  let opties={laatstePerVc};
+  let opties={...(json.bronbeheer?.signaalgeverTotaal||{}),laatstePerVc};
   if(json.signaalgeverImport){
     const merged=globalThis.BIDASH_SIGNAALGEVER_IMPORT.merge({storingshistorie:STORINGSBRONNEN,liveStoringen:LIVE_STORINGSBRONNEN,bronbeheer:{signaalgeverTotaal:window.__BIDASH_SIGNAALGEVER_TOTAAL__}},json);
     const meta=merged.bronbeheer.signaalgeverTotaal;
@@ -2280,6 +2281,7 @@ function toonTab(t){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   document.querySelectorAll('.tabpage').forEach(p=>p.classList.add('hidden'));
   document.getElementById('tab-'+t).classList.remove('hidden');
+  if(globalThis.BIDASH_ACTUAL&&t==='rapport'&&typeof scrollTo==='function')scrollTo(0,0);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2333,6 +2335,7 @@ function groepeerWegdelenPerVc(wegdelen){
   return [...groepen.entries()].map(([vc,wds])=>({vc,wds}));
 }
 function vwmLandelijkDienstHtml(){
+  if(globalThis.BIDASH_ACTUAL&&typeof actualDienstScherm==='function'){const s=actualDienstScherm();return `<div class="card"><h3>Diensten en subprocessen, ${s.vc?'VC '+esc(s.vc):'landelijk'}</h3>${actualDienstTabelHtml(s.model)}${actualSubprocessenHtml(s.model)}</div>`;}
   const bron=bronGemiddeldUitWegdelen(STATE.wegdelen);
   const sub=subprocessenVoorBron(bron);
   return `<div class="card"><h3>VWM landelijk, prestatie per dienstverlening en subproces</h3>
@@ -2364,6 +2367,7 @@ function vcWerkRouteContext(vc){
   return {werk,werkAssets,route,routeAssets};
 }
 function vwmVcUitvoeringHtml(){
+  if(globalThis.BIDASH_ACTUAL&&typeof actualRegioRows==='function')return actualRegioVergelijkingHtml(actualRegioRows());
   const rows=groepeerWegdelenPerVc(STATE.wegdelen).map(({vc,wds})=>{
     const bron=bronGemiddeldUitWegdelen(wds);
     const diensten=DIENSTEN.map(d=>{
@@ -2464,8 +2468,8 @@ function renderOverzicht(){
   h+=vwmVcUitvoeringHtml();
   h+=liveSignaalgeverGevolgenHtml('overzicht');
 
-  h+=`<div class="card"><h3 style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Netwerkbrede dienstprestatie ${tip('Areaalgewogen gemiddelde over alle geraakte wegdelen, naar het aantal geregistreerde signaalgevers. <b>Beschikbaarheid</b> = kans dat de dienst geleverd kan worden; <b>prestatie</b> = kwaliteit/effectiviteit bij storing. Verkeersintensiteiten ontbreken in de brondata en worden daarom niet gesuggereerd.')}</span><button class="memo-knop" onclick="opentMemo('overzicht')">📄 Memo genereren</button></h3>
-    <p class="muted" style="margin:-6px 0 14px;font-size:12px">Areaalgewogen gemiddelde over alle geraakte wegdelen. Beschikbaarheid = kans dat de dienst kan worden geleverd; prestatie = kwaliteit/effectiviteit bij storing.</p>
+  h+=`<div class="card"><h3 style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>${globalThis.BIDASH_ACTUAL?'Rekenwaarden voor doorgerekende meldingen':'Netwerkbrede dienstprestatie'} ${tip('Areaalgewogen gemiddelde over alle geraakte wegdelen, naar het aantal geregistreerde signaalgevers. <b>Beschikbaarheid</b> = kans dat de dienst geleverd kan worden; <b>prestatie</b> = kwaliteit/effectiviteit bij storing. Verkeersintensiteiten ontbreken in de brondata en worden daarom niet gesuggereerd.')}</span><button class="memo-knop" onclick="opentMemo('overzicht')">📄 Memo genereren</button></h3>
+    <p class="muted" style="margin:-6px 0 14px;font-size:12px">${globalThis.BIDASH_ACTUAL?'Deze detailwaarden gebruiken alleen doorgerekende meldingen. Ze bewijzen geen volledige brondekking. De dienstband bovenaan bevat ook onzekerheid en ontbrekende bronnen.':'Areaalgewogen gemiddelde over alle geraakte wegdelen. Beschikbaarheid = kans dat de dienst kan worden geleverd; prestatie = kwaliteit/effectiviteit bij storing.'}</p>
     <div class="grid4">`;
   DIENSTEN.forEach(d=>{
     const n=STATE.netwerk[d.id];
@@ -2608,7 +2612,7 @@ function renderOverzicht(){
   h+=operationeleContextHtml(maakOperationeleContext(contextT,contextT+86400e3,STATE.meldingen),'Impact op werkzaamheden en U-routes');
 
   h=h.replaceAll('VWM landelijk, prestatie per dienstverlening en subproces','Dienstprestatie binnen geraakte wegdelen en subprocessen').replaceAll('Netwerkbrede dienstprestatie','Dienstprestatie binnen geraakte wegdelen').replaceAll('netwerkbrede beschikbaarheid','beschikbaarheid binnen geraakte wegdelen');
-  document.getElementById('tab-overzicht').innerHTML=storingsLevenscyclusHtml()+v68LandelijkHtml()+kostenDagOverzicht()+h;
+  document.getElementById('tab-overzicht').innerHTML=globalThis.BIDASH_ACTUAL?v68LandelijkHtml()+storingsLevenscyclusHtml()+v68NietDoorgerekendHtml()+kostenDagOverzicht()+h:storingsLevenscyclusHtml()+v68LandelijkHtml()+kostenDagOverzicht()+h;
 }
 
 /* Bereken de subprocesbeschikbaarheid voor een gegeven bron-tabel (per wegdeel of netwerk). */
@@ -3563,6 +3567,7 @@ function rapportRegioBasisMap(){
       bronnen.forEach(bron=>{const r=maak(bron);rapportVoegBestuurEnContract(r,bron);r.uRouteIds.add(route.uRoute||route.id||route.relationId);assets.forEach(a=>r.uRouteAssets.add(a.key));});
     });
   }
+  if(globalThis.BIDASH_ACTUAL)for(const melding of STATE?.nietDoorgerekend||[]){const r=maak(melding);r.liveStoringen++;rapportVoegBestuurEnContract(r,melding);}
   return m;
 }
 function rapportRegioRows(){
@@ -5758,7 +5763,7 @@ function totaalExportBundle(selectie,opties){
      en de pagina laten haperen. Ze zijn per sessie opnieuw in te lezen (map of JSON).
      De handmatige export bevat ze wél. De losse importer bewaart zijn gereconcilieerde
      VC-stand ook lokaal, herkenbaar aan importerBewaren in het bronmanifest. */
-  const bron=(arr)=>(arr||[]).filter(b=>!(opties.autosaveLean&&!globalThis.BIDASH_ACTUAL&&b&&b._signaalgeverTotaal&&!window.__BIDASH_SIGNAALGEVER_TOTAAL__?.importerBewaren)).map(b=>({key:b.key,naam:b.naam,rijen:(b.rijen||[]).map(r=>globalThis.DVM_INCIDENT_LIFECYCLE?{...r,...DVM_INCIDENT_LIFECYCLE.read(r,{peildatum:b.peildatum}),tot_betekenis:r.hersteld_op?'HERSTELD_OP':'LAATSTE_WAARNEMING'}:r),peildatum:b.peildatum||null,doel:b.doel||null}));
+  const bron=(arr)=>(arr||[]).filter(b=>!(opties.autosaveLean&&!globalThis.BIDASH_ACTUAL&&b&&b._signaalgeverTotaal&&!window.__BIDASH_SIGNAALGEVER_TOTAAL__?.importerBewaren)).map(b=>({key:b.key,naam:b.naam,rijen:(b.rijen||[]).map(r=>!globalThis.BIDASH_ACTUAL&&globalThis.DVM_INCIDENT_LIFECYCLE?{...r,...DVM_INCIDENT_LIFECYCLE.read(r,{peildatum:b.peildatum}),tot_betekenis:r.hersteld_op?'HERSTELD_OP':'LAATSTE_WAARNEMING'}:r),peildatum:b.peildatum||null,doel:b.doel||null}));
   return {
     formaat:'DVM-dienstimpact-totaal',
     versie:54,
@@ -5783,10 +5788,10 @@ function totaalExportBundle(selectie,opties){
     dripSelectie: neem('dripSelectie')&&(typeof DRIP_SELECTIE!=='undefined'&&DRIP_SELECTIE instanceof Set) ? [...DRIP_SELECTIE] : null
   };
 }
-function totaalExportJson(selectie){
+async function totaalExportJson(selectie){
   if(!heeftDatasetData()){alert('Er is nog geen dataset geladen om te exporteren.');return;}
   parametersLezen();
-  const bundle=totaalExportBundle(selectie);
+  const rawBundle=totaalExportBundle(selectie),bundle=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packDvmAsync(rawBundle):rawBundle;
   const blob=new Blob([JSON.stringify(bundle)],{type:'application/json'}),a=document.createElement('a');
   const stamp=new Date().toISOString().slice(0,10);
   a.href=URL.createObjectURL(blob);a.download='dvm-dienstimpact-totaal_'+stamp+'.json';a.click();
@@ -5806,7 +5811,7 @@ function mergeBronnen(doelArr, nieuweBronnen){
 async function totaalImportJson(file, hubModus){
   if(!file)return;
   let bundle;
-  try{ bundle=JSON.parse(await file.text()); }
+  try{ bundle=globalThis.DVM_COMPACT?DVM_COMPACT.unpackDvm(JSON.parse(await file.text())):JSON.parse(await file.text()); }
   catch(err){ alert('Kon het totaalbestand niet lezen: '+err.message); return; }
   if(!bundle||bundle.formaat!=='DVM-dienstimpact-totaal'){
     if(!confirm('Dit bestand heeft niet de verwachte totaalstructuur. Toch proberen te laden?'))return;

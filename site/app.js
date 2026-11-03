@@ -1,16 +1,16 @@
-import {actualStand} from './core/actual-state.js?v=20261021-1400';
+import {actualStand} from './core/actual-state.js?v=20261103-0900';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261021-1400';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261021-1400';
-import {createFileDownload} from './core/file-download.js?v=20261021-1400';
-import {toonVersies} from './core/versie.js?v=20261021-1400';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261103-0900';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261103-0900';
+import {createFileDownload} from './core/file-download.js?v=20261103-0900';
+import {toonVersies} from './core/versie.js?v=20261103-0900';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
-import {applyQuery} from './core/query-filter.js?v=20261021-1400';
-import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261021-1400';
-import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261021-1400';
-import {createAssetRegisterView} from './core/asset-register-view.js?v=20261021-1400';
-import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261021-1400';
+import {applyQuery} from './core/query-filter.js?v=20261103-0900';
+import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261103-0900';
+import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261103-0900';
+import {createAssetRegisterView} from './core/asset-register-view.js?v=20261103-0900';
+import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261103-0900';
 const assetFlag=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 import {installQueryAssistant} from './core/query-assistant.js';
 import {buildBiDashContext} from './core/context-api.js';
@@ -24,7 +24,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261021-1400';
+const APP_BUILD='20261103-0900';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -92,11 +92,11 @@ async function importStap(naam,actie){
   throw fout;
  }
 }
-async function restore(next){
+async function restore(next,options={}){
  invalidateAssetView();
  if(next.bi)await importStap('BI-gegevens herstellen',async()=>{const b=await engine('bi');await b.import(next.bi);});
  if(next.planning)await importStap('Planning herstellen',async()=>{await ensurePlanning();const b=await engine('bi');await b.importPlanning(next.planning);primaveraDownload.clear();primaveraExportStatus('');});
- if(next.dvm?.assetregister?.rijen?.length)await importStap('DVM-bronnen herstellen',async()=>{const d=await engine('dvm');await d.import(next.dvm);});
+ if(next.dvm?.assetregister?.rijen?.length)await importStap('DVM-bronnen herstellen',async()=>{const d=await engine('dvm');await d.import(next.dvm,{volledigHerstellen:options.volledigHerstellen===true});});
 }
 async function capture(){
  if(failedImport)throw Error("Herlaad eerst de pagina om de vorige opgeslagen werkruimte te herstellen.");
@@ -368,7 +368,7 @@ async function preview(files,{importType}={}){
  }
  const host=$('#preview');host.innerHTML='<h3>Deze onderdelen worden vervangen</h3><ul>'+labels.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul><p>Niet meegeleverde onderdelen blijven behouden. Maak bij twijfel eerst een export.</p><button id="applyImport" class="primary">Import uitvoeren</button><button id="cancelImport">Annuleren</button>';
  $('#cancelImport').onclick=()=>host.replaceChildren();
- $('#applyImport').onclick=async()=>{if(busy)return;busy=true;clearTimeout(timer);$('#applyImport').disabled=true;status('Bronnen lokaal verwerken; een groot DVM-register kan even duren…');const previous=state;try{await restore(proposed);state=proposed;expertDrafts.clear();expertDraft=null;expertServiceId='';$('#expertInputHost').replaceChildren();await importStap('Geïmporteerde werkruimte uitlezen',capture);await importStap('Werkruimte lokaal opslaan',()=>write(state));render();host.replaceChildren();status('Import voltooid en lokaal opgeslagen.');}catch(e){state=previous;failedImport=true;const stap=e?.importStap||'Onbekende importstap';const detail=e?.message||String(e),root=e?.cause?.message&&e.cause.message!==detail?` Oorzaak: ${e.cause.message}.`:'';fail(Error(`Import gestopt bij ${stap}. Technische fout: ${detail}.${root} Er is niets als nieuwe werkruimte opgeslagen. Herlaad de pagina om de vorige opgeslagen werkruimte terug te zetten.`));}finally{busy=false;}};
+ $('#applyImport').onclick=async()=>{if(busy)return;busy=true;clearTimeout(timer);$('#applyImport').disabled=true;status('Bronnen lokaal verwerken; een groot DVM-register kan even duren…');const previous=state;try{await restore(proposed,{volledigHerstellen:true});state=proposed;expertDrafts.clear();expertDraft=null;expertServiceId='';$('#expertInputHost').replaceChildren();await importStap('Geïmporteerde werkruimte uitlezen',capture);await importStap('Werkruimte lokaal opslaan',()=>write(state));render();host.replaceChildren();status('Import voltooid en lokaal opgeslagen.');}catch(e){state=previous;failedImport=true;const stap=e?.importStap||'Onbekende importstap';const detail=e?.message||String(e),root=e?.cause?.message&&e.cause.message!==detail?` Oorzaak: ${e.cause.message}.`:'';fail(Error(`Import gestopt bij ${stap}. Technische fout: ${detail}.${root} Er is niets als nieuwe werkruimte opgeslagen. Herlaad de pagina om de vorige opgeslagen werkruimte terug te zetten.`));}finally{busy=false;}};
 }
 $('#files').onchange=e=>{preview([...e.target.files]).catch(fail);e.target.value='';};
 $('#loadLatestSnapshot').onclick=()=>loadLatestSnapshot().catch(error=>{latestSnapshotStatus(error.message||String(error),'error');fail(error);});
@@ -377,8 +377,8 @@ $('#latestSnapshotFolderFallback').onchange=async event=>{const files=[...event.
 $('#exportOptions').innerHTML=[...DVM_PARTS,'biData','biRules','planning','links','expertReviews','quality'].map(k=>`<label><input type="checkbox" data-part="${k}" checked>${LABELS[k]}</label>`).join('');
 $('#exportOptions').onchange=()=>{$('#dependencies').textContent=makeExport(state,selection()).afhankelijkheden.join(' ');};
 $('#all').onclick=()=>document.querySelectorAll('[data-part]').forEach(x=>x.checked=true);$('#none').onclick=()=>document.querySelectorAll('[data-part]').forEach(x=>x.checked=false);
-$('#export').onclick=async()=>{try{if(busy)throw Error('Wacht tot import of opslag gereed is.');const snapshot=await exportSnapshot();const sel=selection();if(!sel.size)throw Error('Kies minstens één onderdeel.');const data=makeExport(snapshot,sel),name='bidash-integraal_'+new Date().toISOString().slice(0,10)+'.json';download(data,name);await schrijfExportOokNaarGekoppeldeMap(data,name);}catch(e){fail(e);}};
-for(const [id,key,basisnaam,type] of [['exportDvm','dvm','dvm-dienstimpact-totaal','application/json'],['exportBi','bi','bidash-wvm-dataset','application/json'],['exportXml','planning','planning','text/xml']])$( '#'+id).onclick=async()=>{try{if(busy)throw Error('Wacht tot de lopende bewerking gereed is.');const snapshot=key==='dvm'?await exportSnapshot():(await capture(),state);if(!snapshot[key])throw Error('Dit onderdeel is nog niet geladen.');const data=key==='planning'?snapshot.planning.xml:snapshot[key],name=`${basisnaam}_${new Date().toISOString().slice(0,10)}.${key==='planning'?'xml':'json'}`;download(data,name,type);await schrijfExportOokNaarGekoppeldeMap(data,name,type);}catch(e){fail(e);}};
+$('#export').onclick=async()=>{try{if(busy)throw Error('Wacht tot import of opslag gereed is.');const snapshot=await exportSnapshot();const sel=selection();if(!sel.size)throw Error('Kies minstens één onderdeel.');const data=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(makeExport(snapshot,sel)):makeExport(snapshot,sel),name='bidash-integraal_'+new Date().toISOString().slice(0,10)+'.json';download(data,name);await schrijfExportOokNaarGekoppeldeMap(data,name);}catch(e){fail(e);}};
+for(const [id,key,basisnaam,type] of [['exportDvm','dvm','dvm-dienstimpact-totaal','application/json'],['exportBi','bi','bidash-wvm-dataset','application/json'],['exportXml','planning','planning','text/xml']])$( '#'+id).onclick=async()=>{try{if(busy)throw Error('Wacht tot de lopende bewerking gereed is.');const snapshot=key==='dvm'?await exportSnapshot():(await capture(),state);if(!snapshot[key])throw Error('Dit onderdeel is nog niet geladen.');const rawData=key==='planning'?snapshot.planning.xml:snapshot[key],data=key==='dvm'&&globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(rawData):rawData,name=`${basisnaam}_${new Date().toISOString().slice(0,10)}.${key==='planning'?'xml':'json'}`;download(data,name,type);await schrijfExportOokNaarGekoppeldeMap(data,name,type);}catch(e){fail(e);}};
 const primaveraDownload=createFileDownload($('#primaveraDownload'));
 function primaveraExportStatus(message,error=false){
  const host=$('#primaveraExportStatus');host.textContent=message;host.classList.toggle('error',error);

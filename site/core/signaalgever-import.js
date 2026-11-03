@@ -31,6 +31,7 @@
     return chosen;
   }
   function merge(current={},incoming){
+    if(scope.DVM_COMPACT)incoming=scope.DVM_COMPACT.unpackDvm(incoming);
     const chosen=selection(incoming);if(!chosen)throw Error('Geen losse signaalgeverimport.');
     const old=current.bronbeheer?.signaalgeverTotaal||{},fresh=incoming.bronbeheer.signaalgeverTotaal;
     for(const v of chosen)if((time(old.laatstePerVc?.[v])||0)>(time(fresh.laatstePerVc[v])||0))throw Error('De import voor '+v.toUpperCase()+' is ouder dan de geladen stand.');
