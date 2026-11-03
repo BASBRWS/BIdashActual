@@ -621,3 +621,11 @@ Ligt een alarmstart na de kopklok, maar op dezelfde brondag, dan stopt de hele r
 Uit zo’n dump wordt geen herstel afgeleid. Ook ontbrekende meldingen blijven onzeker open en hun lopende afwezigheidswachttijd wordt gewist. Bij de volgende foutvrije dump begint de termijn opnieuw voor meldingen die nog steeds ontbreken. Aanwezige meldingen worden dan opnieuw bevestigd. Een export bewaart deze toestand en de bronwaarschuwing, zodat je later verder kunt.
 
 Fouten in de structuur, een alarmdatum op een volgende dag of tegenstrijdige blokken met dezelfde kop stoppen de import nog steeds. De vorige opgeslagen stand blijft dan behouden. Je hoeft bronbestanden niet handmatig te wijzigen of alarmregels weg te halen.
+
+## DVKA en niet gekoppelde storingen, versie 2.73
+
+Een DVKA-letter blijft een eigen wegtak. Het dashboard bepaalt per locatie bij welke hoofdrichting die hoort, eerst uit BPS/baanpositie en anders uit een eenduidige nabije hoofdbaan. Een unieke kandidaat met dezelfde eenheid kan vanuit een LI/RE-melding worden gekoppeld. Er geldt geen vaste kant voor een letter in het hele land.
+
+Assetconfiguratie toont waarom meldgroepen niet koppelen, hoeveel bronverwijzingen daarbij horen en hoeveel unieke locaties dit raakt. De telling bevat historie én open lijsten. Eén incident kan in beide staan. Een locatiekandidaat is nog geen bevestigde storing op één asset.
+
+Controleer de getoonde kandidaten. Bevestig DVKA-koppeling bewaart een gecontroleerde relatie naar dezelfde hoofdrichting. Een afwijkende eenheid of een andere DVKA vraagt broncontrole en krijgt geen geforceerde koppeling. De bulkknop slaat deze onbesliste technische groepen over. Bewaar de keuze met jouw totaalexport of assetconfiguratie-export. Na herladen en import blijft de relatie beschikbaar zolang de bronkenmerken passen.

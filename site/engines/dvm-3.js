@@ -5231,13 +5231,22 @@ function assetConfigHerbereken(bericht){
 function assetConfigKoppel(logEnc,keyEnc){
   let logId=logEnc,key=keyEnc;try{logId=decodeURIComponent(logEnc);key=decodeURIComponent(keyEnc);}catch(e){}
   if(!ASSET_INDEX||!ASSET_INDEX.byKey.has(key)){assetCfgMelding('Het gekozen asset staat niet meer in de geladen assetlijst.',false);return;}
+  const gekozen=ASSET_INDEX.byKey.get(key),groep=assetConfigGroepVoor(logId);
+  let dvka=false;
+  if(groep&&['MSI','LUS'].includes(groep.typeId)){
+    if(!assetMeldingPast(groep.melding,gekozen,groep.typeId,{dvka:'bevestigd'})){
+      assetCfgMelding('Niet gekoppeld: assettype, VC, locatie, wegtak of eenheidsnummer wijkt af. Controleer de brongegevens.',false);return;
+    }
+    dvka=!assetMeldingPast(groep.melding,gekozen,groep.typeId);
+  }
   const cfg=assetConfigBasis(),lk=assetLogSleutel(logId);cfg.aliases[lk]=key;cfg.aliasLabels[lk]=logId;
+  if(dvka)cfg.dvkaBevestigingen[lk]=key;else delete cfg.dvkaBevestigingen[lk];
   delete cfg.uitgeslotenLogIds[lk];delete cfg.uitgeslotenLabels[lk];
   ASSET_CFG_UI.pendingLogId='';ASSET_CFG_UI.focusKey=key;ASSET_CFG_UI.query=ASSET_INDEX.byKey.get(key).naam;
   assetConfigHerbereken(`${logId} is gekoppeld aan ${ASSET_INDEX.byKey.get(key).naam}.`);
 }
 function assetConfigKoppelBesteAlle(){
-  const groepen=((ASSET_MATCH_STATE&&ASSET_MATCH_STATE.groepen)||[]).filter(g=>g.suggesties&&g.suggesties[0]&&ASSET_INDEX&&ASSET_INDEX.byKey.has(g.suggesties[0].key));
+  const groepen=((ASSET_MATCH_STATE&&ASSET_MATCH_STATE.groepen)||[]).filter(g=>g.bulkToegestaan!==false&&g.suggesties&&g.suggesties[0]&&ASSET_INDEX&&ASSET_INDEX.byKey.has(g.suggesties[0].key));
   if(!groepen.length){assetCfgMelding('Er zijn geen foutgroepen met een beste kandidaat.',false);return;}
   if(!confirm(`Koppel ${groepen.length} foutgroep(en) aan de beste kandidaat die nu per groep wordt getoond? Groepen zonder kandidaat blijven handmatig openstaan.`))return;
   const cfg=assetConfigBasis();
@@ -5272,7 +5281,7 @@ function assetConfigImport(file){
       const tol=Number(bron.hmTolerantieKm);
       RULES.assetConfig={
         hmTolerantieKm:tol>=.01&&tol<=5?tol:.35,
-        aliases:{...(bron.aliases||{})},aliasLabels:{...(bron.aliasLabels||{})},
+        aliases:{...(bron.aliases||{})},aliasLabels:{...(bron.aliasLabels||{})},dvkaBevestigingen:{...(bron.dvkaBevestigingen||{})},
         uitgeslotenLogIds:{...(bron.uitgeslotenLogIds||{})},uitgeslotenLabels:{...(bron.uitgeslotenLabels||{})},
         overrides:{...(bron.overrides||{})}
       };
@@ -5286,11 +5295,11 @@ function assetConfigBuitenAreaal(logEnc){
   let logId=logEnc;try{logId=decodeURIComponent(logEnc);}catch(e){}
   if(!confirm(`Markeer ${logId} als buiten het geladen areaal? De incidenten blijven zichtbaar in het storingsbeeld, maar tellen niet mee voor asset-specifieke EOL- en Monte Carlo-kalibratie.`))return;
   const cfg=assetConfigBasis(),lk=assetLogSleutel(logId);cfg.uitgeslotenLogIds[lk]=true;cfg.uitgeslotenLabels[lk]=logId;
-  delete cfg.aliases[lk];delete cfg.aliasLabels[lk];ASSET_CFG_UI.pendingLogId='';
+  delete cfg.aliases[lk];delete cfg.aliasLabels[lk];delete cfg.dvkaBevestigingen[lk];ASSET_CFG_UI.pendingLogId='';
   assetConfigHerbereken(`${logId} is verantwoord gemarkeerd als buiten het geladen areaal.`);
 }
 function assetConfigVerwijderAlias(keyEnc){
-  let lk=keyEnc;try{lk=decodeURIComponent(keyEnc);}catch(e){}const cfg=assetConfigBasis();delete cfg.aliases[lk];delete cfg.aliasLabels[lk];assetConfigHerbereken('Handmatige koppeling verwijderd.');
+  let lk=keyEnc;try{lk=decodeURIComponent(keyEnc);}catch(e){}const cfg=assetConfigBasis();delete cfg.aliases[lk];delete cfg.aliasLabels[lk];delete cfg.dvkaBevestigingen[lk];assetConfigHerbereken('Handmatige koppeling verwijderd.');
 }
 function assetConfigVerwijderUitsluiting(keyEnc){
   let lk=keyEnc;try{lk=decodeURIComponent(keyEnc);}catch(e){}const cfg=assetConfigBasis();delete cfg.uitgeslotenLogIds[lk];delete cfg.uitgeslotenLabels[lk];assetConfigHerbereken('Uitsluiting verwijderd; de logcode wordt opnieuw gematcht.');
@@ -5311,6 +5320,19 @@ function assetConfigSelectie(){
   else a=a.slice().sort((x,y)=>String(x.weg).localeCompare(String(y.weg))||(x.hm||0)-(y.hm||0)||String(x.naam).localeCompare(String(y.naam)));
   return {rijen:a.slice(0,80),totaal:a.length,pending};
 }
+function assetKandidaatUitleg(g,a){
+  const d=(g?.kandidaatDetails||[]).find(d=>d.key===a.key);
+  if(!d)return '';
+  const labels={wegtak:'DVKA/wegtak verschilt',eenheid:'eenheidsnummer verschilt'};
+  return d.redenen.length?d.redenen.map(k=>labels[k]||k).join('; '):'Identiteit past; meerdere kandidaten vragen een keuze';
+}
+function assetKandidaatKnop(g,a,tekst){
+  if(!g)return '';
+  const technisch=['MSI','LUS'].includes(g.typeId);
+  const past=!technisch||assetMeldingPast(g.melding,a,g.typeId,{dvka:'bevestigd'});
+  const dvka=technisch&&past&&!assetMeldingPast(g.melding,a,g.typeId);
+  return `<button class="asset-koppel-btn primary" ${past?`onclick="assetConfigKoppel('${encodeURIComponent(g.id)}','${encodeURIComponent(a.key)}')"`:'disabled'}>${dvka?'Bevestig DVKA-koppeling':past?esc(tekst||'Koppel aan dit asset'):'Controleer wegtak / eenheid'}</button>`;
+}
 function renderAssetConfigLijstHtml(){
   const sel=assetConfigSelectie(),cfg=assetConfigBasis();
   if(!sel.rijen.length)return `<div class="asset-config-note">Geen asset in All Assets past bij dit filter. Dat betekent niet dat een nieuw asset mag worden verzonnen. Pas de zoekopdracht aan, laad een actuelere assetlijst of markeer de logidentiteit gemotiveerd als buiten areaal.</div>`;
@@ -5324,7 +5346,8 @@ function renderAssetConfigLijstHtml(){
     const open=ASSET_CFG_UI.focusKey===a.key||!!pending&&idx<5;
     const val=k=>ov[k]!=null?esc(ov[k]):'';
     h+=`<details class="asset-config-row ${ASSET_CFG_UI.focusKey===a.key?'asset-config-focus':''}" ${open?'open':''}><summary><div><b>${esc(a.naam)}</b><div class="muted mono" style="font-size:10.5px;margin-top:3px">${esc(a.entityid||a.key)} · ${esc(a.weg)} ${esc(a.richting||'')} ${a.hm!=null?'hm '+fmt(a.hm,3):''}${a.strook?' · positie '+esc(a.strook):''} · ${esc(a.status||'status onbekend')}</div></div><span class="pill ${geconfigureerd?'geel':a.prognoseActief?'groen':'rood'}">${geconfigureerd?'individueel ingesteld':a.prognoseActief?'actief · bronregels':'alleen historische referentie'}</span></summary><div class="asset-config-body">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div class="muted" style="font-size:11.5px"><b>${esc(a.tp)}</b> · ${esc(a.fabrikant||'fabrikant onbekend')} · ${esc(a.model||'model onbekend')} · bouwjaar ${a.bouwjaar||'onbekend'} · effectieve EOL ${eolJaar||'onbekend'} · bron ${esc(rel.bron)}</div>${pending?`<button class="asset-koppel-btn primary" onclick="assetConfigKoppel('${encodeURIComponent(pending)}','${keyE}')">Koppel ${esc(pending)} aan dit asset</button>`:''}</div>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div class="muted" style="font-size:11.5px"><b>${esc(a.tp)}</b> · ${esc(a.fabrikant||'fabrikant onbekend')} · ${esc(a.model||'model onbekend')} · bouwjaar ${a.bouwjaar||'onbekend'} · effectieve EOL ${eolJaar||'onbekend'} · bron ${esc(rel.bron)}</div>${pending?assetKandidaatKnop(sel.pending,a,'Koppel aan dit asset'):''}</div>
+      ${pending&&assetKandidaatUitleg(sel.pending,a)?`<p class="muted">${esc(assetKandidaatUitleg(sel.pending,a))}. DVKA ${esc(a.zijdeBron||a.richting)} · hoofdrichting ${esc(a.richting)}. ${esc(a.zijdeKoppeling||'')}</p>`:''}
       ${aliases.length?`<div style="margin-top:8px">${aliases.map(x=>`<span class="asset-alias">logalias ${esc(x)}</span>`).join('')}</div>`:''}
       ${assetLocatieEditorHtml(a)}
       <div class="asset-config-fields">
@@ -5345,11 +5368,19 @@ function renderAssetConfigPane(){
   if(!ASSET_REGISTER_STATE)return `<div class="card"><h3>Assetconfiguratie</h3><div class="asset-config-note">Laad eerst All Assets. Zonder canonieke assetlijst kunnen locatie, bouwjaar en EOL niet verantwoord aan storingsregels worden gekoppeld.</div></div>`;
   const cfg=assetConfigBasis(),M=ASSET_MATCH_STATE||{totaal:0,gekoppeld:0,nietGekoppeld:0,uitgesloten:0,groepen:[]};
   const ovN=Object.keys(cfg.overrides).length,aliasN=Object.keys(cfg.aliases).length;
-  const bestN=(M.groepen||[]).filter(g=>g.suggesties&&g.suggesties[0]&&ASSET_INDEX&&ASSET_INDEX.byKey.has(g.suggesties[0].key)).length;
+  const bestN=(M.groepen||[]).filter(g=>g.bulkToegestaan!==false&&g.suggesties&&g.suggesties[0]&&ASSET_INDEX&&ASSET_INDEX.byKey.has(g.suggesties[0].key)).length;
+  const redenLabels={'wegtak':'DVKA / wegtak wijkt af','eenheid':'Eenheidsnummer wijkt af','wegtak+eenheid':'Wegtak en eenheidsnummer wijken af','meerdere-assets':'Meerdere passende assets','geen-asset-nabij':'Geen asset van dit type nabij','hmp-ontbreekt':'Hectometrering ontbreekt','weg-ontbreekt':'Weg ontbreekt',overig:'Overige reden'};
+  const redenen=new Map(),locaties=new Set();
+  for(const g of M.groepen||[]){
+    const code=g.redenCode||'overig',r=redenen.get(code)||{groepen:0,n:0};r.groepen++;r.n+=g.n;redenen.set(code,r);
+    locaties.add([normAssetVc(g.melding?.vc),g.weg,g.melding?.zijdeBron||g.richting,g.hm??g.id].join('|'));
+  }
+  const diagnose=`<p class="muted">${locaties.size.toLocaleString('nl-NL')} unieke niet-gekoppelde locaties · ${M.groepen.length.toLocaleString('nl-NL')} meldgroepen. De incidenttelling omvat historische en actuele bronverwijzingen; een incident kan in beide bronnen staan. Een locatiekandidaat bewijst nog geen uitval van een specifiek asset.</p><div class="tbl-scroll"><table class="tbl" data-asset-match-reasons><thead><tr><th>Reden</th><th>Meldgroepen</th><th>Bronverwijzingen</th></tr></thead><tbody>${[...redenen].sort((a,b)=>b[1].n-a[1].n).map(([code,r])=>`<tr><td>${esc(redenLabels[code]||code)}</td><td>${r.groepen.toLocaleString('nl-NL')}</td><td>${r.n.toLocaleString('nl-NL')}</td></tr>`).join('')}</tbody></table></div>`;
   const foutRijen=(M.groepen||[]).slice(0,40);
   let fouten=foutRijen.length?foutRijen.map(g=>{
-    const best=g.suggesties&&g.suggesties[0];const loc=[g.weg,g.richting,g.hm!=null?'hm '+fmt(g.hm,3):''].filter(Boolean).join(' ');
-    return `<div class="asset-fout"><div class="asset-fout-kop"><div><button class="asset-match-link" onclick="openAssetConfigForLog('${encodeURIComponent(g.id)}')">${esc(g.id)}</button> <span class="tag o">${esc(g.typeId)}</span><div class="muted" style="font-size:11px;margin-top:3px">${g.n.toLocaleString('nl-NL')} incident(en) · ${esc(loc||'locatie ontbreekt')} · ${esc(g.reden)}</div>${best?`<div class="muted" style="font-size:11px;margin-top:3px">Beste kandidaat: <b>${esc(best.naam)}</b> (${esc(best.weg)} ${esc(best.richting||'')} ${best.hm!=null?'hm '+fmt(best.hm,3):''})</div>`:'<div class="muted" style="font-size:11px;margin-top:3px">Geen bruikbare kandidaat in de geladen assetlijst.</div>'}</div></div><div class="asset-fout-acties"><button class="primary" onclick="openAssetConfigForLog('${encodeURIComponent(g.id)}')">Zoeken en configureren</button>${best?`<button onclick="assetConfigKoppel('${encodeURIComponent(g.id)}','${encodeURIComponent(best.key)}')">Koppel aan beste kandidaat</button>`:''}<button onclick="assetConfigBuitenAreaal('${encodeURIComponent(g.id)}')">Markeer buiten areaal</button></div></div>`;
+    const loc=[g.weg,g.richting,g.hm!=null?'hm '+fmt(g.hm,3):''].filter(Boolean).join(' ');
+    const kandidaten=(g.suggesties||[]).map(a=>`<div class="asset-config-note" style="margin-top:6px"><b>${esc(a.naam)}</b><div class="muted">${esc(a.zijdeBron||a.richting||'onbekende wegtak')} · hoofdrichting ${esc(a.richting||'onbekend')} · ${esc(assetKandidaatUitleg(g,a))} ${esc(a.zijdeKoppeling||'')}</div>${assetKandidaatKnop(g,a,'Koppel aan dit asset')}</div>`).join('');
+    return `<div class="asset-fout"><div class="asset-fout-kop"><div><button class="asset-match-link" onclick="openAssetConfigForLog('${encodeURIComponent(g.id)}')">${esc(g.id)}</button> <span class="tag o">${esc(g.typeId)}</span><div class="muted" style="font-size:11px;margin-top:3px">${g.n.toLocaleString('nl-NL')} bronverwijzingen · ${esc(loc||'locatie ontbreekt')} · ${esc(g.reden)}</div><div>${g.koppelniveau==='locatie'?'Locatie bekend; individueel asset nog niet bevestigd.':''}</div>${kandidaten||'<div class="muted">Geen locatiekandidaat van dit type binnen de ingestelde tolerantie en VC.</div>'}</div></div><div class="asset-fout-acties"><button class="primary" onclick="openAssetConfigForLog('${encodeURIComponent(g.id)}')">Zoeken en configureren</button><button onclick="assetConfigBuitenAreaal('${encodeURIComponent(g.id)}')">Markeer buiten areaal</button></div></div>`;
   }).join(''):`<div class="asset-config-note" style="background:var(--groen-l);border-color:#cfe3d3;color:var(--groen)">Alle geladen incidenten zijn gekoppeld aan All Assets of expliciet verantwoord als buiten areaal.</div>`;
   if(M.groepen&&M.groepen.length>40)fouten+=`<p class="muted" style="font-size:11.5px">Nog ${M.groepen.length-40} foutgroepen. Gebruik zoeken of los eerst de grootste groepen op.</p>`;
   const aliases=Object.entries(cfg.aliases).map(([lk,key])=>{const a=ASSET_INDEX&&ASSET_INDEX.byKey.get(key);return `<span class="asset-alias">${esc(cfg.aliasLabels[lk]||lk)} → ${esc(a?a.naam:key)} <button title="Koppeling verwijderen" onclick="assetConfigVerwijderAlias('${encodeURIComponent(lk)}')">×</button></span>`;}).join('');
@@ -5358,9 +5389,9 @@ function renderAssetConfigPane(){
     <p class="muted" style="margin:-6px 0 8px;font-size:12px">All Assets blijft de bron voor identiteit, areaal, locatie, installatie-/ingebruiknamedatum en EOL. De levensduur komt uit expliciete assetvelden of een bewuste assetconfiguratie. Als die ontbreken, gebruikt het model zichtbaar de generieke waarde van het assettype. Een storingslog wordt niet automatisch een nieuw asset.</p>
     <div class="asset-config-grid"><div class="asset-config-kpi"><div class="v">${(ASSET_REGISTER_STATE.actiefN||0).toLocaleString('nl-NL')}</div><div class="l">Actief prognoseareaal</div></div><div class="asset-config-kpi"><div class="v">${ASSET_REGISTER_STATE.assets.length.toLocaleString('nl-NL')}</div><div class="l">Historische referenties</div></div><div class="asset-config-kpi"><div class="v" style="color:var(--groen)">${M.gekoppeld.toLocaleString('nl-NL')}</div><div class="l">Incidenten gekoppeld</div></div><div class="asset-config-kpi"><div class="v" style="color:${M.nietGekoppeld?'var(--oranje)':'var(--groen)'}">${M.nietGekoppeld.toLocaleString('nl-NL')}</div><div class="l">Niet gekoppeld</div></div><div class="asset-config-kpi"><div class="v">${ovN}</div><div class="l">Individueel ingesteld</div></div></div>
     <div class="re-toolbar" style="margin-top:10px"><button class="tb-btn primary" onclick="parametersToepassen()">✓ Toepassen &amp; herberekenen</button>${bestN?`<button class="tb-btn" onclick="assetConfigKoppelBesteAlle()">Koppel beste kandidaten (${bestN})</button>`:''}<button class="tb-btn re-sec" onclick="assetConfigExport()">⭳ Assetconfiguratie</button><button class="tb-btn re-sec" onclick="document.getElementById('assetConfigImportInput').click()">⭱ Assetconfiguratie</button><input type="file" id="assetConfigImportInput" accept=".json,application/json" class="hidden" onchange="assetConfigImport(this.files[0]);this.value=''"> <label style="font-size:11.5px;color:var(--sub)">Automatische hm-tolerantie <input class="re-in" type="number" min="0.01" max="5" step="0.05" value="${cfg.hmTolerantieKm}" onchange="assetConfigTolerantie(this)" style="width:75px"> km</label><span id="assetCfgStatus" class="re-status"></span></div>
-    <div class="asset-config-note">De bulkactie koppelt uitsluitend foutgroepen waarvoor hieronder ook een concrete beste kandidaat kan worden getoond. Groepen zonder kandidaat blijven handmatig. Gekoppelde logregels gebruiken daarna de canonieke assetlocatie; ongekoppelde regels blijven zichtbaar, maar tellen niet mee voor asset-specifieke Monte Carlo-kalibratie of EOL-toerekening.</div>
+    <div class="asset-config-note">De bulkactie slaat technische meldgroepen met een onbesliste wegtak of eenheidsnummer over. Bevestig een DVKA-kandidaat per meldgroep. Een afwijkende eenheid wordt niet automatisch aan een ander asset gehangen. Gekoppelde logregels gebruiken daarna de canonieke assetlocatie; ongekoppelde regels blijven zichtbaar, maar tellen niet mee voor asset-specifieke Monte Carlo-kalibratie of EOL-toerekening.</div>
   </div>
-  <div class="card" id="assetConfigFouten"><h3>Assetfouten en ontbrekende koppelingen <span class="badge">${M.groepen.length} groepen</span></h3>${fouten}${aliases||uitgesloten?`<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700;font-size:12px">Handmatige beslissingen (${aliasN+Object.keys(cfg.uitgeslotenLogIds).length})</summary><div style="margin-top:8px">${aliases}${uitgesloten}</div></details>`:''}</div>
+  <div class="card" id="assetConfigFouten"><h3>Assetfouten en ontbrekende koppelingen <span class="badge">${M.groepen.length} groepen</span></h3>${diagnose}${fouten}${aliases||uitgesloten?`<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700;font-size:12px">Handmatige beslissingen (${aliasN+Object.keys(cfg.uitgeslotenLogIds).length})</summary><div style="margin-top:8px">${aliases}${uitgesloten}</div></details>`:''}</div>
   <div class="card"><h3>Assets zoeken en individueel configureren</h3><div class="filterbar"><label>Zoeken <input id="assetConfigSearch" value="${esc(ASSET_CFG_UI.query)}" oninput="assetConfigZoek(this.value)" placeholder="assetnaam, entity-id, weg, hm, fabrikant" style="min-width:280px"></label><label>Assettype <select onchange="assetConfigType(this.value)"><option value="">Alle typen</option>${RULES.assetTypen.map(a=>`<option value="${esc(a.id)}" ${ASSET_CFG_UI.type===a.id?'selected':''}>${esc(a.id)}</option>`).join('')}</select></label></div>${ASSET_CFG_UI.pendingLogId?`<div class="asset-config-note" style="margin-bottom:10px">Je configureert de fout <b>${esc(ASSET_CFG_UI.pendingLogId)}</b>. Kies alleen een asset als identiteit en locatie inhoudelijk overeenkomen.</div>`:''}<div id="assetConfigListHost">${renderAssetConfigLijstHtml()}</div></div>`;
 }
 
@@ -5669,7 +5700,7 @@ function parametersImport(file){
       RULES.locatieRegels=normaliseerMsiErnstRegels(RULES.locatieRegels,Number(b.versie)>=5);
       if(b.cfg) RULES.cfg={...RULES.cfg,...b.cfg};
       if(b.drip) RULES.drip={...RULES.drip,...b.drip,levensduurOverride:{...(b.drip.levensduurOverride||{})}};
-      if(b.assetConfig) RULES.assetConfig={...assetConfigBasis(),...b.assetConfig,aliases:{...(b.assetConfig.aliases||{})},aliasLabels:{...(b.assetConfig.aliasLabels||{})},uitgeslotenLogIds:{...(b.assetConfig.uitgeslotenLogIds||{})},uitgeslotenLabels:{...(b.assetConfig.uitgeslotenLabels||{})},overrides:{...(b.assetConfig.overrides||{})}};
+      if(b.assetConfig) RULES.assetConfig={...assetConfigBasis(),...b.assetConfig,aliases:{...(b.assetConfig.aliases||{})},aliasLabels:{...(b.assetConfig.aliasLabels||{})},dvkaBevestigingen:{...(b.assetConfig.dvkaBevestigingen||{})},uitgeslotenLogIds:{...(b.assetConfig.uitgeslotenLogIds||{})},uitgeslotenLabels:{...(b.assetConfig.uitgeslotenLabels||{})},overrides:{...(b.assetConfig.overrides||{})}};
       if(b.diensten) b.diensten.forEach(dd=>{ const d=DIENSTEN.find(x=>x.id===dd.id); if(d){ if(dd.afh)d.afh=dd.afh; if(dd.norm!=null)d.norm=dd.norm; } });
       laadSubprocessenConfig(b.subprocessen);
       RULES.kosten=v68MigreerKosten(b.kosten);
@@ -5842,7 +5873,7 @@ async function totaalImportJson(file, hubModus){
       RULES.locatieRegels=normaliseerMsiErnstRegels(RULES.locatieRegels,true);
       if(b.cfg) RULES.cfg={...RULES.cfg,...b.cfg};
       if(b.drip) RULES.drip={...RULES.drip,...b.drip,levensduurOverride:{...(b.drip.levensduurOverride||{})}};
-      if(b.assetConfig) RULES.assetConfig={...assetConfigBasis(),...b.assetConfig,aliases:{...(b.assetConfig.aliases||{})},aliasLabels:{...(b.assetConfig.aliasLabels||{})},uitgeslotenLogIds:{...(b.assetConfig.uitgeslotenLogIds||{})},uitgeslotenLabels:{...(b.assetConfig.uitgeslotenLabels||{})},overrides:{...(b.assetConfig.overrides||{})}};
+      if(b.assetConfig) RULES.assetConfig={...assetConfigBasis(),...b.assetConfig,aliases:{...(b.assetConfig.aliases||{})},aliasLabels:{...(b.assetConfig.aliasLabels||{})},dvkaBevestigingen:{...(b.assetConfig.dvkaBevestigingen||{})},uitgeslotenLogIds:{...(b.assetConfig.uitgeslotenLogIds||{})},uitgeslotenLabels:{...(b.assetConfig.uitgeslotenLabels||{})},overrides:{...(b.assetConfig.overrides||{})}};
       if(b.diensten) b.diensten.forEach(dd=>{ const d=DIENSTEN.find(x=>x.id===dd.id); if(d){ if(dd.afh)d.afh=dd.afh; if(dd.norm!=null)d.norm=dd.norm; } });
       laadSubprocessenConfig(b.subprocessen);
       RULES.kosten=v68MigreerKosten(b.kosten);
