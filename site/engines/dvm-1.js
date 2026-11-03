@@ -124,6 +124,7 @@ const RULES = {
     hmTolerantieKm:0.35,
     aliases:{},
     aliasLabels:{},
+    dvkaBevestigingen:{},
     uitgeslotenLogIds:{},
     uitgeslotenLabels:{},
     overrides:{}
