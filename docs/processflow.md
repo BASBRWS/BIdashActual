@@ -427,3 +427,12 @@ Wil je later verder, laad dan eerst dit totaalbestand via Bestanden laden en kie
 De 48 uur lopen vanaf de eerste volledige snapshot waarin de storing ontbreekt. De wachttijd loopt na totaalherstel door. Terugkeer onderbreekt die wachttijd. Een ontbrekende dag bewijst geen herstel. Zonder nieuwe bronbestanden verandert de stand niet door alleen de kalenderklok.
 
 Voor historische aanvullingen kun je Verder vanaf laatst verwerkte bronmoment per VC uitvinken. Dan leest de importer de gekozen periode opnieuw op de bestaande basis. De losse signaalgeverimporter heeft dezelfde keuze. Een volledige import herstelt ook een groot assetregister; automatisch openen van een grote opgeslagen werkruimte houdt de bestaande opstartbeveiliging.
+
+
+## Tijdswaarschuwing bij signaalgeverdumps, versie 2.72
+
+Ligt een alarmstart na de kopklok, maar op dezelfde brondag, dan stopt de hele regio niet meer. De meldingen blijven in de actuele lijst als onzeker. Je ziet Tijdsafwijking, toestand onzeker in de losse importer en een tijdswaarschuwing in het dashboard. Het storingslog neemt de technische details mee. De kopklok en alarmstart worden niet aangepast.
+
+Uit zo’n dump wordt geen herstel afgeleid. Ook ontbrekende meldingen blijven onzeker open en hun lopende afwezigheidswachttijd wordt gewist. Bij de volgende foutvrije dump begint de termijn opnieuw voor meldingen die nog steeds ontbreken. Aanwezige meldingen worden dan opnieuw bevestigd. Een export bewaart deze toestand en de bronwaarschuwing, zodat je later verder kunt.
+
+Fouten in de structuur, een alarmdatum op een volgende dag of tegenstrijdige blokken met dezelfde kop stoppen de import nog steeds. De vorige opgeslagen stand blijft dan behouden. Je hoeft bronbestanden niet handmatig te wijzigen of alarmregels weg te halen.

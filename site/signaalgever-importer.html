@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><script src="core/actual-profile.js?v=20261103-0900"></script><script src="core/storingslog.js?v=20261103-0900"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><script src="core/actual-profile.js?v=20261103-1400"></script><script src="core/storingslog.js?v=20261103-1400"></script>
 <title>Signaalgeverimporter · BiDash</title>
 <link rel="stylesheet" href="signaalgever-importer.css">
-<script type="module" src="signaalgever-importer.js?v=20261103-0900"></script>
+<script type="module" src="signaalgever-importer.js?v=20261103-1400"></script>
 </head>
 <body>
 <header><div><a href="index.html#sources">BiDash</a><span id="version"></span></div><h1>Signaalgevers importeren</h1><button id="downloadDiagnostics" type="button" data-download-diagnostics>Storingslog downloaden</button><p>Open meldingen en maximaal één jaar afgesloten historie, per verkeerscentrale.</p></header>
@@ -26,7 +26,7 @@
 <div class="actions"><button id="pick" disabled>Map kiezen en verwerken</button><label class="fallback">Alternatieve mapkeuze<input type="file" id="folder" webkitdirectory multiple disabled></label><button id="cancel" class="secondary" hidden>Stoppen</button></div>
 <progress id="progress" value="0" max="100"></progress>
 <p id="status" role="status" aria-live="polite">Importer starten.</p>
-<p class="note">Een onleesbaar of onvolledig bronbestand stopt de verwerking. De vorige opgeslagen stand blijft staan. Een melding blijft open zolang zij aanwezig is of nog geen 48 uur vanaf de eerste afwezigheid wegblijft. Terugkeer wist de wachttijd. Na een ontbrekende brondag begint die termijn opnieuw. Daarna geldt herstel als afgeleid, met een venster en zonder exact herstelmoment. De oude methode gebruikt Hef op BSS en de bestaande controle op opeenvolgende lijsten.</p>
+<p class="note">Een onleesbaar of onvolledig bronbestand stopt de verwerking. Alarmtijden na de kopklok op dezelfde brondag geven een tijdswaarschuwing. Alle meldingen blijven behouden als onzeker, zonder herstelbewijs uit dat dumpblok. De vorige opgeslagen stand blijft staan. Een melding blijft open zolang zij aanwezig is of nog geen 48 uur vanaf de eerste afwezigheid wegblijft. Terugkeer wist de wachttijd. Na een ontbrekende brondag begint die termijn opnieuw. Daarna geldt herstel als afgeleid, met een venster en zonder exact herstelmoment. De oude methode gebruikt Hef op BSS en de bestaande controle op opeenvolgende lijsten.</p>
 </section>
 <section aria-labelledby="resultTitle"><h2 id="resultTitle">Bewaarde verkeerscentrales</h2>
 <p>De stand blijft lokaal in deze browser bewaard, los van je dashboard. Maak een JSON-back-up om over te dragen. Een volgende import vult dezelfde verkeerscentrale aan. Gebruik deze importer in één tabblad tegelijk.</p>
@@ -36,5 +36,5 @@
 <p class="note">De bewaartermijn loopt vanaf de sluitdatum, niet vanaf de startdatum. Bij afgeleid herstel telt het einde van het herstelvenster. Zonder sluitbewijs wordt een oude melding niet verwijderd. Niet aangeleverde bronbestanden kunnen niet worden gereconstrueerd.</p>
 </section>
 </main>
-<iframe id="runtime" title="MTM-verwerking" src="engines/dvm.html?v=20261103-0900" hidden></iframe>
+<iframe id="runtime" title="MTM-verwerking" src="engines/dvm.html?v=20261103-1400" hidden></iframe>
 </body></html>

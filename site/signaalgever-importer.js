@@ -1,7 +1,7 @@
 import './core/dvm-compact.js';
-import './core/signaalgever-import.js?v=20261103-0900';
-import {createWorkspaceStorage} from './core/storage.js?v=20261103-0900';
-import {BIDASH_VERSIE} from './core/versie.js?v=20261103-0900';
+import './core/signaalgever-import.js?v=20261103-1400';
+import {createWorkspaceStorage} from './core/storage.js?v=20261103-1400';
+import {BIDASH_VERSIE} from './core/versie.js?v=20261103-1400';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);
 const storage=createWorkspaceStorage(globalThis.BIDASH_ACTUAL?'bidash-actual-signaalgever-importer':'bidash-signaalgever-importer');
 let stands={},busy=false,cancelled=false,H,frame;
@@ -16,7 +16,7 @@ function render(){
   for(const vc of C.vcs){const s=stands[vc];if(!s)continue;
     const counts=frame.DVM_INCIDENT_LIFECYCLE.summary(s.open),uncertain=counts.onzeker;
     const tr=document.createElement('tr'),t=s.laatstePerVc[vc],d=s.snapshotDekking?.[vc];
-    const values=[vc.toUpperCase(),t?new Date(t).toLocaleString('nl-NL',{timeZone:'Europe/Amsterdam'}):'Onbekend',counts.meldingen-uncertain,uncertain,s.historie.filter(C.closed).length,d?.volledig&&!d.bronGap&&!d.volumeVerdacht?'Structuur gecontroleerd':'Controle nodig'];
+    const values=[vc.toUpperCase(),t?new Date(t).toLocaleString('nl-NL',{timeZone:'Europe/Amsterdam'}):'Onbekend',counts.meldingen-uncertain,uncertain,s.historie.filter(C.closed).length,d?.kopAfwijking?'Tijdsafwijking, toestand onzeker':d?.volledig&&!d.bronGap&&!d.volumeVerdacht?'Structuur gecontroleerd':'Controle nodig'];
     for(const value of values){const td=document.createElement('td');td.textContent=String(value);tr.append(td);}$('results').append(tr);
   }
   controls();
