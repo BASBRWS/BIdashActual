@@ -158,6 +158,10 @@
           const before=coverage[vc].bronSignatuur??signature(vcRows.filter(r=>r._liveOpen!==false));
           if(before!==signature([...lastPresent.values()]))throw Error('Tegenstrijdige openstaande dumps op dezelfde bronpeildag voor '+vc.toUpperCase()+'. Vorige stand behouden.');
         }
+        if(first===old&&end===old&&coverage[vc]?.logicaVersie===143){
+          // Overlap controleren verandert de bestaande brondekking en audit niet.
+          live.push(...vcRows);updates[vc]={van:old,tot:old,ouder:false,dekking:coverage[vc]};continue;
+        }
         live.push(...active.values());
         const pending=[...active.values()].filter(r=>r.afwezig_sinds).length;
         coverage[vc]={vc,snapshot:latest.snapshot,bestand:latest.bestand,bronType:FORMAT,logicaVersie:143,bronSignatuur:signature([...lastPresent.values()]),volledig:true,structuurVolledig:true,aantal:latest.rows.length,uniekeMeldingen:lastPresent.size,dubbeleBronrijen:latest.rows.length-lastPresent.size,verantwoordeRijen:latest.rows.length,bronGap:gaps>0,bronGaten:gaps,volumeVerdacht:false,sluitenToegestaan:resolved.size>0,vergelijkingBestand:null,vergelijkingPeildatum:iso(first),vergelijkingUren:(end-first)/36e5,vergelijkingVensterUren:HOURS,verwerkteSnapshots:processed,hersteldAfgeleid:resolved.size,verdwenenNogOnbevestigd:pending,kopAfwijking:false,deelSnapshots:latest.deelSnapshots,gelezenBronRijen:latest.gelezenBronRijen,tijdprecisie:latest.precision,waarnemingVan:latest.observedFrom,waarnemingTot:latest.observedTo,bronKopdatum:latest.header,reden:'Alle dumps op volgorde; herstel na 48 uur afwezig sinds de eerste ontbrekende waarneming'+(gaps?'; wachttijd herstart na ontbrekende brondag':'')};
@@ -175,8 +179,13 @@
     return state.finish();
   }
   async function run(basis,files,cfg={},callbacks={}){
-    const selected=select(files,cfg);if(!selected.length)throw Error('Geen bestanden *_openstaandestoringen.txt gevonden voor de gekozen VC en periode.');
-    const state=processor(basis),seenVcs=new Set();let count=0,index=0;
+    const gevonden=select(files,cfg);if(!gevonden.length)throw Error('Geen bestanden *_openstaandestoringen.txt gevonden voor de gekozen VC en periode.');
+    const hervatten=cfg.hervatten??!!scope.BIDASH_ACTUAL;
+    const marker=vc=>hervatten?(scope.DVM_INCIDENT_LIFECYCLE.time(basis.laatstePerVc?.[vc])||0):0;
+    // De laatste bestandsdag blijft nodig voor meerdere dumpblokken en de
+    // controle van een herhaalde laatste snapshot. Oudere dagen lezen we niet.
+    const selected=gevonden.filter(x=>!marker(x.info.vc)||x.info.stamp>=dayKey(...wall(marker(x.info.vc))));
+    const state=processor(basis),seenVcs=new Set(gevonden.map(x=>x.info.vc));let count=0,index=0,oudeSnapshots=0,nieuweSnapshots=0;
     while(index<selected.length){
       const day=selected[index].info.stamp,vc=selected[index].info.vc,daySnapshots=[];
       while(index<selected.length&&selected[index].info.stamp===day&&selected[index].info.vc===vc){
@@ -185,11 +194,15 @@
         callbacks.onProgress?.(count,selected.length,path(item.file));
       }
       // Bestandsvolgnummers hoeven niet dezelfde volgorde als hun datumkoppen te hebben.
-      for(const snap of daySnapshots.sort((a,b)=>Date.parse(a.snapshot)-Date.parse(b.snapshot))){callbacks.checkCancel?.();state.add(snap);await callbacks.pause?.();}
-      seenVcs.add(vc);await new Promise(r=>setTimeout(r,0));
+      for(const snap of daySnapshots.sort((a,b)=>Date.parse(a.snapshot)-Date.parse(b.snapshot))){
+        callbacks.checkCancel?.();const t=Date.parse(snap.snapshot),vanaf=marker(vc);
+        if(vanaf&&t<vanaf){oudeSnapshots++;continue;}
+        state.add(snap);if(!vanaf||t>vanaf)nieuweSnapshots++;await callbacks.pause?.();
+      }
+      await new Promise(r=>setTimeout(r,0));
     }
     callbacks.checkCancel?.();
-    return {result:state.finish(),selected:count,missing:[...(cfg.vcs||[])].filter(vc=>!seenVcs.has(vc))};
+    return {result:state.finish(),selected:count,overgeslagenBestanden:gevonden.length-selected.length,overgeslagenSnapshots:oudeSnapshots,nieuweSnapshots,hervatten,missing:[...(cfg.vcs||[])].filter(vc=>!seenVcs.has(vc))};
   }
   async function collect(root,cfg={},onProgress){
     let dirs=0;const result=[],chosen=cfg.vcs||new Set();

@@ -416,3 +416,14 @@ Bovenaan Dienstimpact staat Berekening uitgevoerd met het aantal doorgerekende m
 Onder Diensten en subprocessen zie je beschikbaarheid, prestatie, norm, bekende dekking, subprocesaandelen en assetafhankelijkheden. Bronbevestigingen gelden voor de bronnen voor het hele register. De VC-keuze is alleen een schermselectie.
 
 Regio bevat weer een VC- en RD-keuze, assetverdeling, datakwaliteit, districtduiding, contracten, leveranciers, werkzaamheden, U-routes en geraakte netwerkschakels of wegdelen. De dienstband voor dezelfde VC is gelijk aan Dienstimpact. Een centrale zonder geladen bron krijgt geen exact 100 procent. De regiofocus telt ook niet doorgerekende meldingen en toont de redenen. Klik op een wegdeel voor de berekenbare meldingen erachter. Die detailwaarden zijn een berekening van de bekende subset; de dienstband houdt ook ontbrekende dekking vast.
+
+
+## Compacte totaalexport en later verdergaan, versie 2.71
+
+Maak na je imports via Data & export een back-up met Alles selecteren en Geselecteerde onderdelen exporteren. Het JSON-bestand bewaart alle geselecteerde onderdelen. Storingsregels worden compacter opgeslagen; oorspronkelijke gegevens en gesloten historie blijven behouden. Oude exports blijven bruikbaar. Open een nieuwe compacte export in versie 2.71 / DVM 149 of nieuwer.
+
+Wil je later verder, laad dan eerst dit totaalbestand via Bestanden laden en kies Import uitvoeren. Kies daarna bij Signaalgevers uit map de MTM-map en jouw verkeerscentrales opnieuw. Laat Verder vanaf laatst verwerkte bronmoment per VC aangevinkt. Je hoeft hetzelfde totaalbestand niet nogmaals als losse basis te kiezen. De importer gebruikt de herstelde bronmomenten en lopende herstelwachttijden. Oude bestandsdagen worden inhoudelijk overgeslagen; de laatste dag wordt gecontroleerd op aanvullende bronmomenten. Nieuwe open storingen worden toegevoegd en bestaande incidenten worden bijgewerkt. Andere verkeerscentrales blijven behouden.
+
+De 48 uur lopen vanaf de eerste volledige snapshot waarin de storing ontbreekt. De wachttijd loopt na totaalherstel door. Terugkeer onderbreekt die wachttijd. Een ontbrekende dag bewijst geen herstel. Zonder nieuwe bronbestanden verandert de stand niet door alleen de kalenderklok.
+
+Voor historische aanvullingen kun je Verder vanaf laatst verwerkte bronmoment per VC uitvinken. Dan leest de importer de gekozen periode opnieuw op de bestaande basis. De losse signaalgeverimporter heeft dezelfde keuze. Een volledige import herstelt ook een groot assetregister; automatisch openen van een grote opgeslagen werkruimte houdt de bestaande opstartbeveiliging.

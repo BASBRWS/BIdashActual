@@ -84,13 +84,15 @@
     const oorspronkelijkeImport=hub.import;
 
     hub.import=async function(bundle,...args){
+      if(window.DVM_COMPACT)bundle=window.DVM_COMPACT.unpackDvm(bundle);
+      const bewust=args[0]?.volledigHerstellen===true;
       const gestart=performance.now();
       const policy=await restorePolicy;
       const zwaar=policy.shouldDeferDvmRestore(bundle);
       const specialeDrips=herstelSpecialeDrips(bundle);
-      if(zwaar&&(ouderStartNog()||bronbeheerActief())&&bundle?.exportSelectie?.netwerkschakels!==false&&Object.hasOwn(bundle,'netwerkschakels'))window.herstelNetwerkschakels?.(bundle.netwerkschakels);
+      if(zwaar&&!bewust&&(ouderStartNog()||bronbeheerActief())&&bundle?.exportSelectie?.netwerkschakels!==false&&Object.hasOwn(bundle,'netwerkschakels'))window.herstelNetwerkschakels?.(bundle.netwerkschakels);
 
-      if(zwaar&&(ouderStartNog()||bronbeheerActief())){
+      if(zwaar&&!bewust&&(ouderStartNog()||bronbeheerActief())){
         const profiel=policy.dvmRestoreProfile(bundle);
         const verkeer=herstelVerkeerscontext(bundle);
         window.__BIDASH_DVM_RESTORE_DEFERRED__={...profiel,reden:bronbeheerActief()?'bronbeheer':'opstart',tijd:new Date().toISOString(),verkeer,specialeDrips};
@@ -135,17 +137,17 @@
 
   window.addEventListener('load',installeerImportGuard,{once:true});
 
-  document.write('<script src="dvm-adapter-original.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-fault-rule-manager.js?v=20261021-1500"></script>');
+  document.write('<script src="dvm-adapter-original.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-fault-rule-manager.js?v=20261103-0900"></script>');
   // Classificatielijsten zijn aparte lichte bronnen en worden vóór bronbeheer geladen.
-  document.write('<script src="dvm-special-drip-lists.js?v=20261021-1500"></script>');
+  document.write('<script src="dvm-special-drip-lists.js?v=20261103-0900"></script>');
   // De signaalgeverbundelaar (maplezen) definieert leesSignaalgeverMap vóór bronbeheer.
-  document.write('<script src="dvm-storingsbundelaar.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-mtm-open-dumps.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-mtm-bss.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-netwerkschakels.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-source-manager.js?v=20261021-1500"></script>');
-  document.write('<script src="../core/signaalgever-import.js?v=20261021-1500"></script>');
-  document.write('<script src="dvm-source-export-completeness.js?v=20261021-1500"></script>');
+  document.write('<script src="dvm-storingsbundelaar.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-mtm-open-dumps.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-mtm-bss.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-netwerkschakels.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-source-manager.js?v=20261103-0900"></script>');
+  document.write('<script src="../core/signaalgever-import.js?v=20261103-0900"></script>');
+  document.write('<script src="dvm-source-export-completeness.js?v=20261103-0900"></script>');
 })();

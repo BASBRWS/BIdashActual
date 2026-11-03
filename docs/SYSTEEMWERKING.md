@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.70 en DVM 148, bijgewerkt op 21 oktober 2026 voor inzichtelijke Dienstimpact en herstelde regiofocus met dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.71 en DVM 149, bijgewerkt op 3 november 2026 voor compacte totaalexports en hervatten van MTM-mapimport na totaalherstel. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -49,6 +49,22 @@ prognose betreffen, zijn ze in deze variant geblokkeerd. Bronkwaliteit blijft ee
 gedateerde dumpblokken binnen één bestand en beoordeelt iedere alarmregel tegen
 haar eigen dumpkop. Een werkelijke tegenstrijdigheid blijft een bronfout; er
 worden geen datums of hersteltijden verzonnen.
+
+## Compacte bestanden en hervatten, versie 2.71 / DVM 149
+
+`core/dvm-compact.js` verandert uitsluitend de JSON-opslag van `storingshistorie` en `liveStoringen`. De bestandsgrens gebruikt `compacteStoringen`, formaat `BiDash-storingen-compact`, versie 1. Bronmetadata blijft staan; `rijenRefs` verwijst naar gedeelde records, kolomschema’s en teksten. Identieke regels worden eenmaal opgeslagen. Afwijkende regels met dezelfde incidentidentiteit worden verliesloos als verschillen bewaard. Alle oorspronkelijke velden, null, nul, booleans, historie en bronmomenten blijven behouden. Bij uitpakken krijgt iedere bron eigen mutable regels. Gesloten incidenten worden niet verwijderd. Andere exportonderdelen blijven inhoudelijk gelijk.
+
+Actual voegt tijdens export geen afgeleide levenscyclusvelden meer toe aan oude light-historie. Reeds aanwezige velden blijven behouden. Een oude export wordt nog steeds gelezen. Compacte exports vereisen versie 2.71 / DVM 149 of nieuwer. Interne werkruimte, berekeningen en autosave gebruiken uitgepakte regels. Er is geen gewijzigde herstel- of impactformule.
+
+Integrale export, DVM-totaalexport, mapresultaat en losse importer gebruiken dezelfde codec. Ook de export naar een gekoppelde map bevat de compacte vorm. Import valideert alle verwijzingen en kolommen vóór werkruimtevervanging. Een ontbrekende pool, ongeldige versie of kapotte verwijzing stopt de import. Deelimport en selectieve export behouden hun bestaande betekenis. Voor volledig hervatten zijn zowel historie als open storingen met bronbeheer nodig; Alles selecteren neemt die samen mee.
+
+Een volledige import herstelt `bronbeheer.signaalgeverTotaal.laatstePerVc` en `snapshotDekking`, incidentidentiteiten, de eerste afwezigheid en de lopende herstelwachttijd. De gebruiker kiest daarna de MTM-map opnieuw. Verder vanaf laatst verwerkte bronmoment per VC staat standaard aan. Bestandsdagen vóór het opgeslagen VC-bronmoment worden niet inhoudelijk gelezen. De laatste kalenderdag wordt wel gelezen om meerdere dumpblokken en latere bestanden van die dag te herkennen. Oudere blokken veranderen de herstelde stand niet; dezelfde laatste snapshot controleert overlap en tegenstrijdigheden. Alleen nieuwere snapshots schuiven de stand vooruit. Niet geselecteerde VC’s blijven behouden. Geen nieuwe bestanden betekent geen extra afwezigheidswaarneming.
+
+Uitvinken leest de gekozen periode opnieuw, inclusief oudere dagen, via de bestaande synchronisatie voor historische aanvullingen. Het leegt de basis niet. Een nieuwe lege werkruimte met alle relevante bronnen is nodig als ook de bestaande incidentbasis moet worden vervangen. De bestaande 48 uur vanaf eerste afwezigheid, vereiste volledige snapshots, terugkeer en brononderbrekingen blijven bepalend. Een ontbrekende dag bewijst geen onafgebroken afwezigheid.
+
+Een bewuste import via Data & export herstelt ook grote assetregisters volledig, inclusief wanneer Bronbeheer actief is. De automatische opstartbeveiliging voor grote opgeslagen werkruimtes blijft bestaan. Een refresh haalt nog steeds geen nieuwe mapbestanden op. De volledige werkroute is exporteren, later totaalbestand importeren, daarna opnieuw de bronmap kiezen en hervatten.
+
+Controles: verliesloze codec-roundtrip, gedeeltelijke/integrale import, corrupte bestanden vóór mutatie, oude light-historie, nul/null, async snapshotconsistentie, 48-uurswachttijd over export/import, gelijk incident-ID, herhaling, terugkeer, tijdgat, andere VC en overslaan van oude bestandsinhoud. De browsertest gebruikt echte downloads en een schone werkruimte, met een synthetisch register boven de automatische herstelgrens. Groottewinst hangt af van de inhoud; de codec comprimeert geen assetregister of NDW-metingen.
 
 ## 1. Doel en grenzen
 

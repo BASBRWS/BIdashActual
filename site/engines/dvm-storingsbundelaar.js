@@ -303,6 +303,7 @@
     return {open:l.rijen,historie:h.rijen,laatstePerVc,histRest:h.rest,liveRest:l.rest,snapshotDekking:status?.snapshotDekking||{},bssBronnen:status?.bssBronnen||{}};
   }
   function sbSignaalgeverBasis(json){
+    if(window.DVM_COMPACT)json=window.DVM_COMPACT.unpackAny(json);
     if(json?.datasets?.mtm){
       const b=signaalgeverTotaalBronnen(json),stand=sbSignaalgeverStand([{_signaalgeverTotaal:true,rijen:b.historie}],[{_signaalgeverTotaal:true,rijen:b.open}],null);
       for(const [v,t] of Object.entries(json.metadata?.watermarks?.mtm||{})){
@@ -423,6 +424,7 @@
         <h3 style="margin:0 0 4px">Signaalgevers uit map lezen (MTM)</h3>
         <p style="margin:0 0 10px;color:#566574">Beperk wat er in één keer wordt gelezen. Kies eerst regio('s) en eventueel een periode; kies daarna de map. In Edge/Chrome mag je gewoon de X-schijf kiezen — BiDash daalt zelf alleen af in <code>mtm</code> en de gekozen regio/periode. Lukt de moderne mapkiezer niet, kies dan <b>X:\\mtm</b> (niet heel X:), anders leest de browser de hele schijf in.</p>
         <label>Importmethode<br><select id="sgFormaat"><option value="open-dump-48h">Openstaande dumps, 48 uur afwezig</option><option value="legacy">BSS-gebeurtenissen en oude storinglijsten</option></select></label><p>De snelle methode leest alleen *_openstaandestoringen.txt. Alle dumps binnen de periode worden per VC op volgorde verwerkt, inclusief tussendagen en meerdere blokken per bestand. Vanaf en Tot en met begrenzen de bestandsdagen, niet de startdatum van open storingen. Een verdwenen melding blijft open met onzeker herstel tot zij 48 uur vanaf haar eerste afwezigheid wegblijft. Bij terugkeer vervalt de wachttijd. Bij een ontbrekende brondag begint de termijn opnieuw. Herstel blijft afgeleid, met een tijdvenster.</p>
+        <label style="display:block;margin-bottom:10px"><input type="checkbox" id="sgHervatten" ${globalThis.BIDASH_ACTUAL?'checked':''}> Verder vanaf laatst verwerkte bronmoment per VC. Uitvinken verwerkt de gekozen periode opnieuw.</label>
         <div id="sgHuidig" style="margin:0 0 10px;padding:8px 10px;background:#f0f6fb;border:1px solid #cfe0ee;border-radius:6px;font-size:12px"></div>
         <fieldset style="border:1px solid #d4dbe2;border-radius:6px;margin:0 0 10px;padding:8px 10px"><legend style="font-weight:700">Verkeerscentrales</legend>
           ${SG_VCS.map(([v,l])=>`<label style="display:inline-block;margin:3px 14px 3px 0"><input type="checkbox" class="sgVc" value="${v}"> ${l}</label>`).join('')}
@@ -454,7 +456,7 @@
         if(!vcs.size){melding.textContent='Kies minstens één verkeerscentrale.';return;}
         const vanaf=dlg.querySelector('#sgVanaf').value||null,tot=dlg.querySelector('#sgTot').value||null;
         if(vanaf&&tot&&vanaf>tot){melding.textContent='De begindatum ligt na de einddatum.';return;}
-        const config={vcs,vanaf,tot,formaat:dlg.querySelector('#sgFormaat').value};
+        const config={vcs,vanaf,tot,formaat:dlg.querySelector('#sgFormaat').value,hervatten:dlg.querySelector('#sgHervatten')?.checked??!!globalThis.BIDASH_ACTUAL};
         const basisFile=dlg.querySelector('#sgBasis').files[0];
         if(basisFile){
           try{config.basisStand=sbSignaalgeverBasis(JSON.parse(await basisFile.text()));}
@@ -535,10 +537,11 @@
   /* Laatst gelezen mapresultaat als downloadbaar totaal-JSON (BiDash-lean: alleen open
      alarmen + storingen). Bruikbaar als basisbestand bij een volgende maplezing. */
   let sgLaatsteExport=null;
-  function sgDownloadExport(){
+  async function sgDownloadExport(){
     if(!sgLaatsteExport)return;
     try{
-      const blob=new Blob([JSON.stringify(sgLaatsteExport.data)],{type:'application/json'});
+      const data=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(sgLaatsteExport.data):sgLaatsteExport.data;
+      const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
       const url=URL.createObjectURL(blob),a=document.createElement('a');
       a.href=url;a.download=sgLaatsteExport.naam;document.body.appendChild(a);a.click();
       setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},3000);
@@ -611,7 +614,7 @@
     const perVc=Object.entries(updates).map(([v,u])=>v.toUpperCase()+' tot '+new Date(u.tot).toLocaleString('nl-NL')+(u.ouder?' (oudere mapsnede, actuele stand behouden)':'')).join('; ');
     const aantalGelezen=dumpResult?.selected??bestanden.length;
     const dumpInfo=snel?' Alleen openstaande dumps. '+Object.entries(snapshotDekking).filter(([v,d])=>updates[v]&&!updates[v].ouder&&d.bronType===dumps.FORMAT).map(([v,d])=>v.toUpperCase()+': '+d.hersteldAfgeleid+' afgeleid hersteld, '+d.verdwenenNogOnbevestigd+' nog open in de wachttijd van 48 uur'+(d.kopAfwijking?'; kopklok wijkt af, tijdstip op dag bekend':'')+(d.bronGap?'; ontbrekende brondag, wachttijd opnieuw gestart':'')).join('. ')+(dumpResult.missing.length?' Geen dump voor '+dumpResult.missing.map(v=>v.toUpperCase()).join(', ')+', bestaande stand behouden.':''):'';
-    const klaarTekst=`Klaar (${regios}): ${aantalGelezen.toLocaleString('nl-NL')} bestanden, ${open.length.toLocaleString('nl-NL')} actuele meldingen inclusief onzeker (${herkendOpen.toLocaleString('nl-NL')} herkend), ${historie.length.toLocaleString('nl-NL')} historisch (${herkendHist.toLocaleString('nl-NL')} herkend). ${dubbel.toLocaleString('nl-NL')} overlappende regels samengevoegd. Per VC: ${perVc}.${dumpInfo}`;
+    const klaarTekst=`Klaar (${regios}): ${aantalGelezen.toLocaleString('nl-NL')} bestanden, ${open.length.toLocaleString('nl-NL')} actuele meldingen inclusief onzeker (${herkendOpen.toLocaleString('nl-NL')} herkend), ${historie.length.toLocaleString('nl-NL')} historisch (${herkendHist.toLocaleString('nl-NL')} herkend). ${dumpResult?.hervatten?dumpResult.overgeslagenBestanden.toLocaleString('nl-NL')+' eerder verwerkte bestanden overgeslagen, '+dumpResult.nieuweSnapshots.toLocaleString('nl-NL')+' nieuwe bronmomenten. ':''}${dubbel.toLocaleString('nl-NL')} overlappende regels samengevoegd. Per VC: ${perVc}.${dumpInfo}`;
     sgMapVoltooid(open.length&&!herkendOpen?klaarTekst+' Let op: geen enkele open melding werd als MSI herkend, dus het actuele dashboard blijft leeg.':klaarTekst,open.length&&!herkendOpen);
     if(typeof importKlaar==='function')importKlaar(label,'Signaalgevers per VC bijgewerkt. '+klaarTekst);
     /* Ook bij de showDirectoryPicker-route (die niet via de bron-inputhandler loopt)
