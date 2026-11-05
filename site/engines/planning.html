@@ -1473,6 +1473,7 @@
             <div id="ipl-export-info" style="font-size:11px;color:#4a6a9a;"></div>
           </div>
           <button id="ipl-export-primavera" onclick="ipl_exportXML()" title="Exporteert de volledige geladen P6-planning met alle scenarioverschuivingen, ook van ingeklapte of gefilterde activiteiten. De originele bron blijft bewaard." style="padding:8px 18px;background:#003082;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Exporteer Primavera P6 XML</button>
+          <button id="ipl-export-xer" onclick="ipl_exportXER()" type="button" title="Primavera P6 XER, met activiteiten, WBS, bronrelaties, kalenders en scenariodatums. Geen resources, kosten, baselines of gebruikersvelden.">Exporteer Primavera XER</button>
           <button id="ipl-export-source" onclick="ipl_exportBronXML()" type="button">Oorspronkelijke planning-XML</button>
           <button id="ipl-export-recovery" onclick="ipl_exportXML(true)" type="button" hidden title="Aparte herstelpoging voor P6. Laat gebruikersvelden weg en maakt aanwezige externe planningtaken lokaal. Bewaart de bron en verandert geen bronrelaties.">P6 herstelpoging, zonder gebruikersvelden</button>
           <div class="planning-export-result"><div id="ipl-export-status" class="export-feedback" role="status" aria-live="polite"></div><a id="ipl-export-download" class="prepared-download" hidden></a></div>
@@ -5470,6 +5471,12 @@ function ipl_parseXML(xmlText){
     wbs[oid]={ id:oid, naam:childText(el,'Name'), parent:childText(el,'ParentObjectId'),
       seq:parseInt(childText(el,'SequenceNumber'))||0, code:childText(el,'Code') };
   }
+  // P6 Professional may place activities directly on the project, with a nil
+  // WBSObjectId and no separate WBS element for the project node.
+  var projectRootId=childText(proj,'WBSObjectId')||'p6_project_root';
+  if(actEls.some(function(el){return !childText(el,'WBSObjectId');})&&!wbs[projectRootId]){
+    wbs[projectRootId]={id:projectRootId,naam:childText(proj,'Name')||childText(proj,'Id')||'Planning',parent:'',seq:0,code:childText(proj,'Id')};
+  }
   // top-niveaus: parent niet in wbs
   function isRoot(oid){ return !(wbs[oid].parent in wbs); }
   // diepte
@@ -5508,7 +5515,7 @@ function ipl_parseXML(xmlText){
     }
     var r={ id:oid, naam:childText(ae,'Name')||childText(ae,'Id')||oid,
       code:childText(ae,'Id'), t0:s, t1:f, kind:mile?'mile':'bar',
-      wbs:childText(ae,'WBSObjectId'), status:childText(ae,'Status'),
+      wbs:childText(ae,'WBSObjectId')||projectRootId, status:childText(ae,'Status'),
       raw0:rawS, raw1:rawF, startField:startField, finishField:finishField, codes:codes };
     regels.push(r); actByOid[oid]=r;
   }
@@ -5583,7 +5590,7 @@ function ipl_parseXML(xmlText){
     for(var k=r.wbsPath.length-1;k>=0;k--){ if(projIds[r.wbsPath[k]]){ r.project=r.wbsPath[k]; break; } }
   }
 
-  return { bronFormaat:xml.documentElement.localName==='APIBusinessObjects'&&(!xml.documentElement.namespaceURI||/^http:\/\/xmlns\.oracle\.com\/Primavera\/P6\/[^/]+\/API\/BusinessObjects$/.test(xml.documentElement.namespaceURI))?'primavera-p6':'onbekend',blokken:blokken, regels:regels, relaties:relaties, wbs:wbs, t0:t0, t1:t1, projecten:projecten,
+  return { bronFormaat:xml.documentElement.localName==='APIBusinessObjects'&&(!xml.documentElement.namespaceURI||/^http:\/\/xmlns\.oracle\.com\/Primavera\/P6(?:Professional)?\/[^/]+\/API\/BusinessObjects$/.test(xml.documentElement.namespaceURI))?'primavera-p6':'onbekend',blokken:blokken, regels:regels, relaties:relaties, wbs:wbs, t0:t0, t1:t1, projecten:projecten,
     codeTypes:codeTypes, codeAssignCount:totaalCodeToewijzingen,
     stats:{ activiteiten:regels.length, relaties:relaties.length, wbs:Object.keys(wbs).length,
       mijlpalen:regels.filter(function(r){return r.kind==='mile';}).length,
@@ -5982,11 +5989,12 @@ function ipl_exportMogelijkheden(){
 }
 function ipl_updateExportMogelijkheden(){
   var info=ipl_exportMogelijkheden(),button=document.getElementById('ipl-export-primavera'),source=document.getElementById('ipl-export-source'),description=document.getElementById('ipl-export-info');
+  var xer=document.getElementById('ipl-export-xer');if(xer)xer.disabled=!info.scenario;
   var recovery=document.getElementById('ipl-export-recovery');
   if(recovery){recovery.hidden=info.formaat!=='msproject';recovery.disabled=!info.scenario;}
   if(button){button.disabled=!info.scenario;button.textContent=info.buttonLabel;button.title=info.uitleg;}
   if(source)source.disabled=!info.geladen;
-  if(description)description.textContent=info.uitleg;
+  if(description)description.textContent=info.uitleg+(info.scenario?' XER exporteert activiteiten, WBS, relaties, kalenders en scenariodatums. Resources, kosten, baselines en gebruikersvelden gaan niet mee.':'');
 }
 async function ipl_exportBronXML(){
   if(IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD.clear();
@@ -6041,6 +6049,29 @@ async function ipl_exportXML(p6Recovery=false){
   }catch(e){
     ipl_exportStatus('Export mislukt. '+e.message,true);
   }finally{ipl_updateExportMogelijkheden();}
+}
+
+async function ipl_createXerExport(){
+  // Reuse the validated scenario XML so every hidden/filtered task receives
+  // the same cascade dates as the existing XML exports. Do not mutate the source.
+  var scenario=await ipl_createScenarioExport();
+  var api=await import('../core/primavera-xer.js?v=20261105-277');
+  var result=api.createXerExport({xml:scenario.text,filename:IPL_RAW_FILENAME,model:IPL_MODEL});
+  result.changedActivities=scenario.changedActivities;
+  return result;
+}
+async function ipl_exportXER(){
+  var button=document.getElementById('ipl-export-xer');if(button)button.disabled=true;
+  if(IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD.clear();
+  ipl_exportStatus('XER-bestand voorbereiden…');
+  try{
+    var api=await import('../core/file-download.js?v=20261105-277');
+    if(!IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD=api.createFileDownload(document.getElementById('ipl-export-download'));
+    var result=await ipl_createXerExport();
+    IPL_EXPORT_DOWNLOAD.prepare(result);IPL_EXPORT_DOWNLOAD.attempt();
+    ipl_exportStatus('Primavera P6 XER staat klaar. '+result.exportedActivities+' activiteiten, '+result.exportedSourceLinks+' relaties, '+result.wbsCount+' WBS-groepen en '+result.calendarCount+' kalenders. '+result.changedActivities+' activiteiten verschoven. '+result.importInstruction+' '+result.warnings.join(' ')+' Begint de download niet, klik op de downloadlink hieronder.');
+  }catch(e){ipl_exportStatus('XER-export mislukt. '+e.message,true);}
+  finally{ipl_updateExportMogelijkheden();}
 }
 
 // ── Projecten verschuiven via vinkje op de WBS-groepsregel + floating slider ──

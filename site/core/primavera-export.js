@@ -41,7 +41,7 @@ export function createPrimaveraExport({xml,filename,regels=[],cascade={},Parser=
   const doc=new Parser().parseFromString(xml,'application/xml');
   const root=doc.documentElement;
   if(doc.getElementsByTagNameNS('*','parsererror').length)throw Error('De planning bevat ongeldige XML.');
-  if(root?.localName!=='APIBusinessObjects'||(root.namespaceURI&&!/^http:\/\/xmlns\.oracle\.com\/Primavera\/P6\/[^/]+\/API\/BusinessObjects$/.test(root.namespaceURI))){
+  if(root?.localName!=='APIBusinessObjects'||(root.namespaceURI&&!/^http:\/\/xmlns\.oracle\.com\/Primavera\/P6(?:Professional)?\/[^/]+\/API\/BusinessObjects$/.test(root.namespaceURI))){
     throw Error('Deze export vereist een geladen Primavera P6-XML. Voor MS Project kun je de oorspronkelijke planning-XML exporteren.');
   }
   const projects=children(root).filter(node=>node.localName==='Project'&&children(node).some(child=>child.localName==='Activity'));
