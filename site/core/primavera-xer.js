@@ -27,6 +27,11 @@ export function xerDuration(iso){
   if(!m||!m.slice(1).some(x=>x!==undefined))throw Error('Niet ondersteunde XML-duur: '+iso);
   return num(m[1]||'')*24+num(m[2]||'')+num(m[3]||'')/60+num(m[4]||'')/3600;
 }
+export function xerMsProjectLag(raw,format){
+  const hours=num(raw)/600;
+  if(hours&&['19','20'].includes(format))throw Error('Percentage-lag kan niet naar XER-uren worden vertaald.');
+  return {hours,elapsed:hours!==0&&['4','6','8','10','12'].includes(format)};
+}
 const minute=t=>{
   const m=String(t).match(/(?:^|T)(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/);
   if(!m||+m[1]>24||+m[2]>59||(+m[1]===24&&+m[2])||num(m[3]||'')!==0)throw Error('Ongeldige of niet op hele minuten afgeronde kalenderwerktijd: '+t);
@@ -148,6 +153,10 @@ export function validateXer(tables,expected){
   }
   if([...wbs.values()].filter(w=>!w.parent_wbs_id&&w.proj_node_flag==='Y').length!==1)throw Error('XER vereist één project-WBS.');
   for(const r of tables.TASKPRED||[])if(!tasks.has(String(r.task_id))||!tasks.has(String(r.pred_task_id))||r.task_id===r.pred_task_id||!['PR_FS','PR_SS','PR_FF','PR_SF'].includes(r.pred_type)||!Number.isFinite(r.lag_hr_cnt))throw Error('Ongeldige XER-relatie.');
+  if(tables.SCHEDOPTIONS?.length){
+    index('SCHEDOPTIONS','schedoptions_id');
+    for(const s of tables.SCHEDOPTIONS)if(!projects.has(String(s.proj_id))||!['rcal_Predecessor','rcal_Successor','rcal_ProjDefault','rcal_24Hour'].includes(s.sched_calendar_on_relationship_lag))throw Error('Ongeldige XER-lagkalender.');
+  }
 }
 
 export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,now=new Date()}){
@@ -166,7 +175,7 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   const name=val(project,'Name')||val(project,'Id')||String(filename||'Planning').replace(/\.xml$/i,'');
   const projectCode=clean(msp?'BD-SCENARIO':val(project,'Id')||'BD-SCENARIO').slice(0,20);
   tables.CURRTYPE=[{curr_id:1,decimal_digit_cnt:2,curr_symbol:'€',decimal_symbol:'.',digit_group_symbol:',',pos_curr_fmt_type:'#1.1',neg_curr_fmt_type:'(#1.1)',curr_type:'Euro',curr_short_name:'EUR',group_digit_cnt:3,base_exch_rate:1}];
-  tables.PROJECT=[];tables.CALENDAR=[];tables.PROJWBS=[];tables.TASK=[];tables.TASKPRED=[];
+  tables.PROJECT=[];tables.SCHEDOPTIONS=[];tables.CALENDAR=[];tables.PROJWBS=[];tables.TASK=[];tables.TASKPRED=[];
   const sourceWbs=model.wbs||{},top=Object.keys(sourceWbs).filter(id=>!sourceWbs[sourceWbs[id].parent]),rootId=top.length===1?top[0]:'__xer_root';
   const wbs={...sourceWbs};if(top.length!==1)wbs[rootId]={naam:name,parent:'',seq:0};
   wbsIds.set(rootId,1);for(const id of Object.keys(wbs))if(!wbsIds.has(id))wbsIds.set(id,wbsIds.size+1);
@@ -232,28 +241,69 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
       act_start_date:actualStart,act_end_date:actualEnd,cstr_type:constraint,cstr_date:constraint&&constraint!=='CS_ALAP'?date(el,msp?'ConstraintDate':'PrimaryConstraintDate'):'',cstr_type2:msp?'':p6constraints[val(el,'SecondaryConstraintType')]||'',cstr_date2:msp?'':date(el,'SecondaryConstraintDate'),priority_type:'PT_Normal',driving_path_flag:'N'});
   }
   // Source XML, not the inferred CIV relations, is the owner of exported links.
-  let sourceLinks=0,summaryLinks=0;
+  let sourceLinks=0,summaryLinks=0,elapsedLinks=0,lagActivities=0;
   function link(from,to,type,lag){
     if(!taskIds.has(from)||!taskIds.has(to))throw Error('Een bronrelatie verwijst naar een taak buiten de geladen planning. XER-export gestopt.');
     tables.TASKPRED.push({task_pred_id:tables.TASKPRED.length+1,task_id:taskIds.get(to),pred_task_id:taskIds.get(from),proj_id:1,pred_proj_id:1,pred_type:'PR_'+type,lag_hr_cnt:lag});
   }
   if(msp){
+    const links=[];
     const summaries=new Set(source.filter(el=>yes(val(el,'Summary'))).map(el=>val(el,'UID')));
     for(const el of source)for(const rel of nodes(el,'PredecessorLink')){
       sourceLinks++;const from=val(rel,'PredecessorUID'),to=val(el,'UID'),type=({'0':'FF','1':'FS','2':'SF','3':'SS'})[val(rel,'Type')||'1'];
       if(!type)throw Error('Onbekend MSP-relatietype.');
       if(yes(val(rel,'CrossProject'))&&!byId.has(from))throw Error('Een externe projectrelatie is niet in de bron opgenomen.');
-      const lagFormat=val(rel,'LagFormat');
-      if(lagFormat&&['19','20'].includes(lagFormat))throw Error('Percentage-lag kan niet naar XER-uren worden vertaald.');
-      if(lagFormat&&['4','6','8','10','12'].includes(lagFormat)&&num(val(rel,'LinkLag'))!==0)throw Error('Elapsed lag kan niet verliesloos naar P6-werkuurlag worden vertaald. Gebruik XML.');
-      const lag=num(val(rel,'LinkLag'))/600;
+      const {hours:lag,elapsed}=xerMsProjectLag(val(rel,'LinkLag'),val(rel,'LagFormat'));
+      if(elapsed)elapsedLinks++;
       if(summaries.has(from)||summaries.has(to)){
         const descendants=id=>summaries.has(id)?model.regels.filter(r=>r.wbsPath?.includes('msp_wbs_'+id)):model.regels.filter(r=>String(r.id)===id);
         const boundary=(items,start)=>{const values=items.map(r=>byId.get(String(r.id))).map(n=>val(n,start?'Start':'Finish'));if(!values.length||values.some(v=>!v))throw Error('Samenvattingsrelatie mist gedateerde randactiviteiten.');const edge=values.slice().sort()[start?0:values.length-1];return items.filter((_,i)=>values[i]===edge);};
         const a=boundary(descendants(from),type[0]==='S'),b=boundary(descendants(to),type[1]==='S');
-        for(const p of a)for(const s of b)link(String(p.id),String(s.id),type,lag);summaryLinks++;
-      }else link(from,to,type,lag);
+        for(const p of a)for(const s of b)links.push({from:String(p.id),to:String(s.id),type,lag,elapsed});summaryLinks++;
+      }else links.push({from,to,type,lag,elapsed});
     }
+    // P6's lag calendar is project-wide. A 24h setting is exact when every
+    // nonzero lag is elapsed. With mixed lag types, leave ordinary links alone
+    // and express each elapsed span as a separate, zero-cost 24h activity.
+    // Both zero-lag edges then work independently of the project lag calendar.
+    const mixed=elapsedLinks>0&&links.some(r=>!r.elapsed&&r.lag!==0);
+    if(elapsedLinks&&!mixed){
+      tables.SCHEDOPTIONS.push({schedoptions_id:1,proj_id:1,sched_calendar_on_relationship_lag:'rcal_24Hour'});
+      warnings.push(elapsedLinks+' kalenderwachttijden behouden hun uren. P6 gebruikt de 24-uurskalender voor relatiewachttijden.');
+    }
+    if(mixed)tables.SCHEDOPTIONS.push({schedoptions_id:1,proj_id:1,sched_calendar_on_relationship_lag:'rcal_Predecessor'});
+    let lagCalendar,lagWbs;
+    function lagActivity(r){
+      if(!taskIds.has(r.from)||!taskIds.has(r.to))throw Error('Een bronrelatie verwijst naar een taak buiten de geladen planning. XER-export gestopt.');
+      if(!lagCalendar){
+        lagCalendar=tables.CALENDAR.length+1;
+        tables.CALENDAR.push({clndr_id:lagCalendar,default_flag:'N',clndr_name:'BiDash kalenderwachttijd 24 uur',proj_id:1,base_clndr_id:'',last_chng_date:'',clndr_type:'CA_Project',day_hr_cnt:24,week_hr_cnt:168,month_hr_cnt:730,year_hr_cnt:8760,rsrc_private:'N',clndr_data:xerCalendarData(days.map(()=>[[0,1440]]))});
+        lagWbs=tables.PROJWBS.length+1;
+        tables.PROJWBS.push({wbs_id:lagWbs,proj_id:1,seq_num:lagWbs,est_wt:1,proj_node_flag:'N',sum_data_flag:'Y',status_code:'WS_Open',wbs_short_name:'BD-LAG-'+lagWbs,wbs_name:'Kalenderwachttijden voor relaties',parent_wbs_id:wbsIds.get(rootId),ev_compute_type:'EC_Cmp_pct',ev_etc_compute_type:'EE_Rem_hr',ev_user_pct:0,ev_etc_user_value:0.88});
+      }
+      const pred=tables.TASK.find(t=>t.task_id===taskIds.get(r.from));
+      const anchor=r.type[0]==='F'?(pred.act_end_date||pred.early_end_date||pred.target_end_date):(pred.act_start_date||pred.early_start_date||pred.target_start_date);
+      const stamp=Date.parse(anchor.replace(' ','T')+':00Z'),span=Math.abs(r.lag)*3600000;
+      const wall=ms=>{const d=new Date(ms);if(!Number.isFinite(d.getTime())||d.getUTCFullYear()<1||d.getUTCFullYear()>9999)throw Error('Kalenderwachttijd valt buiten het P6-datumbereik.');return d.toISOString().slice(0,16).replace('T',' ');};
+      const start=wall(r.lag>0?stamp:stamp-span),finish=wall(r.lag>0?stamp+span:stamp);
+      let id='__xer_elapsed_'+(lagActivities+1),code='BD-LAG-'+(lagActivities+1);
+      while(taskIds.has(id))id+='_';while(usedCodes.has(code))code+='_';
+      const taskId=tables.TASK.length+1;taskIds.set(id,taskId);usedCodes.add(code);lagActivities++;
+      tables.TASK.push({...pred,task_id:taskId,wbs_id:lagWbs,clndr_id:lagCalendar,task_code:code,task_name:'Kalenderwachttijd '+pred.task_code+' naar '+tables.TASK.find(t=>t.task_id===taskIds.get(r.to)).task_code,
+        task_type:'TT_Task',duration_type:'DT_FixedDrtn',complete_pct_type:'CP_Drtn',phys_complete_pct:0,status_code:'TK_NotStart',
+        target_drtn_hr_cnt:Math.abs(r.lag),remain_drtn_hr_cnt:Math.abs(r.lag),act_work_qty:0,remain_work_qty:0,target_work_qty:0,target_equip_qty:0,act_equip_qty:0,remain_equip_qty:0,
+        target_start_date:start,target_end_date:finish,early_start_date:start,early_end_date:finish,restart_date:start,reend_date:finish,
+        act_start_date:'',act_end_date:'',late_start_date:'',late_end_date:'',cstr_type:'',cstr_date:'',cstr_type2:'',cstr_date2:''});
+      // Positive span: predecessor -> helper start, helper finish -> successor.
+      // Negative span: predecessor -> helper finish, helper start -> successor.
+      link(r.from,id,r.type[0]+(r.lag>0?'S':'F'),0);
+      link(id,r.to,(r.lag>0?'F':'S')+r.type[1],0);
+    }
+    for(const r of links){
+      if(mixed&&r.elapsed)lagActivity(r);
+      else link(r.from,r.to,r.type,r.lag);
+    }
+    if(lagActivities)warnings.push(lagActivities+' kalenderwachttijden zijn extra activiteiten met een 24-uurskalender in de WBS Kalenderwachttijden voor relaties. Alle '+model.regels.length+' bronactiviteiten blijven behouden. Gewone werkurenlag blijft ongewijzigd. Controleer de planning na herberekenen in P6.');
   }else for(const rel of nodes(project,'Relationship')){
     sourceLinks++;const type=({'Finish to Start':'FS','Start to Start':'SS','Finish to Finish':'FF','Start to Finish':'SF'})[val(rel,'Type')];
     if(!type)throw Error('Onbekend P6-relatietype.');
@@ -269,8 +319,8 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   const inferred=(model.relaties||[]).filter(r=>r.inferredPair).length;
   if(inferred)warnings.push(inferred+' afgeleide CIV-relaties worden niet als bronrelaties geëxporteerd.');
   warnings.push('XER bewaart lokale datums op minuten, zonder tijdzone. Scenariodatums volgen de XML-export; werkelijke datums en constraints blijven bronwaarden.');
-  validateXer(tables,model.regels.length);
+  validateXer(tables,model.regels.length+lagActivities);
   const text=serializeXer(tables,now);
-  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',exportedActivities:tables.TASK.length,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
+  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
     importInstruction:'In P6: Bestand > Importeren > Primavera PM (XER). Kies een nieuw project en controleer de planning vóór herberekenen.'};
 }
