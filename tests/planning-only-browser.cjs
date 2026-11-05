@@ -29,6 +29,13 @@ const p6=`<?xml version="1.0"?><APIBusinessObjects xmlns="${ns}"><Project><Objec
   assert.equal(fs.readFileSync(await downloaded.path(),'utf8'),msp);
   waiting=page.waitForEvent('download');await frame.locator('#ipl-export-primavera').click();downloaded=await waiting;
   const msScenario=fs.readFileSync(await downloaded.path(),'utf8');assert.match(msScenario,/<Start>2030-03-15T08:00:00<\/Start>/);assert.match(await frame.locator('#ipl-export-status').innerText(),/Microsoft Project > XML/);
+  assert.equal(await frame.locator('#ipl-export-recovery').isVisible(),true);
+  waiting=page.waitForEvent('download');await frame.locator('#ipl-export-recovery').click();downloaded=await waiting;
+  assert.match(downloaded.suggestedFilename(),/-p6-herstel\.xml$/);
+  assert.match(fs.readFileSync(await downloaded.path(),'utf8'),/<Start>2030-03-15T08:00:00<\/Start>/);
+  assert.match(await frame.locator('#ipl-export-status').innerText(),/1 planningactiviteiten en 0 bronrelaties/);
+  assert.match(await frame.locator('#ipl-export-status').innerText(),/nieuw testproject/);
+  assert.equal(await frame.evaluate(()=>IPL_RAW_XML),msp);
   waiting=page.waitForEvent('download');await page.locator('#backup').click();downloaded=await waiting;
   const backup=JSON.parse(fs.readFileSync(await downloaded.path(),'utf8'));assert.equal(backup.planning.xml,msp);assert.equal(backup.planning.state.ipl.shift,2);
   await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('hersteld'));
@@ -37,6 +44,7 @@ const p6=`<?xml version="1.0"?><APIBusinessObjects xmlns="${ns}"><Project><Objec
   await load('<bad','invalid.xml');assert.match(await page.locator('#status').innerText(),/Laden mislukt/);assert.equal(await restored.evaluate(()=>IPL_RAW_XML),msp);assert.equal(await restored.evaluate(()=>IPL_SHIFT),2);
   await load(p6,'synthetic-p6.xml');await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Lokaal opgeslagen'));
   assert(await restored.locator('#ipl-export-primavera').isEnabled());await restored.evaluate(()=>ipl_slider(1));
+  assert.equal(await restored.locator('#ipl-export-recovery').isVisible(),false);
   waiting=page.waitForEvent('download');await restored.locator('#ipl-export-primavera').click();downloaded=await waiting;
   const exported=fs.readFileSync(await downloaded.path(),'utf8');assert.match(exported,/<StartDate>2030-02-15T08:00:00<\/StartDate>/);
   await load(JSON.stringify({formaat:'BiDash-integraal',delen:{planning:backup.planning,dvm:{ignored:true}}}),'synthetic-integral.json');

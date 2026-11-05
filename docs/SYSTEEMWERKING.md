@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.75 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.76 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1106,3 +1106,14 @@ Vanaf BiDash 2.20 / DVM 103 bestaat geen afzonderlijke EOL-referentiebron meer. 
 De levensduurketen gebruikt per asset achtereenvolgens een bewuste individuele configuratie, een handmatige fabrikant×type-override, expliciete levensduur/EOL uit All Assets en daarna de generieke assettypewaarde. Een EOL-jaar uit All Assets kan samen met het installatiejaar een levensduur opleveren. De vroegere fabrikant-factsheet/EOL-referentie en de bijbehorende upload-, import-, export- en contextstate zijn verwijderd.
 
 De Context API levert installatie-/ingebruiknamedatum, bouwjaar en EOL-jaar uit het assetregister aan Vraag BiDash. Vragen als `Wat is het oudste asset?` en `Wat is het nieuwste asset?` rangschikken uitsluitend assets met een bruikbare installatiedatum of bouwjaar. Ontbrekende datums worden niet geïnterpreteerd als nul of als het oudste jaar.
+
+
+## P6 herstelpoging, versie 2.76
+
+Bij een Microsoft Project-bron staat naast de gewone export een aparte knop `P6 herstelpoging, zonder gebruikersvelden`. Deze alternatieve scenario-XML laat alle MSP-gebruikersvelddefinities en -waarden weg. De oorspronkelijke XML, opgeslagen bron en gewone scenario-export behouden die velden. Het herstelbestand eindigt op `-p6-herstel.xml`.
+
+De herstelpoging maakt een bestaande externe taakmarkering lokaal voor activiteiten die daadwerkelijk in het planningmodel aanwezig zijn, en voor hun aanwezige samenvattingsgroepen. Een plat deelproject met lokale onderliggende taken wordt een gewone WBS-groep. Externe verwijzingen zonder gemodelleerde taak blijven staan. Bronrelaties worden niet herschreven. Ingesloten deelproject-XML en een geselecteerd deelproject zonder lokale onderliggende taken stoppen de herstelpoging; er wordt geen onvolledige samenvoeging verzonnen.
+
+De export toont aantallen aanwezige planningactiviteiten, bronrelaties, weggelaten velddefinities/waarden en aangepaste markeringen. Iedere MSP-scenario-export controleert na serialisatie leesbare XML, alle oorspronkelijke taak-UID’s en aantallen bronrelaties en planningactiviteiten. Dit bewijst geen acceptatie door P6. Het totale aantal oorspronkelijke taken kan hoger zijn dan het aantal activiteiten doordat ook samenvattingen en verwijzingen behouden blijven.
+
+Deze poging richt zich op de aanname dat P6 taken als externe projectverwijzingen behandelt, naast de gemelde gebruikersveldproblemen. De werkelijke gebruikers-XML is niet beschikbaar en de oorzaak van de ene geïmporteerde activiteit is niet bewezen. Importeer het herstelbestand in P6 via Microsoft Project XML als nieuw testproject. Vergelijk aantallen activiteiten, WBS, datums en relaties met de bron vóór gebruik. Er is geen native MSP-naar-P6-converter toegevoegd en import in P6 Professional 21 is niet getest.
