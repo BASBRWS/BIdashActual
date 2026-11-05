@@ -1,0 +1,13 @@
+# BIdashActual 2.77, Primavera XER export
+
+De tijdlijn exporteert nu een echt XER-planningsbestand bij Microsoft Project XML en native P6 XML. De knop staat naast de bestaande XML-export, in beide planningingangen. Dezelfde scenariocascade wordt vooraf door de bestaande XML-export verwerkt. De bron blijft ongewijzigd.
+
+XER 20.12, Windows-1252 en CRLF met CURRTYPE, PROJECT, CALENDAR, PROJWBS, TASK en TASKPRED. De export controleert aantallen, ID's en alle project-/WBS-/kalender-/taakverwijzingen. Aanwezige externe MSP-taken worden lokale activiteiten. Kalenderweek, gedateerde uitzonderingen, activiteittypen, voortgang, datums, duur, constraints en bronrelaties worden vertaald. Ontbrekende werkweken en afgeleide duren worden zichtbaar als aannamen. Onvertaalbare kalenders, relaties en tekens stoppen de export.
+
+Deze conversie is beperkt tot de planning. Resources, toewijzingen, kosten, baselines, gebruikersvelden en activiteitcode-indelingen gaan niet mee. Dit staat vóór de export bij de knop en na voorbereiding in de melding. De XML- en volledige back-upexport blijven beschikbaar.
+
+Validatie: 662 unittests geslaagd, inclusief negen XER-tests voor tabellen, datums, uren, P6-typen, voortgang, constraints, 702 taken/701 relaties, ontbrekende kalenders, verwijzingsfouten, tekencodering en recordinjectie. Een onafhankelijke MPXJ-lezer las rechtstreeks gegenereerde bytes met 702 activiteiten en 701 relaties, 8 werkuren, maandverschuiving, kalender en uitzondering terug. Ook een P6Professional-bron met 12 activiteiten, nil-werktijden en projectactiviteiten is geconverteerd en onafhankelijk teruggelezen. P6Professional-namespaces en activiteiten direct op de project-WBS worden herkend. Browser: een synthetische 702-takenbron geladen via de XML-invoer van de planningengine; XER-knop en correcte aantallen/downloadlink zichtbaar. De browserdownloadwaarnemer gaf geen bestand terug. De eerste controle via de buitenste planning-import meldde DOMParser is not a constructor; rechtstreekse engine-import werkte. Dat omgevingsspecifieke verschil is niet opgelost en niet als geslaagde volledige downloadtest geteld. Syntaxcontrole van alle applicatie-JS en de inline planningcode geslaagd.
+
+P6 Professional 21-import en de werkelijke gebruikers-XML zijn niet getest. Importeer eerst als nieuw testproject. DVM blijft 151.
+
+Bronnen: Oracle XER Import/Export Data Map Guide, https://docs.oracle.com/cd/G48897_01/English/Mapping_and_Schema/xer_import_export_data_map_project/xer_import_export_data_map_project.pdf . MSP LinkLag/duurformaten volgen Microsoft Project XML. Er zijn geen operationele bronnen toegevoegd.

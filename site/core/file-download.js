@@ -15,7 +15,7 @@ export function createFileDownload(link,scope=globalThis){
     const nextUrl=scope.URL.createObjectURL(blob);
     clear();objectUrl=nextUrl;
     link.href=objectUrl;link.download=name;
-    link.textContent='Download XML, '+name;link.hidden=false;
+    link.textContent='Download '+(/\.xer$/i.test(name)?'XER':'XML')+', '+name;link.hidden=false;
   }
   function attempt(){
     if(!objectUrl)return false;
