@@ -24,7 +24,7 @@ jobs:
       - run: npm test
       - name: JavaScript controleren
         run: |
-          for file in site/*.js site/engines/*.js site/core/*.js site/ui/*.js; do
+          for file in site/*.js site/engines/*.js site/core/*.js site/ui/*.js site/planning/*.js; do
             node --check "$file"
           done
       - uses: actions/configure-pages@v5

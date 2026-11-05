@@ -1,16 +1,16 @@
-import {actualStand} from './core/actual-state.js?v=20261103-1400';
+import {actualStand} from './core/actual-state.js?v=20261105-1100';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261103-1400';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261103-1400';
-import {createFileDownload} from './core/file-download.js?v=20261103-1400';
-import {toonVersies} from './core/versie.js?v=20261103-1400';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261105-1100';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1100';
+import {createFileDownload} from './core/file-download.js?v=20261105-1100';
+import {toonVersies} from './core/versie.js?v=20261105-1100';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
-import {applyQuery} from './core/query-filter.js?v=20261103-1400';
-import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261103-1400';
-import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261103-1400';
-import {createAssetRegisterView} from './core/asset-register-view.js?v=20261103-1400';
-import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261103-1400';
+import {applyQuery} from './core/query-filter.js?v=20261105-1100';
+import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261105-1100';
+import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261105-1100';
+import {createAssetRegisterView} from './core/asset-register-view.js?v=20261105-1100';
+import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261105-1100';
 const assetFlag=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 import {installQueryAssistant} from './core/query-assistant.js';
 import {buildBiDashContext} from './core/context-api.js';
@@ -24,7 +24,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261103-1400';
+const APP_BUILD='20261105-1100';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -110,7 +110,7 @@ async function exportSnapshot(){
 }
 async function sync(){if(busy||failedImport)return;busy=true;status('Lokale gegevens en uitkomsten bijwerken…');try{await capture();await importStap('Werkruimte automatisch opslaan',()=>write(state));render();status('Lokaal opgeslagen · '+new Date().toLocaleTimeString('nl-NL'));}catch(e){fail(e);}finally{busy=false;}}
 function queue(){clearTimeout(timer);timer=setTimeout(sync,1800);}
-window.addEventListener('message',ev=>{if(ev.origin!==location.origin||!Object.values(frames).some(f=>f.contentWindow===ev.source))return;if(ev.data?.type==='hub:planning-loaded'&&ev.source===frames.planning?.contentWindow){primaveraDownload.clear();primaveraExportStatus('');frames.bi?.contentWindow?.HUB?.syncPlanningRules();queue();}if(ev.data?.type==='hub:planning-fullscreen'&&ev.source===frames.planning?.contentWindow)setPlanningFullscreen(ev.data.active);if(ev.data?.type==='hub:version'&&ev.data.engine){engineVersies[ev.data.engine]=String(ev.data.versie??'');toonVersies(document,engineVersies);}if(ev.data?.type==='hub:changed')invalidateAssetView();if(ev.data?.type==='hub:changed'&&!busy){if(ev.source===frames.dvm?.contentWindow&&view==='costs'){summaries.dvm=ev.source.HUB.summary();renderCosts();}queue();}});
+window.addEventListener('message',ev=>{if(ev.origin!==location.origin||!Object.values(frames).some(f=>f.contentWindow===ev.source))return;if(ev.data?.type==='hub:planning-loaded'&&ev.source===frames.planning?.contentWindow){primaveraDownload.clear();primaveraExportStatus('');renderPlanningExportInfo();frames.bi?.contentWindow?.HUB?.syncPlanningRules();queue();}if(ev.data?.type==='hub:planning-fullscreen'&&ev.source===frames.planning?.contentWindow)setPlanningFullscreen(ev.data.active);if(ev.data?.type==='hub:version'&&ev.data.engine){engineVersies[ev.data.engine]=String(ev.data.versie??'');toonVersies(document,engineVersies);}if(ev.data?.type==='hub:changed')invalidateAssetView();if(ev.data?.type==='hub:changed'&&!busy){if(ev.source===frames.dvm?.contentWindow&&view==='costs'){summaries.dvm=ev.source.HUB.summary();renderCosts();}queue();}});
 
 function expertServices(){
  const map=new Map(DEFAULT_SERVICES.map(service=>[service.id,{...service}]));
@@ -241,7 +241,13 @@ function renderActualStand(){
  const stamp=value=>value==null?'Onbekend':new Date(value).toLocaleString('nl-NL',{timeZone:'Europe/Amsterdam'});
  host.innerHTML=`<strong>Operationele dagstand</strong><p>Deze stand volgt je laatst geladen bronnen. Laden en verversen haalt geen nieuwe storingsbestanden op. Onzekere meldingen blijven zichtbaar.</p><p>DVM-rekenpeilmoment, ${esc(stamp(stand.peildatum))}. Alle tijden hieronder zijn Nederlandse tijd.</p><details><summary>Bronactualiteit per verkeerscentrale</summary><div class="tbl-scroll"><table><thead><tr><th>VC</th><th>Laatst verwerkt bronmoment</th><th>Open en onzeker, regels</th><th>Daarvan onzeker of verouderd</th><th>Bronstatus</th></tr></thead><tbody>${stand.rows.map(r=>`<tr><td>${esc(r.vc)}</td><td>${esc(stamp(r.peildatum))}</td><td>${r.peildatum==null&&!r.meldingen?'Onbekend':r.meldingen}</td><td>${r.onzeker}</td><td>${esc(r.status)}</td></tr>`).join('')}</tbody></table></div></details>`;
 }
+function renderPlanningExportInfo(){
+ const info=sourceApi('planning')?.summary()?.exportInfo;
+ $('#exportPrimavera').disabled=!info?.primavera;
+ $('#planningExportInfo').textContent=info?.uitleg||'Laad een planning om de exportmogelijkheden te zien.';
+}
 function render(){
+ renderPlanningExportInfo();
  renderActualStand();
  const d=summaries.dvm,b=summaries.bi,roads=d?.roads||[],known=roads.filter(r=>Number.isFinite(r.kosten)),total=known.reduce((s,r)=>s+r.kosten,0),fte=b?.functies||[];
  $('#cards').innerHTML=[['DVM-brondag',date(d?.peildatum),'Open storingen uit de laatste geladen bron'],['Verkeerskosten / brondag',known.length?money(total):'Onbekend',`${known.length} van ${roads.length} ${d?.netwerkschakelmatrix?'netwerkschakelrichtingen':'wegdelen'} berekenbaar${known.length<roads.length?' · bekend subtotaal':''}; som scenario’s, controleer overlap`],['Beschikbare formatie',fte.length?num(fte.reduce((s,f)=>s+f.actueel,0))+' FTE':'Onbekend','BI-brondatum: '+date(b?.peildatum)],['Planning',b?.planning?num(b.planning.regels,0)+' activiteiten':'Nog niet geladen',b?.planning?.naam||'Laad je bestaande XML']].map(c=>`<div class="card">${esc(c[0])}<strong>${esc(c[1])}</strong><small>${esc(c[2])}</small></div>`).join('');
@@ -395,7 +401,7 @@ $('#exportPrimavera').onclick=async()=>{
   const saved=await schrijfExportOokNaarGekoppeldeMap(result.text,result.name,result.type,{prepared:true});
   if(latestSnapshotDirectory)primaveraExportStatus(saved?message+' Ook opgeslagen in de gekoppelde map.':message+' Opslaan in de gekoppelde map is mislukt.');
  }catch(error){primaveraExportStatus('Export mislukt. '+(error.message||String(error)),true);fail(error);}
- finally{button.disabled=false;}
+ finally{renderPlanningExportInfo();}
 };
 $('#save').onclick=sync;$('#refresh').onclick=()=>{invalidateAssetView();sync();};$('#signalFilter').onchange=render;
 $('#linkForm').onsubmit=e=>{e.preventDefault();const l={dienst:$('#linkService').value,functie:$('#linkFunction').value,eigenaar:$('#linkOwner').value.trim()};state.links=state.links.filter(x=>x.dienst!==l.dienst||x.functie!==l.functie);state.links.push(l);sync();};

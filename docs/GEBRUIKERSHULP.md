@@ -629,3 +629,11 @@ Een DVKA-letter blijft een eigen wegtak. Het dashboard bepaalt per locatie bij w
 Assetconfiguratie toont waarom meldgroepen niet koppelen, hoeveel bronverwijzingen daarbij horen en hoeveel unieke locaties dit raakt. De telling bevat historie én open lijsten. Eén incident kan in beide staan. Een locatiekandidaat is nog geen bevestigde storing op één asset.
 
 Controleer de getoonde kandidaten. Bevestig DVKA-koppeling bewaart een gecontroleerde relatie naar dezelfde hoofdrichting. Een afwijkende eenheid of een andere DVKA vraagt broncontrole en krijgt geen geforceerde koppeling. De bulkknop slaat deze onbesliste technische groepen over. Bewaar de keuze met jouw totaalexport of assetconfiguratie-export. Na herladen en import blijft de relatie beschikbaar zolang de bronkenmerken passen.
+
+## Alleen de planning, versie 2.74
+
+Open `planning/` vanaf de website, of klik rechtsboven op Alleen planning. Deze pagina heeft een eigen werkruimte met de tijdlijn, project/budget en dashboards. Laad een planning-XML of jouw integrale back-up met de planning. Alleen het planningdeel wordt overgenomen. De pagina laadt geen storingen of assetregister.
+
+De laatst opgeslagen planning wordt bij terugkeer hersteld. Volledige back-up bewaart de bron-XML met verschuivingen en planningsinstellingen voor overdracht. Een los triggerbestand laad je apart. De opslag staat los van het volledige dashboard; wijzigingen worden niet automatisch tussen beide ingangen gedeeld.
+
+Bij MS Project XML is de P6-export uitgeschakeld en staat de reden bij de knop. Oorspronkelijke planning-XML downloadt de geladen bron zonder jouw scenarioverschuivingen. Gebruik de volledige back-up om die verschuivingen mee te nemen. Met een P6-bron blijft de bestaande P6-scenario-export beschikbaar. Deze pagina converteert MS Project XML niet naar P6 XML.
