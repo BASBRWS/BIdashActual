@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>BIdash Planning</title><link rel="stylesheet" href="style.css?v=20261105-1100">
+</head>
+<body>
+<header>
+  <div class="identity"><strong>BIdash Planning</strong><span id="version"></span><small>Planning, afhankelijkheden en projectinstellingen</small></div>
+  <div class="actions"><button id="import" type="button" disabled>Planning of back-up laden</button><button id="save" type="button" disabled>Nu opslaan</button><button id="backup" type="button" disabled>Volledige back-up</button><button id="fullscreen" type="button">Volledig scherm</button></div>
+  <input id="file" type="file" accept=".xml,.json,application/xml,application/json" hidden>
+  <nav aria-label="Planning"><button type="button" data-screen="s16" aria-current="page">Tijdlijn</button><button type="button" data-screen="s17">Project en budget</button><button type="button" data-screen="s18">Dashboard instellen</button><button type="button" data-screen="s19">Dashboards</button><button type="button" data-screen="s11">Dienstanalyse</button></nav>
+</header>
+<main><iframe id="planning" title="Integrale planning" sandbox="allow-scripts allow-same-origin allow-downloads allow-modals" src="../engines/planning.html?standalone=1&amp;v=20261105-1100"></iframe></main>
+<footer><p id="status" role="status" aria-live="polite">Planning starten…</p><a id="backupDownload" hidden></a><small>Bronnen en wijzigingen worden op dit apparaat bewaard. Maak een volledige back-up voor overdracht.</small></footer>
+<script type="module" src="app.js?v=20261105-1100"></script>
+</body></html>

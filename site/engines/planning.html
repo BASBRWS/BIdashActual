@@ -1469,10 +1469,11 @@
         <div style="background:#e8f0fb;border:1px solid #b0c8ec;border-radius:6px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <span style="font-size:18px;">📤</span>
           <div style="flex:1;min-width:220px;">
-            <div style="font-size:12px;font-weight:700;color:#003082;">Planning exporteren naar Primavera P6</div>
-            <div style="font-size:10px;color:#4a6a9a;">Behoudt de structuur van jouw P6-bron, inclusief WBS, relaties, kalenders en codes. De huidige verschuivingen gaan mee. Controleer en herbereken de planning na import in P6.</div>
+            <div id="ipl-export-title" style="font-size:12px;font-weight:700;color:#003082;">Planning exporteren</div>
+            <div id="ipl-export-info" style="font-size:11px;color:#4a6a9a;"></div>
           </div>
           <button id="ipl-export-primavera" onclick="ipl_exportXML()" title="Exporteert de volledige geladen P6-planning met alle scenarioverschuivingen, ook van ingeklapte of gefilterde activiteiten. De originele bron blijft bewaard." style="padding:8px 18px;background:#003082;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Exporteer Primavera P6 XML</button>
+          <button id="ipl-export-source" onclick="ipl_exportBronXML()" type="button">Oorspronkelijke planning-XML</button>
           <div class="planning-export-result"><div id="ipl-export-status" class="export-feedback" role="status" aria-live="polite"></div><a id="ipl-export-download" class="prepared-download" hidden></a></div>
         </div>
 
@@ -5406,7 +5407,7 @@ function ipl_parseMSProject(xml){
     });
   });
   var ts=[];regels.forEach(function(r){ts.push(r.t0,r.t1);}); if(!ts.length)throw new Error('Geen taken met geldige start- en einddatums gevonden.');
-  return {blokken:blokken,regels:regels,relaties:relaties,wbs:wbs,t0:Math.floor(Math.min.apply(null,ts)),t1:Math.ceil(Math.max.apply(null,ts)),projecten:projecten,projectPairs:pairs,pairLinks:pairLinks,codeTypes:{},codeAssignCount:0,
+  return {bronFormaat:'msproject',blokken:blokken,regels:regels,relaties:relaties,wbs:wbs,t0:Math.floor(Math.min.apply(null,ts)),t1:Math.ceil(Math.max.apply(null,ts)),projecten:projecten,projectPairs:pairs,pairLinks:pairLinks,codeTypes:{},codeAssignCount:0,
     stats:{activiteiten:regels.length,relaties:relaties.length,wbs:Object.keys(wbs).length-1,mijlpalen:regels.filter(function(r){return r.kind==='mile';}).length,cross:relaties.filter(function(r){return r.cross;}).length,blokken:blokken.length,projecten:projecten.length,projectPairs:pairs.length,pairLinks:pairLinks,codeTypes:0,codeToewijzingen:0}};
 }
 
@@ -5581,7 +5582,7 @@ function ipl_parseXML(xmlText){
     for(var k=r.wbsPath.length-1;k>=0;k--){ if(projIds[r.wbsPath[k]]){ r.project=r.wbsPath[k]; break; } }
   }
 
-  return { blokken:blokken, regels:regels, relaties:relaties, wbs:wbs, t0:t0, t1:t1, projecten:projecten,
+  return { bronFormaat:xml.documentElement.localName==='APIBusinessObjects'&&(!xml.documentElement.namespaceURI||/^http:\/\/xmlns\.oracle\.com\/Primavera\/P6\/[^/]+\/API\/BusinessObjects$/.test(xml.documentElement.namespaceURI))?'primavera-p6':'onbekend',blokken:blokken, regels:regels, relaties:relaties, wbs:wbs, t0:t0, t1:t1, projecten:projecten,
     codeTypes:codeTypes, codeAssignCount:totaalCodeToewijzingen,
     stats:{ activiteiten:regels.length, relaties:relaties.length, wbs:Object.keys(wbs).length,
       mijlpalen:regels.filter(function(r){return r.kind==='mile';}).length,
@@ -5971,6 +5972,29 @@ function ipl_expandAll(v){
 // overige Primavera-velden blijven ongewijzigd (round-trip veilig).
 // ══════════════════════════════════════════════════════════
 
+function ipl_exportMogelijkheden(){
+  var loaded=!!(IPL_MODEL&&IPL_RAW_XML),format=IPL_MODEL&&IPL_MODEL.bronFormaat||'onbekend';
+  var isP6=loaded&&format==='primavera-p6';
+  return {geladen:loaded,formaat:format,primavera:isP6,
+    label:!loaded?'Geen planning geladen':format==='msproject'?'Microsoft Project XML':isP6?'Primavera P6 XML':'Onbekend XML-formaat',
+    uitleg:!loaded?'Laad een planning om de exportmogelijkheden te zien.':isP6?'Primavera P6 XML. De huidige verschuivingen gaan mee in de P6-export. Controleer en herbereken na import in P6.':format==='msproject'?'Microsoft Project XML. De P6-export vereist een P6-bron. De oorspronkelijke XML hieronder bevat geen scenarioverschuivingen. Bewaar bron en verschuivingen samen via de volledige back-up.':'Deze bron wordt niet als P6 aangeboden. De oorspronkelijke XML blijft beschikbaar; bewaar verschuivingen in de volledige back-up.'};
+}
+function ipl_updateExportMogelijkheden(){
+  var info=ipl_exportMogelijkheden(),button=document.getElementById('ipl-export-primavera'),source=document.getElementById('ipl-export-source'),description=document.getElementById('ipl-export-info');
+  if(button){button.disabled=!info.primavera;button.title=info.uitleg;}
+  if(source)source.disabled=!info.geladen;
+  if(description)description.textContent=info.uitleg;
+}
+async function ipl_exportBronXML(){
+  if(IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD.clear();
+  try{
+    if(!IPL_RAW_XML)throw Error('Laad eerst een planning.');
+    var api=await import('../core/file-download.js?v=20261105-1100');
+    if(!IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD=api.createFileDownload(document.getElementById('ipl-export-download'));
+    IPL_EXPORT_DOWNLOAD.prepare({text:IPL_RAW_XML,name:IPL_RAW_FILENAME||'planning.xml',type:'application/xml'});IPL_EXPORT_DOWNLOAD.attempt();
+    ipl_exportStatus('Oorspronkelijke XML staat klaar, zonder scenarioverschuivingen. Bewaar bron en verschuivingen samen via de volledige back-up.');
+  }catch(e){ipl_exportStatus('Export mislukt. '+e.message,true);}
+}
 async function ipl_createPrimaveraExport(){
   if(!IPL_MODEL || !IPL_RAW_XML) throw new Error('Laad eerst een Primavera P6-planning.');
   var api=await import('../core/primavera-export.js?v=20261016-0834');
@@ -6000,7 +6024,7 @@ async function ipl_exportXML(){
     ipl_exportStatus('Primavera XML staat klaar. '+result.changedActivities+' activiteit(en) verschoven. Begint de download niet, klik dan op de downloadlink hieronder. Controleer en herbereken de planning na import in P6.');
   }catch(e){
     ipl_exportStatus('Export mislukt. '+e.message,true);
-  }finally{if(button)button.disabled=false;}
+  }finally{ipl_updateExportMogelijkheden();}
 }
 
 // ── Projecten verschuiven via vinkje op de WBS-groepsregel + floating slider ──
@@ -6072,9 +6096,19 @@ function ipl_handleFile(input){
   var rd=new FileReader();
   rd.onload=function(ev){
     try{
-      IPL_MODEL=ipl_parseXML(ev.target.result);
-      IPL_RAW_XML=ev.target.result;
-      IPL_RAW_FILENAME=f.name;
+      ipl_laadBron(ev.target.result,f.name);
+    }catch(e){
+      if(status){ status.textContent='Fout: '+e.message; status.style.color='#c0121f'; }
+    }
+  };
+  rd.readAsText(f); input.value='';
+}
+
+function ipl_laadBron(xmlText,naam,instellingen){
+      var parsed=ipl_parseXML(xmlText);
+      IPL_MODEL=parsed;
+      IPL_RAW_XML=xmlText;
+      IPL_RAW_FILENAME=naam;
       if(IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD.clear();ipl_exportStatus('');
       IPL_SHIFT=0; IPL_MSHIFT={}; IPL_PROJSHIFT={}; IPL_COLLAPSED={};
       IPL_WBS_DIENST={}; ipl_initDienstMapping();
@@ -6083,16 +6117,13 @@ function ipl_handleFile(input){
       try{if(parent&&parent.DB&&parent.DB.civFormatie)ipl_applyCivFormatie(parent.DB.civFormatie);}catch(ex){}
       ipl_setLevel(3);
       var levelSel=document.getElementById('ipl-level'); if(levelSel)levelSel.value='3';
-      ipl_showLoaded(f.name);
+      if(instellingen)app_applyState(instellingen);
+      ipl_showLoaded(naam);
       renderIPL();
-    }catch(e){
-      if(status){ status.textContent='Fout: '+e.message; status.style.color='#c0121f'; }
-    }
-  };
-  rd.readAsText(f); input.value='';
 }
 
 function ipl_showLoaded(naam){
+  ipl_updateExportMogelijkheden();
   var s=IPL_MODEL.stats;
   var status=document.getElementById('ipl-status');
   if(status){ status.textContent='Geladen: '+naam; status.style.color='#1a8a4a'; }
@@ -8477,5 +8508,5 @@ window.addEventListener('resize', ()=>{
 
 <script src="planning-analysis.js?v=20261016-0834"></script>
 <script src="planning-canvas.js"></script>
-<script src="planning-adapter.js?v=20261016-0834"></script></body>
+<script src="planning-adapter.js?v=20261105-1100"></script></body>
 </html>
