@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {xerDate,xerDuration,xerCalendarData,encodeXer,serializeXer,validateXer,createXerExport} from '../site/core/primavera-xer.js';
+import {xerDate,xerDuration,xerCalendarData,encodeXer,serializeXer,validateXer,createXerExport,xerMsProjectLag} from '../site/core/primavera-xer.js';
 
 // Inject DOM nodes to exercise the converter without a runtime XML dependency.
 // Browser DOMParser and file import are checked separately in the planning UI.
@@ -12,9 +12,9 @@ function node(name,content=[],uri=ns){
  return n;
 }
 const fields=(data,uri=ns)=>Object.entries(data).map(([name,text])=>node(name,text,uri));
-function fixture({count=3,lag=600,missing=false,calendar=true}={}){
+export function fixture({count=3,lag=600,missing=false,calendar=true,lagFormats=[],lags=[],relationTypes=[]}={}){
  const tasks=[node('Task',fields({UID:1,ID:1,Name:'WBS één',Summary:1,WBS:'1'}))];
- for(let i=0;i<count;i++)tasks.push(node('Task',[...fields({UID:i+2,ID:i+2,Name:'Activiteit '+i,Summary:0,Start:'2030-02-01T08:00:00',Finish:'2030-02-01T17:00:00',Duration:'PT8H',RemainingDuration:'PT8H',CalendarUID:calendar?1:-1,ExternalTask:1,Type:2}),...(i?[node('PredecessorLink',fields({PredecessorUID:missing?999:i+1,Type:i%4,LinkLag:lag,LagFormat:21}))]:[])]));
+ for(let i=0;i<count;i++)tasks.push(node('Task',[...fields({UID:i+2,ID:i+2,Name:'Activiteit '+i,Summary:0,Start:'2030-02-01T08:00:00',Finish:'2030-02-01T17:00:00',Duration:'PT8H',RemainingDuration:'PT8H',CalendarUID:calendar?1:-1,ExternalTask:1,Type:2}),...(i?[node('PredecessorLink',fields({PredecessorUID:missing?999:i+1,Type:relationTypes[i-1]??i%4,LinkLag:lags[i-1]??lag,LagFormat:lagFormats[i-1]??21}))]:[])]));
  const weekdays=Array.from({length:7},(_,i)=>node('WeekDay',[...fields({DayType:i+1,DayWorking:i>0&&i<6?1:0}),...(i>0&&i<6?[node('WorkingTimes',[node('WorkingTime',fields({FromTime:'08:00:00',ToTime:'12:00:00'})),node('WorkingTime',fields({FromTime:'13:00:00',ToTime:'17:00:00'}))])]:[])]));
  const root=node('Project',[...fields({Name:'Synthetische planning',CalendarUID:calendar?1:-1,MinutesPerDay:480}),node('Tasks',tasks),...(calendar?[node('Calendars',[node('Calendar',[...fields({UID:1,Name:'Werkweek'}),node('WeekDays',weekdays)])])]:[])]);
  const doc={documentElement:root,getElementsByTagNameNS:(namespace,name)=>[...(root.localName===name&&namespace===ns?[root]:[]),...root.getElementsByTagNameNS(namespace,name)]};
@@ -91,4 +91,45 @@ test('native P6 activity types, calendar, progress, constraints and lag are mapp
  assert.equal(t.TASK[0].status_code,'TK_Active');assert.equal(t.TASK[0].act_start_date,'2030-02-01 08:00');assert.equal(t.TASK[0].target_start_date,'2030-03-01 08:00');
  assert.equal(t.TASK[0].cstr_type,'CS_SNET');assert.equal(t.TASK[0].cstr_date,'2030-02-01 08:00');
  assert.equal(t.TASK[1].task_type,'TT_FinMile');assert.equal(t.TASK[1].target_drtn_hr_cnt,'0');assert.equal(t.TASKPRED[0].lag_hr_cnt,'-8');
+});
+
+
+test('elapsed lag uses actual hours and a project-wide 24h calendar when unmixed',()=>{
+ const f=fixture({count:702,lag:28800,lagFormats:Array(701).fill(8)}),before=JSON.stringify(f.root);
+ const result=createXerExport(f),t=read(decode(result));
+ assert.equal(t.TASK.length,702);assert.equal(t.TASKPRED.length,701);assert.equal(result.lagActivities,0);assert.equal(result.elapsedLinks,701);
+ assert.equal(t.TASKPRED[0].lag_hr_cnt,'48');assert.equal(t.SCHEDOPTIONS[0].sched_calendar_on_relationship_lag,'rcal_24Hour');
+ assert.equal(JSON.stringify(f.root),before);assert.ok(result.warnings.some(w=>w.includes('24-uurskalender')));
+});
+for(const type of ['FF','FS','SF','SS'])for(const sign of [1,-1])test('mixed calendars retain '+type+' elapsed '+(sign>0?'lag':'lead')+' with a 24h activity',()=>{
+ const typeCode={FF:0,FS:1,SF:2,SS:3}[type];
+ const f=fixture({lagFormats:[8,7],lags:[sign*28800,4800],relationTypes:[typeCode,1]}),before=JSON.stringify(f.root);
+ const result=createXerExport(f),t=read(decode(result));
+ assert.equal(result.sourceActivities,3);assert.equal(result.exportedActivities,4);assert.equal(result.lagActivities,1);
+ assert.equal(result.sourceLinks,2);assert.equal(t.TASKPRED.length,3);assert.equal(t.TASK.length,4);assert.equal(t.CALENDAR.length,2);
+ const h=t.TASK.find(r=>r.task_code==='BD-LAG-1'),p=t.TASK.find(r=>r.task_code==='2'),s=t.TASK.find(r=>r.task_code==='3');
+ assert.equal(h.target_drtn_hr_cnt,'48');assert.equal(h.remain_drtn_hr_cnt,'48');assert.equal(h.act_start_date,'');assert.equal(h.cstr_type,'');
+ assert.equal(t.CALENDAR.find(c=>c.clndr_id===h.clndr_id).week_hr_cnt,'168');
+ assert.equal((t.CALENDAR.find(c=>c.clndr_id===h.clndr_id).clndr_data.match(/f\|24:00\|s\|00:00/g)||[]).length,7);
+ assert.equal(t.TASKPRED[0].pred_task_id,p.task_id);assert.equal(t.TASKPRED[0].task_id,h.task_id);
+ assert.equal(t.TASKPRED[0].pred_type,'PR_'+type[0]+(sign>0?'S':'F'));
+ assert.equal(t.TASKPRED[1].pred_task_id,h.task_id);assert.equal(t.TASKPRED[1].task_id,s.task_id);
+ assert.equal(t.TASKPRED[1].pred_type,'PR_'+(sign>0?'F':'S')+type[1]);
+ assert.equal(t.TASKPRED[0].lag_hr_cnt,'0');assert.equal(t.TASKPRED[1].lag_hr_cnt,'0');assert.equal(t.TASKPRED[2].lag_hr_cnt,'8');
+ const clock=type[0]==='F'?'17:00':'08:00';
+ assert.equal(h.target_start_date,(sign>0?'2030-02-01 ':'2030-01-30 ')+clock);
+ assert.equal(h.target_end_date,(sign>0?'2030-02-03 ':'2030-02-01 ')+clock);
+ // Eliminate the helper's endpoints from the two inequalities. These are
+ // the source relation bound successor[event] >= predecessor[event] + lag.
+ const predecessor=0,successor=sign*48,hs=sign>0?predecessor:successor,hf=hs+48;
+ assert.equal(sign>0?hs:hf,predecessor);assert.equal(sign>0?hf:hs,successor);
+ assert.equal(JSON.stringify(f.root),before);assert.ok(result.warnings.some(w=>w.includes('extra activiteiten')));
+});
+test('zero elapsed lag needs no calendar or helper; percentage lag still blocks',()=>{
+ const r=createXerExport(fixture({lagFormats:[8,7],lags:[0,4800]})),t=read(decode(r));
+ assert.equal(r.lagActivities,0);assert.equal(t.SCHEDOPTIONS,undefined);assert.equal(t.TASK.length,3);
+ for(const format of ['4','6','8','10','12'])assert.deepEqual(xerMsProjectLag('14400',format),{hours:24,elapsed:true});
+ assert.throws(()=>createXerExport(fixture({lagFormats:[19],lags:[10]})),/Percentage-lag/);
+ assert.equal(xerMsProjectLag('0','20').hours,0);
+ assert.throws(()=>xerMsProjectLag('NaN','8'),/Ongeldig/);
 });
