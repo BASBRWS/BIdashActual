@@ -1,16 +1,16 @@
-import {actualStand} from './core/actual-state.js?v=20261105-1100';
+import {actualStand} from './core/actual-state.js?v=20261105-1300';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261105-1100';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1100';
-import {createFileDownload} from './core/file-download.js?v=20261105-1100';
-import {toonVersies} from './core/versie.js?v=20261105-1100';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261105-1300';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1300';
+import {createFileDownload} from './core/file-download.js?v=20261105-1300';
+import {toonVersies} from './core/versie.js?v=20261105-1300';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
-import {applyQuery} from './core/query-filter.js?v=20261105-1100';
-import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261105-1100';
-import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261105-1100';
-import {createAssetRegisterView} from './core/asset-register-view.js?v=20261105-1100';
-import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261105-1100';
+import {applyQuery} from './core/query-filter.js?v=20261105-1300';
+import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261105-1300';
+import {faultCountBreakdown} from './core/fault-counts-ui.js?v=20261105-1300';
+import {createAssetRegisterView} from './core/asset-register-view.js?v=20261105-1300';
+import {operationalStatusForAsset} from './core/asset-operational-status.js?v=20261105-1300';
 const assetFlag=v=>v===true||v===1||/^(1|ja|yes|true|x)$/i.test(String(v??'').trim());
 import {installQueryAssistant} from './core/query-assistant.js';
 import {buildBiDashContext} from './core/context-api.js';
@@ -24,7 +24,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261105-1100';
+const APP_BUILD='20261105-1300';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -243,7 +243,8 @@ function renderActualStand(){
 }
 function renderPlanningExportInfo(){
  const info=sourceApi('planning')?.summary()?.exportInfo;
- $('#exportPrimavera').disabled=!info?.primavera;
+ $('#exportPrimavera').disabled=!info?.scenario;
+ $('#exportPrimavera').textContent=info?.buttonLabel||'Exporteer XML voor Primavera';
  $('#planningExportInfo').textContent=info?.uitleg||'Laad een planning om de exportmogelijkheden te zien.';
 }
 function render(){
@@ -394,9 +395,9 @@ $('#exportPrimavera').onclick=async()=>{
  primaveraDownload.clear();primaveraExportStatus('XML-bestand voorbereiden…');
  try{
   if(busy||failedImport)throw Error('Wacht tot de werkruimte gereed is. Herlaad na een mislukte import.');
-  const planning=await ensurePlanning(),result=await planning.exportPrimavera();
+  const planning=await ensurePlanning(),result=await planning.exportScenario();
   primaveraDownload.prepare(result);primaveraDownload.attempt();
-  const message=`Primavera XML staat klaar. ${result.changedActivities} activiteiten verschoven. Begint de download niet, klik dan op de downloadlink hieronder.`;
+  const message=planning.scenarioExportBericht(result);
   primaveraExportStatus(message);status(message);
   const saved=await schrijfExportOokNaarGekoppeldeMap(result.text,result.name,result.type,{prepared:true});
   if(latestSnapshotDirectory)primaveraExportStatus(saved?message+' Ook opgeslagen in de gekoppelde map.':message+' Opslaan in de gekoppelde map is mislukt.');

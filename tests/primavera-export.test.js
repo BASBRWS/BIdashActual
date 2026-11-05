@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {addPrimaveraMonths,primaveraExportFilename} from '../site/core/primavera-export.js';
+import {addPrimaveraMonths,primaveraExportFilename,planningShiftMonths} from '../site/core/primavera-export.js';
 
 test('Primavera-maandverschuiving behoudt tijd, fractie en tijdzone',()=>{
   assert.equal(addPrimaveraMonths('2030-01-31T08:09:10.123+01:00',1),'2030-02-28T08:09:10.123+01:00');
@@ -20,4 +20,11 @@ test('scenario-bestandsnaam bewaart bronidentiteit zonder paden',()=>{
   const date=new Date('2030-04-05T12:00:00Z');
   assert.equal(primaveraExportFilename('Planning test.XML',date),'Planning test-scenario-2030-04-05.xml');
   assert.equal(primaveraExportFilename('../planning.xml',date),'.._planning-scenario-2030-04-05.xml');
+});
+
+test('beide XML-exportformaten gebruiken dezelfde gehele maandverschuiving',()=>{
+ assert.equal(planningShiftMonths(1/12),1);assert.equal(planningShiftMonths(-2/12),-2);assert.equal(planningShiftMonths(0),0);
+});
+test('fractionele maanden en ongeldige scenario-uitkomsten worden geweigerd',()=>{
+ for(const value of [.01,Infinity,NaN])assert.throws(()=>planningShiftMonths(value),/Ongeldige scenarioverschuiving/);
 });

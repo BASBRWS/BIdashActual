@@ -1222,7 +1222,7 @@
     .dash-grid-2,.dash-grid-3,.dash-grid-4 { grid-template-columns: 1fr; }
   }
 </style>
-<link rel="stylesheet" href="component.css?v=20261016-0834"></head>
+<link rel="stylesheet" href="component.css?v=20261105-1300"></head>
 <body>
 
 <!-- TOPBAR -->
@@ -5974,14 +5974,14 @@ function ipl_expandAll(v){
 
 function ipl_exportMogelijkheden(){
   var loaded=!!(IPL_MODEL&&IPL_RAW_XML),format=IPL_MODEL&&IPL_MODEL.bronFormaat||'onbekend';
-  var isP6=loaded&&format==='primavera-p6';
-  return {geladen:loaded,formaat:format,primavera:isP6,
+  var isP6=loaded&&format==='primavera-p6',isMsp=loaded&&format==='msproject';
+  return {geladen:loaded,formaat:format,primavera:isP6,scenario:isP6||isMsp,buttonLabel:isMsp?'Exporteer XML voor Primavera':'Exporteer Primavera P6 XML',
     label:!loaded?'Geen planning geladen':format==='msproject'?'Microsoft Project XML':isP6?'Primavera P6 XML':'Onbekend XML-formaat',
-    uitleg:!loaded?'Laad een planning om de exportmogelijkheden te zien.':isP6?'Primavera P6 XML. De huidige verschuivingen gaan mee in de P6-export. Controleer en herbereken na import in P6.':format==='msproject'?'Microsoft Project XML. De P6-export vereist een P6-bron. De oorspronkelijke XML hieronder bevat geen scenarioverschuivingen. Bewaar bron en verschuivingen samen via de volledige back-up.':'Deze bron wordt niet als P6 aangeboden. De oorspronkelijke XML blijft beschikbaar; bewaar verschuivingen in de volledige back-up.'};
+    uitleg:!loaded?'Laad een planning om de exportmogelijkheden te zien.':isP6?'Primavera P6 XML. De huidige verschuivingen gaan mee in de P6-export. Controleer en herbereken na import in P6.':format==='msproject'?'Microsoft Project XML met jouw scenarioverschuivingen. In Primavera P6 kies je Bestand > Importeren > Microsoft Project > XML. De knop Oorspronkelijke planning-XML bevat geen scenarioverschuivingen.':'Deze bron wordt niet als P6 aangeboden. De oorspronkelijke XML blijft beschikbaar; bewaar verschuivingen in de volledige back-up.'};
 }
 function ipl_updateExportMogelijkheden(){
   var info=ipl_exportMogelijkheden(),button=document.getElementById('ipl-export-primavera'),source=document.getElementById('ipl-export-source'),description=document.getElementById('ipl-export-info');
-  if(button){button.disabled=!info.primavera;button.title=info.uitleg;}
+  if(button){button.disabled=!info.scenario;button.textContent=info.buttonLabel;button.title=info.uitleg;}
   if(source)source.disabled=!info.geladen;
   if(description)description.textContent=info.uitleg;
 }
@@ -5989,7 +5989,7 @@ async function ipl_exportBronXML(){
   if(IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD.clear();
   try{
     if(!IPL_RAW_XML)throw Error('Laad eerst een planning.');
-    var api=await import('../core/file-download.js?v=20261105-1100');
+    var api=await import('../core/file-download.js?v=20261105-1300');
     if(!IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD=api.createFileDownload(document.getElementById('ipl-export-download'));
     IPL_EXPORT_DOWNLOAD.prepare({text:IPL_RAW_XML,name:IPL_RAW_FILENAME||'planning.xml',type:'application/xml'});IPL_EXPORT_DOWNLOAD.attempt();
     ipl_exportStatus('Oorspronkelijke XML staat klaar, zonder scenarioverschuivingen. Bewaar bron en verschuivingen samen via de volledige back-up.');
@@ -5997,7 +5997,7 @@ async function ipl_exportBronXML(){
 }
 async function ipl_createPrimaveraExport(){
   if(!IPL_MODEL || !IPL_RAW_XML) throw new Error('Laad eerst een Primavera P6-planning.');
-  var api=await import('../core/primavera-export.js?v=20261016-0834');
+  var api=await import('../core/primavera-export.js?v=20261105-1300');
   // Verwerk ook de laatste sleepbeweging en bereken de volledige cascade
   // opnieuw; een verborgen tijdlijn mag geen verouderde datums exporteren.
   if(IPL_DRAG_PENDING || IPL_DRAG_RAF) ipl_finishDrag(null,'Planning verschoven');
@@ -6006,6 +6006,17 @@ async function ipl_createPrimaveraExport(){
     regels:IPL_MODEL.regels,cascade:IPL_CASCADE});
 }
 
+async function ipl_createScenarioExport(){
+  if(IPL_MODEL?.bronFormaat!=='msproject')return ipl_createPrimaveraExport();
+  if(!IPL_RAW_XML)throw Error('Laad eerst een planning.');
+  if(IPL_DRAG_PENDING||IPL_DRAG_RAF)ipl_finishDrag(null,'Planning verschoven');
+  ipl_computeCascade();
+  var api=await import('../core/msproject-export.js?v=20261105-1300');
+  return api.createMsProjectExport({xml:IPL_RAW_XML,filename:IPL_RAW_FILENAME,regels:IPL_MODEL.regels,cascade:IPL_CASCADE,relaties:IPL_MODEL.relaties});
+}
+function ipl_scenarioExportBericht(result){
+  return (result.formatLabel||'Primavera XML')+' staat klaar. '+result.changedActivities+' activiteit(en) verschoven. '+(result.importInstruction||'Controleer en herbereken de planning na import in P6.')+' '+(result.warnings||[]).join(' ')+' Begint de download niet, klik dan op de downloadlink hieronder.';
+}
 var IPL_EXPORT_DOWNLOAD=null;
 function ipl_exportStatus(message,error){
   var status=document.getElementById('ipl-export-status');
@@ -6019,9 +6030,9 @@ async function ipl_exportXML(){
   try{
     var api=await import('../core/file-download.js?v=20261016-0834');
     if(!IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD=api.createFileDownload(document.getElementById('ipl-export-download'));
-    var result=await ipl_createPrimaveraExport();
+    var result=await ipl_createScenarioExport();
     IPL_EXPORT_DOWNLOAD.prepare(result);IPL_EXPORT_DOWNLOAD.attempt();
-    ipl_exportStatus('Primavera XML staat klaar. '+result.changedActivities+' activiteit(en) verschoven. Begint de download niet, klik dan op de downloadlink hieronder. Controleer en herbereken de planning na import in P6.');
+    ipl_exportStatus(ipl_scenarioExportBericht(result));
   }catch(e){
     ipl_exportStatus('Export mislukt. '+e.message,true);
   }finally{ipl_updateExportMogelijkheden();}
@@ -8508,5 +8519,5 @@ window.addEventListener('resize', ()=>{
 
 <script src="planning-analysis.js?v=20261016-0834"></script>
 <script src="planning-canvas.js"></script>
-<script src="planning-adapter.js?v=20261105-1100"></script></body>
+<script src="planning-adapter.js?v=20261105-1300"></script></body>
 </html>
