@@ -460,3 +460,14 @@ De exportknop werkt nu ook bij een Microsoft Project-bron. Exporteer XML voor Pr
 De oorspronkelijke WBS, taak-ID’s, bronrelaties, kalenders en resources blijven behouden. Ingeklapte of gefilterde taken worden ook verwerkt. Taak- en toewijzingsdatums volgen het scenario; bestaande samenvattingsdatums en projectgrenzen worden waar volledig onderbouwd bijgewerkt. Werkelijke datums en baselines blijven historische bronwaarden. Laat P6 na import de planning en kalenders herberekenen. Een import in een echte P6-omgeving is nog niet getest.
 
 De exportmelding benoemt afgeleide CIV-relaties. Die zijn rekenaannamen en worden niet automatisch als nieuwe bronrelaties weggeschreven. De oorspronkelijke XML-export blijft daarnaast beschikbaar, zonder scenarioverschuivingen.
+
+
+## P6 herstelpoging, versie 2.76
+
+Bij een Microsoft Project-bron staat naast de gewone export een aparte knop `P6 herstelpoging, zonder gebruikersvelden`. Deze alternatieve scenario-XML laat alle MSP-gebruikersvelddefinities en -waarden weg. De oorspronkelijke XML, opgeslagen bron en gewone scenario-export behouden die velden. Het herstelbestand eindigt op `-p6-herstel.xml`.
+
+De herstelpoging maakt een bestaande externe taakmarkering lokaal voor activiteiten die daadwerkelijk in het planningmodel aanwezig zijn, en voor hun aanwezige samenvattingsgroepen. Een plat deelproject met lokale onderliggende taken wordt een gewone WBS-groep. Externe verwijzingen zonder gemodelleerde taak blijven staan. Bronrelaties worden niet herschreven. Ingesloten deelproject-XML en een geselecteerd deelproject zonder lokale onderliggende taken stoppen de herstelpoging; er wordt geen onvolledige samenvoeging verzonnen.
+
+De export toont aantallen aanwezige planningactiviteiten, bronrelaties, weggelaten velddefinities/waarden en aangepaste markeringen. Iedere MSP-scenario-export controleert na serialisatie leesbare XML, alle oorspronkelijke taak-UID’s en aantallen bronrelaties en planningactiviteiten. Dit bewijst geen acceptatie door P6. Het totale aantal oorspronkelijke taken kan hoger zijn dan het aantal activiteiten doordat ook samenvattingen en verwijzingen behouden blijven.
+
+Deze poging richt zich op de aanname dat P6 taken als externe projectverwijzingen behandelt, naast de gemelde gebruikersveldproblemen. De werkelijke gebruikers-XML is niet beschikbaar en de oorzaak van de ene geïmporteerde activiteit is niet bewezen. Importeer het herstelbestand in P6 via Microsoft Project XML als nieuw testproject. Vergelijk aantallen activiteiten, WBS, datums en relaties met de bron vóór gebruik. Er is geen native MSP-naar-P6-converter toegevoegd en import in P6 Professional 21 is niet getest.
