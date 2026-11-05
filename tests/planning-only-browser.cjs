@@ -22,11 +22,13 @@ const p6=`<?xml version="1.0"?><APIBusinessObjects xmlns="${ns}"><Project><Objec
   await load(msp,'synthetic-msproject.xml');
   await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Lokaal opgeslagen'));
   assert.equal(await frame.evaluate(()=>HUB.summary().exportInfo.formaat),'msproject');
-  assert(await frame.locator('#ipl-export-primavera').isDisabled());assert.match(await frame.locator('#ipl-export-info').innerText(),/Microsoft Project/);
+  assert(await frame.locator('#ipl-export-primavera').isEnabled());assert.match(await frame.locator('#ipl-export-info').innerText(),/Microsoft Project/);
   assert.match(await frame.locator('#ipl-export-info').innerText(),/geen scenarioverschuivingen/);
   await frame.evaluate(()=>ipl_slider(2));await page.locator('#save').click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Lokaal opgeslagen'));
   let waiting=page.waitForEvent('download');await frame.locator('#ipl-export-source').click();let downloaded=await waiting;
   assert.equal(fs.readFileSync(await downloaded.path(),'utf8'),msp);
+  waiting=page.waitForEvent('download');await frame.locator('#ipl-export-primavera').click();downloaded=await waiting;
+  const msScenario=fs.readFileSync(await downloaded.path(),'utf8');assert.match(msScenario,/<Start>2030-03-15T08:00:00<\/Start>/);assert.match(await frame.locator('#ipl-export-status').innerText(),/Microsoft Project > XML/);
   waiting=page.waitForEvent('download');await page.locator('#backup').click();downloaded=await waiting;
   const backup=JSON.parse(fs.readFileSync(await downloaded.path(),'utf8'));assert.equal(backup.planning.xml,msp);assert.equal(backup.planning.state.ipl.shift,2);
   await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('hersteld'));
@@ -38,13 +40,15 @@ const p6=`<?xml version="1.0"?><APIBusinessObjects xmlns="${ns}"><Project><Objec
   waiting=page.waitForEvent('download');await restored.locator('#ipl-export-primavera').click();downloaded=await waiting;
   const exported=fs.readFileSync(await downloaded.path(),'utf8');assert.match(exported,/<StartDate>2030-02-15T08:00:00<\/StartDate>/);
   await load(JSON.stringify({formaat:'BiDash-integraal',delen:{planning:backup.planning,dvm:{ignored:true}}}),'synthetic-integral.json');
-  assert.equal(await restored.evaluate(()=>IPL_SHIFT),2);assert.equal(await restored.evaluate(()=>IPL_RAW_XML),msp);assert(await restored.locator('#ipl-export-primavera').isDisabled());
+  assert.equal(await restored.evaluate(()=>IPL_SHIFT),2);assert.equal(await restored.evaluate(()=>IPL_RAW_XML),msp);assert(await restored.locator('#ipl-export-primavera').isEnabled());
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   // Full dashboard uses the same source-format information.
   const full=await browser.newPage();full.on('pageerror',e=>errors.push(e.message));await full.goto(origin);await full.waitForFunction(()=>document.querySelector('#status').textContent.includes('Werkruimte gereed'));
   await full.locator('#primaryNav [data-route=data]').click();await full.locator('#files').setInputFiles({name:'synthetic-msproject.xml',mimeType:'application/xml',buffer:Buffer.from(msp)});await full.locator('#applyImport').click();
   await full.waitForFunction(()=>document.querySelector('#status').textContent.includes('Import voltooid'));
-  assert(await full.locator('#exportPrimavera').isDisabled());assert.match(await full.locator('#planningExportInfo').innerText(),/Microsoft Project/);
+  assert(await full.locator('#exportPrimavera').isEnabled());assert.match(await full.locator('#planningExportInfo').innerText(),/Microsoft Project/);
+  const fullFrame=full.frames().find(f=>f.url().includes('/engines/planning.html'));await fullFrame.evaluate(()=>ipl_slider(1));
+  waiting=full.waitForEvent('download');await full.locator('#exportPrimavera').click();downloaded=await waiting;assert.match(fs.readFileSync(await downloaded.path(),'utf8'),/<Start>2030-02-15T08:00:00<\/Start>/);
   assert.deepEqual(errors,[]);console.log('Planning-only Pages: geen BI/DVM-modules, MS/P6-import, formaatgestuurde export, oorspronkelijke XML, bron-plus-scenario back-up, geïsoleerde opslag, herladen, ongeldige bronbehoud, integrale deelimport en mobiel geslaagd.');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(error=>{console.error(error);process.exit(1);});

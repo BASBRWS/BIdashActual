@@ -452,3 +452,11 @@ Open `planning/` vanaf de website, of klik rechtsboven op Alleen planning. Deze 
 De laatst opgeslagen planning wordt bij terugkeer hersteld. Volledige back-up bewaart de bron-XML met verschuivingen en planningsinstellingen voor overdracht. Een los triggerbestand laad je apart. De opslag staat los van het volledige dashboard; wijzigingen worden niet automatisch tussen beide ingangen gedeeld.
 
 Bij MS Project XML is de P6-export uitgeschakeld en staat de reden bij de knop. Oorspronkelijke planning-XML downloadt de geladen bron zonder jouw scenarioverschuivingen. Gebruik de volledige back-up om die verschuivingen mee te nemen. Met een P6-bron blijft de bestaande P6-scenario-export beschikbaar. Deze pagina converteert MS Project XML niet naar P6 XML.
+
+## Scenario-XML voor Primavera, versie 2.75
+
+De exportknop werkt nu ook bij een Microsoft Project-bron. Exporteer XML voor Primavera maakt een Microsoft Project XML-bestand met de volledige actuele scenarioverschuivingen. Kies in P6 Bestand, Importeren, Microsoft Project en de passende XML-variant. Dit is het Microsoft Project-importformaat van P6; het bestand is geen native P6 APIBusinessObjects XML. Bij een oorspronkelijke P6-bron blijft de bestaande native P6-export beschikbaar.
+
+De oorspronkelijke WBS, taak-ID’s, bronrelaties, kalenders en resources blijven behouden. Ingeklapte of gefilterde taken worden ook verwerkt. Taak- en toewijzingsdatums volgen het scenario; bestaande samenvattingsdatums en projectgrenzen worden waar volledig onderbouwd bijgewerkt. Werkelijke datums en baselines blijven historische bronwaarden. Laat P6 na import de planning en kalenders herberekenen. Een import in een echte P6-omgeving is nog niet getest.
+
+De exportmelding benoemt afgeleide CIV-relaties. Die zijn rekenaannamen en worden niet automatisch als nieuwe bronrelaties weggeschreven. De oorspronkelijke XML-export blijft daarnaast beschikbaar, zonder scenarioverschuivingen.

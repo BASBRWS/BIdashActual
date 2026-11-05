@@ -30,6 +30,12 @@ export function primaveraExportFilename(filename,date=new Date()){
   return base+'-scenario-'+date.toISOString().slice(0,10)+'.xml';
 }
 
+export function planningShiftMonths(value){
+  const shift=Number(value)*12,months=Math.round(shift);
+  if(!Number.isFinite(shift)||Math.abs(shift-months)>1e-7)throw Error('Ongeldige scenarioverschuiving.');
+  return months;
+}
+
 export function createPrimaveraExport({xml,filename,regels=[],cascade={},Parser=globalThis.DOMParser,Serializer=globalThis.XMLSerializer}){
   if(!xml||!regels.length)throw Error('Laad eerst een Primavera P6-planning.');
   const doc=new Parser().parseFromString(xml,'application/xml');
@@ -50,8 +56,7 @@ export function createPrimaveraExport({xml,filename,regels=[],cascade={},Parser=
   }
   const shifts=new Map();
   for(const regel of regels){
-    const id=String(regel.id),shift=Number(cascade[id]??0)*12,months=Math.round(shift);
-    if(!Number.isFinite(shift)||Math.abs(shift-months)>1e-7)throw Error('Ongeldige scenarioverschuiving.');
+    const id=String(regel.id),months=planningShiftMonths(cascade[id]??0);
     if(!byId.has(id))throw Error('De planning en oorspronkelijke XML hebben verschillende activiteit-ID’s. Laad de planning opnieuw.');
     if(shifts.has(id))throw Error('Dubbele activiteit-ID in het planningmodel.');
     shifts.set(id,months);

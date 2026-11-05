@@ -1,4 +1,4 @@
-import {BIDASH_VERSIE} from '../core/versie.js?v=20261105-1100';
+import {BIDASH_VERSIE} from '../core/versie.js?v=20261105-1300';
 import {createFileDownload} from '../core/file-download.js';
 import {normalizePlanningSnapshot,planningSnapshot,readPlanningWorkspace,writePlanningWorkspace} from '../core/planning-workspace.js';
 const $=selector=>document.querySelector(selector),frame=$('#planning');
