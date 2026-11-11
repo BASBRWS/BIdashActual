@@ -137,6 +137,12 @@ function windows1252Text(value,fallback){
   return result;
 }
 
+const XER_WBS_NAME_LIMIT=80;
+const XER_TASK_NAME_LIMIT=120;
+const XER_TEXT_LIMIT=255;
+const XER_NOTE_LIMIT=2000;
+const tidyXerText=value=>clean(value).replace(/[\x80-\x9f]/g,' ').replace(/\s+/gu,' ').trim();
+
 function prepareXerText(tables){
   let adjustedFields=0;
   for(const [rows,field,id,limit] of [
@@ -148,8 +154,9 @@ function prepareXerText(tables){
     [tables.TASK,'task_name','task_id']
   ]){
     const converted=rows.map(row=>{
-      const original=clean(row[field]);
-      return {row,original,value:windows1252Text(original,limit?'_':'?')};
+      const original=String(row[field]??'');
+      const value=windows1252Text(tidyXerText(original),limit?'_':'?').replace(/\s+/gu,' ').trim();
+      return {row,original,value};
     });
     // Reserve unchanged codes first so the conversion cannot rename an
     // otherwise valid code just because its row came after a changed one.
@@ -199,20 +206,12 @@ function newXerGuid(){
   return btoa(String.fromCharCode(...bytes)).replace(/=+$/,'');
 }
 
-const XER_WBS_NAME_LIMIT=100;
-
 function prepareXerWbs(tables,msp){
   // Use distinct activity and WBS identifiers in the file. The P6 importer
   // can then assign its database identifiers without reusing a file key.
   const offset=tables.TASK.length+1;
   const siblingCodes=new Map();
-  let shortenedNames=0;
   for(const wbs of tables.PROJWBS){
-    // This runs after Windows-1252 normalization, so every character is one byte.
-    if(wbs.wbs_name.length>XER_WBS_NAME_LIMIT){
-      wbs.wbs_name=wbs.wbs_name.slice(0,XER_WBS_NAME_LIMIT-3).trimEnd()+'...';
-      shortenedNames++;
-    }
     if(!siblingCodes.has(wbs.parent_wbs_id))siblingCodes.set(wbs.parent_wbs_id,new Set());
     const used=siblingCodes.get(wbs.parent_wbs_id);
     const segment=msp?wbs.wbs_short_name.replace(/\./g,'_'):wbs.wbs_short_name;
@@ -228,7 +227,63 @@ function prepareXerWbs(tables,msp){
     if(wbs.parent_wbs_id)wbs.parent_wbs_id+=offset;
   }
   for(const task of tables.TASK)task.wbs_id+=offset;
-  return shortenedNames;
+}
+
+function limitXerNames(tables,originalNames){
+  const limitField=(rows,field,limit)=>{
+    let count=0;
+    for(const row of rows){
+      if(row[field].length<=limit)continue;
+      if(originalNames.has(row))originalNames.get(row).shortened=true;
+      row[field]=row[field].slice(0,limit-3).trimEnd()+'...';
+      count++;
+    }
+    return count;
+  };
+  return {
+    shortenedWbsNames:limitField(tables.PROJWBS,'wbs_name',XER_WBS_NAME_LIMIT),
+    shortenedTaskNames:limitField(tables.TASK,'task_name',XER_TASK_NAME_LIMIT),
+    shortenedTextFields:limitField(tables.CALENDAR,'clndr_name',XER_TEXT_LIMIT)
+  };
+}
+
+function xerNotebook(text){
+  const open='<HTML><BODY>',close='</BODY></HTML>';
+  const entities={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  const available=XER_NOTE_LIMIT-open.length-close.length;
+  const fragments=[];
+  let size=0,shortened=false;
+  for(const char of tidyXerText(text)){
+    const part=entities[char]??(windows1252Byte(char)===null?'&#'+char.codePointAt(0)+';':char);
+    if(size+part.length>available){shortened=true;break;}
+    fragments.push(part);
+    size+=part.length;
+  }
+  if(shortened)while(size>available-3)size-=fragments.pop().length;
+  return {html:open+fragments.join('')+(shortened?'...':'')+close,shortened};
+}
+
+function appendXerNotebooks(tables,sourceNotes,originalNames){
+  let shortenedNotes=0;
+  for(const [rows,memos,id,memoId,memoText] of [
+    [tables.PROJWBS,tables.WBSMEMO,'wbs_id','wbs_memo_id','wbs_memo'],
+    [tables.TASK,tables.TASKMEMO,'task_id','memo_id','task_memo']
+  ]){
+    for(const row of rows){
+      const original=originalNames.get(row);
+      const note=sourceNotes.get(row);
+      const label=id==='task_id'?'Oorspronkelijke taaknaam: ':'Oorspronkelijke WBS-naam: ';
+      const content=[original?.shortened?label+original.name:'',note].filter(Boolean).join(' | ');
+      if(!tidyXerText(content))continue;
+      const {html,shortened}=xerNotebook(content);
+      if(shortened)shortenedNotes++;
+      memos.push({[memoId]:memos.length+1,[id]:row[id],memo_type_id:1,proj_id:row.proj_id,[memoText]:html});
+    }
+  }
+  if(tables.TASKMEMO.length||tables.WBSMEMO.length){
+    tables.MEMOTYPE.push({memo_type_id:1,seq_num:0,eps_flag:'N',proj_flag:'N',wbs_flag:'Y',task_flag:'Y',memo_type:'BiDash onderbouwing'});
+  }
+  return shortenedNotes;
 }
 
 export function validateXer(tables,expected){
@@ -242,8 +297,10 @@ export function validateXer(tables,expected){
   const project=[...projects.values()][0];
   if(!project.proj_short_name||project.project_flag!=='Y'||project.export_flag!=='Y'||String(project.loaded_scope_level)!=='7'||!cals.has(String(project.clndr_id)))throw Error('XER mist de projectgegevens voor een volledige P6-import.');
   const codes=new Set();
+  for(const cal of cals.values())if(clean(cal.clndr_name).length>XER_TEXT_LIMIT)throw Error('XER-kalendernaam overschrijdt de veldlengte.');
   for(const t of tasks.values()){
     if(!projects.has(String(t.proj_id))||String(wbs.get(String(t.wbs_id))?.proj_id)!==String(t.proj_id)||!cals.has(String(t.clndr_id)))throw Error('Ongeldige project-, WBS- of kalenderverwijzing in XER.');
+    if(clean(t.task_name).length>XER_TASK_NAME_LIMIT)throw Error('XER-activiteitnaam overschrijdt de veldlengte.');
     if(wbs.has(String(t.task_id)))throw Error('XER bevat een gedeelde activiteit- en WBS-ID.');
     if(!t.task_code||codes.has(t.task_code))throw Error('Dubbele of ontbrekende XER-activiteitcode.');codes.add(t.task_code);
   }
@@ -259,6 +316,19 @@ export function validateXer(tables,expected){
   }
   if([...wbs.values()].filter(w=>!w.parent_wbs_id&&w.proj_node_flag==='Y').length!==1)throw Error('XER vereist één project-WBS.');
   for(const r of tables.TASKPRED||[])if(!tasks.has(String(r.task_id))||!tasks.has(String(r.pred_task_id))||r.task_id===r.pred_task_id||!['PR_FS','PR_SS','PR_FF','PR_SF'].includes(r.pred_type)||!Number.isFinite(r.lag_hr_cnt))throw Error('Ongeldige XER-relatie.');
+  const memoTypes=index('MEMOTYPE','memo_type_id');
+  for(const [table,memoId,id,parents,textField] of [
+    ['WBSMEMO','wbs_memo_id','wbs_id',wbs,'wbs_memo'],
+    ['TASKMEMO','memo_id','task_id',tasks,'task_memo']
+  ]){
+    for(const memo of index(table,memoId).values()){
+      const parent=parents.get(String(memo[id]));
+      if(!parent||String(parent.proj_id)!==String(memo.proj_id)||
+        !memoTypes.has(String(memo.memo_type_id))||clean(memo[textField]).length>XER_NOTE_LIMIT){
+        throw Error('Ongeldige XER-notitie in '+table+'.');
+      }
+    }
+  }
   if(tables.SCHEDOPTIONS?.length){
     index('SCHEDOPTIONS','schedoptions_id');
     for(const s of tables.SCHEDOPTIONS)if(!projects.has(String(s.proj_id))||!['rcal_Predecessor','rcal_Successor','rcal_ProjDefault','rcal_24Hour'].includes(s.sched_calendar_on_relationship_lag))throw Error('Ongeldige XER-lagkalender.');
@@ -284,9 +354,11 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   const exportSuffix=[...atob(guid)].slice(0,5).map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('').toUpperCase();
   const projectCode=clean(msp?'BD-'+exportSuffix:val(project,'Id')||'BD-'+exportSuffix).slice(0,20);
   tables.CURRTYPE=[{curr_id:1,decimal_digit_cnt:2,curr_symbol:'€',decimal_symbol:'.',digit_group_symbol:',',pos_curr_fmt_type:'#1.1',neg_curr_fmt_type:'(#1.1)',curr_type:'Euro',curr_short_name:'EUR',group_digit_cnt:3,base_exch_rate:1}];
+  tables.MEMOTYPE=[];
+  const sourceNotes=new Map();
   const obsId=1;
   tables.OBS=[{obs_id:obsId,parent_obs_id:'',guid:'',seq_num:0,obs_name:'Enterprise',obs_descr:'<HTML><BODY></BODY></HTML>'}];
-  tables.PROJECT=[];tables.CALENDAR=[];tables.SCHEDOPTIONS=[];tables.PROJWBS=[];tables.TASK=[];tables.TASKPRED=[];
+  tables.PROJECT=[];tables.CALENDAR=[];tables.SCHEDOPTIONS=[];tables.PROJWBS=[];tables.TASK=[];tables.WBSMEMO=[];tables.TASKMEMO=[];tables.TASKPRED=[];
   const sourceWbs=model.wbs||{},top=Object.keys(sourceWbs).filter(id=>!sourceWbs[sourceWbs[id].parent]),rootId=top.length===1?top[0]:'__xer_root';
   const wbs={...sourceWbs};if(top.length!==1)wbs[rootId]={naam:name,parent:'',seq:0};
   wbsIds.set(rootId,1);for(const id of Object.keys(wbs))if(!wbsIds.has(id))wbsIds.set(id,wbsIds.size+1);
@@ -313,6 +385,8 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
     let code=clean(isProject?projectCode:item.code||val(summary.get(id),'WBS')||val(summary.get(id),'OutlineNumber')||number);
     if(msp&&!isProject&&/^\d+(?:\.\d+)+$/.test(code))code=code.split('.').at(-1);
     appendWbs({id:number,parent:parent?wbsIds.get(parent):'',code,name:isProject?name:item.naam||id,sequence:num(String(item.seq??0)),isProject});
+    const note=msp?val(isProject?source.find(n=>val(n,'UID')==='0'):summary.get(id),'Notes'):'';
+    if(note)sourceNotes.set(tables.PROJWBS.at(-1),note);
     written.add(id);
   };
   for(const id of wbsIds.keys())visit(id);
@@ -368,6 +442,8 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
       early_start_date:date(el,msp?'EarlyStart':'EarlyStartDate')||start,early_end_date:date(el,msp?'EarlyFinish':'EarlyFinishDate')||finish,
       late_start_date:date(el,msp?'LateStart':'LateStartDate'),late_end_date:date(el,msp?'LateFinish':'LateFinishDate'),restart_date:status==='TK_Complete'?'':date(el,msp?'Resume':'RemainingEarlyStartDate')||start,reend_date:status==='TK_Complete'?'':date(el,msp?'Finish':'RemainingEarlyFinishDate')||finish,
       act_start_date:actualStart,act_end_date:actualEnd,cstr_type:constraint,cstr_date:constraint&&constraint!=='CS_ALAP'?date(el,msp?'ConstraintDate':'PrimaryConstraintDate'):'',cstr_type2:msp?'':p6constraints[val(el,'SecondaryConstraintType')]||'',cstr_date2:msp?'':date(el,'SecondaryConstraintDate'),priority_type:'PT_Normal',driving_path_flag:'N'});
+    const note=msp?val(el,'Notes'):'';
+    if(note)sourceNotes.set(tables.TASK.at(-1),note);
   }
   // Source XML, not the inferred CIV relations, is the owner of exported links.
   let sourceLinks=0,summaryLinks=0,elapsedLinks=0,lagActivities=0;
@@ -468,12 +544,18 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   const inferred=(model.relaties||[]).filter(r=>r.inferredPair).length;
   if(inferred)warnings.push(inferred+' afgeleide CIV-relaties worden niet als bronrelaties geëxporteerd.');
   warnings.push('XER bewaart lokale datums op minuten, zonder tijdzone. Scenariodatums volgen de XML-export; werkelijke datums en constraints blijven bronwaarden.');
+  const originalNames=new Map();
+  for(const row of tables.PROJWBS)originalNames.set(row,{name:row.wbs_name});
+  for(const row of tables.TASK)originalNames.set(row,{name:row.task_name});
   const adjustedTextFields=prepareXerText(tables);
-  if(adjustedTextFields)warnings.unshift(adjustedTextFields+' tekstvelden zijn aangepast voor Windows-1252. Onzichtbare opmaaktekens zijn verwijderd en tekens zonder equivalent zijn vervangen. De bron-XML behoudt de originele tekst.');
-  const shortenedWbsNames=prepareXerWbs(tables,msp);
-  if(shortenedWbsNames)warnings.unshift(shortenedWbsNames+' WBS-namen zijn voor de XER ingekort tot maximaal '+XER_WBS_NAME_LIMIT+' tekens.');
+  const {shortenedWbsNames,shortenedTaskNames,shortenedTextFields}=limitXerNames(tables,originalNames);
+  prepareXerWbs(tables,msp);
+  const shortenedNotes=appendXerNotebooks(tables,sourceNotes,originalNames);
+  const totalShortened=shortenedWbsNames+shortenedTaskNames+shortenedTextFields+shortenedNotes;
+  if(adjustedTextFields)warnings.unshift(adjustedTextFields+' tekstvelden zijn opgeschoond en aangepast voor Windows-1252.');
+  if(totalShortened)warnings.unshift(totalShortened+' velden ingekort in de XER: '+shortenedWbsNames+' WBS-namen, '+shortenedTaskNames+' activiteitnamen, '+shortenedTextFields+' overige tekstvelden en '+shortenedNotes+' notities.');
   validateXer(tables,model.regels.length+lagActivities);
   const text=serializeXer(tables,now);
-  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',projectCode:tables.PROJECT[0].proj_short_name,adjustedTextFields,shortenedWbsNames,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
+  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',projectCode:tables.PROJECT[0].proj_short_name,adjustedTextFields,shortenedWbsNames,shortenedTaskNames,shortenedTextFields,shortenedNotes,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
     importInstruction:'In P6: Bestand > Importeren > Primavera PM (XER). Kies een nieuw project en controleer de planning vóór herberekenen.'};
 }
