@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.82 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.83 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1157,3 +1157,7 @@ MSP-projecten krijgen per export een eigen P6-project-ID. De export gebruikt lok
 ## Primavera XER veldlengte, versie 2.82
 
 Na Windows-1252-conversie begrenst de XER-export WBS-namen op 100 bytes. Bij inkorting voegt de export drie puntjes toe binnen die grens en toont het aantal ingekorte namen. Deze omzetting werkt op de exportrijen. WBS-ID’s en activiteitverwijzingen blijven behouden.
+
+## Primavera XER opschoning, versie 2.83
+
+De XER-export normaliseert witruimte en besturingstekens en begrenst WBS-namen op 80, activiteitnamen op 120 en overige geëxporteerde tekstnamen op 255 bytes in Windows-1252. Korte WBS-codes blijven maximaal 20 tekens per niveau. De oorspronkelijke ingekorte namen en aanwezige MSP-taak- en WBS-notities gaan naar het Notebook-onderwerp BiDash onderbouwing. Per notitie geldt een grens van 2.000 bytes inclusief veilige HTML-codering. De export meldt per soort veld hoeveel er zijn ingekort en controleert de koppeling tussen notitie en activiteit of WBS.
