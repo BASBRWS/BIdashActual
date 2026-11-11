@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.78 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.79 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1141,3 +1141,7 @@ Bij gemengde werkuren- en kalenderwachttijden krijgt iedere uitgewerkte elapsed 
 De exportmelding onderscheidt bronactiviteiten, extra wachttijdactiviteiten, bronrelaties en XER-relaties. Eén bronrelatie levert bij deze omzetting twee XER-relaties op. Alle bronactiviteiten blijven behouden; de bronaantallen worden niet vervangen door totalen inclusief helpers. Een nul-lag voegt geen helper toe. Percentage-lag en de bestaande niet ondersteunde kalenders blijven een zichtbare fout geven. De bron-XML en gewone XML-export veranderen niet.
 
 Validatie: 672 unittests geslaagd, inclusief 19 XER-tests. Controles omvatten 702 activiteiten met 701 elapsed relaties, alle vier relatietypen met positieve en negatieve lag, nul, bronbehoud, tabellen en verwijzingen. MPXJ las de 24-uursplanningoptie en gemengde exports terug en berekende onafhankelijk 48 werkuren op de helperkalender over vrijdag-zondag en bij een negatieve wachttijd. Geen nieuwe browserdownloadtest; de echte bron-XML en import/herberekening in P6 Professional 21 zijn niet beschikbaar.
+
+## XER tekstcodering, versie 2.79
+
+De XER-export zet projectnamen, WBS-namen, kalendernamen en activiteitnamen en hun geëxporteerde codes om naar Windows-1252. Herkenbare tekens krijgen een equivalent, onzichtbare opmaaktekens worden verwijderd en tekens zonder equivalent krijgen een vervanging. Als aangepaste codes samenvallen, wijst de export een vrije code toe. De melding telt aangepaste velden. Bron-XML, relaties, datums en tijdsduren worden door de tekstconversie niet gewijzigd.

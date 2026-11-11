@@ -133,3 +133,36 @@ test('zero elapsed lag needs no calendar or helper; percentage lag still blocks'
  assert.equal(xerMsProjectLag('0','20').hours,0);
  assert.throws(()=>xerMsProjectLag('NaN','8'),/Ongeldig/);
 });
+
+test('unsupported characters no longer block a 702-task mixed-lag export',()=>{
+ const f=fixture({count:702,lagFormats:[8,7],lags:[28800,4800]});
+ f.root.childNodes.find(n=>n.localName==='Name').textContent='Planning\u200b → tunnel';
+ const calendar=f.root.childNodes.find(n=>n.localName==='Calendars').childNodes[0];
+ calendar.childNodes.find(n=>n.localName==='Name').textContent='Werkweek\u202f24 uur';
+ f.model.wbs.msp_wbs_1.naam='Cafe\u0301 − Fase';
+ f.tasks[1].childNodes.find(n=>n.localName==='Name').textContent='Noordtunnel 🛠️';
+ const before=JSON.stringify(f.root);
+ const result=createXerExport(f),tables=read(decode(result));
+ assert.equal(result.sourceActivities,702);
+ assert.equal(result.lagActivities,1);
+ assert.equal(tables.TASK.length,703);
+ assert.equal(tables.TASKPRED.length,702);
+ assert.equal(tables.PROJWBS[0].wbs_name,'Planning -> tunnel');
+ assert.equal(tables.PROJWBS[1].wbs_name,'Café - Fase');
+ assert.equal(tables.CALENDAR[0].clndr_name,'Werkweek 24 uur');
+ assert.equal(tables.TASK[0].task_name,'Noordtunnel ?');
+ assert.equal(result.adjustedTextFields,4);
+ assert.match(result.warnings[0],/4 tekstvelden/);
+ assert.equal(JSON.stringify(f.root),before);
+});
+
+test('converted codes keep identifiers unique and all links intact',()=>{
+ const f=fixture();
+ for(const [i,code] of [[1,'A漢'],[2,'A_'],[3,'A字']]){
+  f.tasks[i].childNodes.find(n=>n.localName==='ID').textContent=code;
+ }
+ const result=createXerExport(f),tables=read(decode(result));
+ assert.equal(result.adjustedTextFields,2);
+ assert.deepEqual(tables.TASK.map(t=>t.task_code),['BD-1','A_','BD-3']);
+ assert.deepEqual(tables.TASKPRED.map(r=>[r.pred_task_id,r.task_id]),[['1','2'],['2','3']]);
+});
