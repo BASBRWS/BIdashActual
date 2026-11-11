@@ -222,3 +222,23 @@ test('nested MSP WBS exports parent-first with unique short codes and distinct W
  const reversed={...tables,PROJWBS:[...tables.PROJWBS].reverse()};
  assert.throws(()=>validateXer(reversed,4),/bovenliggende XER-WBS/);
 });
+
+test('XER bounds WBS labels after Windows-1252 conversion without losing activity references',()=>{
+ const f=fixture();
+ const original='WBS '+('é'.repeat(94))+'→ meer tekst';
+ f.model.wbs.msp_wbs_1.naam=original;
+ f.model.wbs.boundary={naam:'B'.repeat(100),parent:'msp_root',seq:9,code:'9'};
+ const result=createXerExport(f),tables=read(decode(result));
+ const wbs=tables.PROJWBS.find(row=>row.wbs_short_name==='1');
+ assert.ok(wbs);
+ assert.equal(encodeXer(wbs.wbs_name).length,100);
+ assert.ok(wbs.wbs_name.endsWith('...'));
+ assert.equal(tables.PROJWBS.find(row=>row.wbs_short_name==='9').wbs_name,'B'.repeat(100));
+ assert.equal(result.shortenedWbsNames,1);
+ assert.match(result.warnings[0],/WBS-namen.*100 tekens/);
+ assert.equal(f.model.wbs.msp_wbs_1.naam,original);
+ assert.ok(tables.TASK.every(t=>t.wbs_id===wbs.wbs_id));
+ tables.TASKPRED.forEach(r=>r.lag_hr_cnt=Number(r.lag_hr_cnt));
+ wbs.wbs_name='B'.repeat(101);
+ assert.throws(()=>validateXer(tables,3),/veldlenge?te|veldlengte/);
+});

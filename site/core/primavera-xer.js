@@ -199,12 +199,20 @@ function newXerGuid(){
   return btoa(String.fromCharCode(...bytes)).replace(/=+$/,'');
 }
 
+const XER_WBS_NAME_LIMIT=100;
+
 function prepareXerWbs(tables,msp){
   // Use distinct activity and WBS identifiers in the file. The P6 importer
   // can then assign its database identifiers without reusing a file key.
   const offset=tables.TASK.length+1;
   const siblingCodes=new Map();
+  let shortenedNames=0;
   for(const wbs of tables.PROJWBS){
+    // This runs after Windows-1252 normalization, so every character is one byte.
+    if(wbs.wbs_name.length>XER_WBS_NAME_LIMIT){
+      wbs.wbs_name=wbs.wbs_name.slice(0,XER_WBS_NAME_LIMIT-3).trimEnd()+'...';
+      shortenedNames++;
+    }
     if(!siblingCodes.has(wbs.parent_wbs_id))siblingCodes.set(wbs.parent_wbs_id,new Set());
     const used=siblingCodes.get(wbs.parent_wbs_id);
     const segment=msp?wbs.wbs_short_name.replace(/\./g,'_'):wbs.wbs_short_name;
@@ -220,6 +228,7 @@ function prepareXerWbs(tables,msp){
     if(wbs.parent_wbs_id)wbs.parent_wbs_id+=offset;
   }
   for(const task of tables.TASK)task.wbs_id+=offset;
+  return shortenedNames;
 }
 
 export function validateXer(tables,expected){
@@ -242,6 +251,7 @@ export function validateXer(tables,expected){
   for(const w of wbs.values()){
     if(!projects.has(String(w.proj_id)))throw Error('WBS verwijst naar ontbrekend project.');
     if(!obs.has(String(w.obs_id)))throw Error('WBS verwijst naar ontbrekende OBS.');
+    if(clean(w.wbs_name).length>XER_WBS_NAME_LIMIT)throw Error('XER-WBS-naam overschrijdt de veldlengte van '+XER_WBS_NAME_LIMIT+' tekens.');
     let current=w;const seen=new Set();
     while(current.parent_wbs_id){if(seen.has(current.wbs_id))throw Error('Cirkel in XER-WBS.');seen.add(current.wbs_id);current=wbs.get(String(current.parent_wbs_id));if(!current)throw Error('Ontbrekende bovenliggende XER-WBS.');}
     if(w.parent_wbs_id&&!writtenWbs.has(String(w.parent_wbs_id)))throw Error('Een bovenliggende XER-WBS moet voor haar onderliggende WBS staan.');
@@ -460,9 +470,10 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   warnings.push('XER bewaart lokale datums op minuten, zonder tijdzone. Scenariodatums volgen de XML-export; werkelijke datums en constraints blijven bronwaarden.');
   const adjustedTextFields=prepareXerText(tables);
   if(adjustedTextFields)warnings.unshift(adjustedTextFields+' tekstvelden zijn aangepast voor Windows-1252. Onzichtbare opmaaktekens zijn verwijderd en tekens zonder equivalent zijn vervangen. De bron-XML behoudt de originele tekst.');
-  prepareXerWbs(tables,msp);
+  const shortenedWbsNames=prepareXerWbs(tables,msp);
+  if(shortenedWbsNames)warnings.unshift(shortenedWbsNames+' WBS-namen zijn voor de XER ingekort tot maximaal '+XER_WBS_NAME_LIMIT+' tekens.');
   validateXer(tables,model.regels.length+lagActivities);
   const text=serializeXer(tables,now);
-  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',projectCode:tables.PROJECT[0].proj_short_name,adjustedTextFields,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
+  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',projectCode:tables.PROJECT[0].proj_short_name,adjustedTextFields,shortenedWbsNames,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
     importInstruction:'In P6: Bestand > Importeren > Primavera PM (XER). Kies een nieuw project en controleer de planning vóór herberekenen.'};
 }

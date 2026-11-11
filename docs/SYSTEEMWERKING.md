@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.81 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.82 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1153,3 +1153,7 @@ De XER bevat een OBS-root, WBS-verwijzingen naar de OBS en de PROJECT-velden voo
 ## Primavera XER WBS, versie 2.81
 
 MSP-projecten krijgen per export een eigen P6-project-ID. De export gebruikt lokale WBS-codeonderdelen en unieke korte codes onder dezelfde ouder. Bovenliggende WBS-regels staan voor hun kinderen en de WBS-ID’s vallen buiten het bereik van de activiteit-ID’s. De XER-controle toetst deze volgorde en de verwijzingen van activiteiten naar hun eigen project-WBS.
+
+## Primavera XER veldlengte, versie 2.82
+
+Na Windows-1252-conversie begrenst de XER-export WBS-namen op 100 bytes. Bij inkorting voegt de export drie puntjes toe binnen die grens en toont het aantal ingekorte namen. Deze omzetting werkt op de exportrijen. WBS-ID’s en activiteitverwijzingen blijven behouden.
