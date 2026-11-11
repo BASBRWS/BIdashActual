@@ -189,3 +189,36 @@ test('XER declares a full project with a linked responsible manager and project 
  delete project.loaded_scope_level;
  assert.throws(()=>validateXer(tables,4),/volledige P6-import/);
 });
+
+test('nested MSP WBS exports parent-first with unique short codes and distinct WBS identifiers',()=>{
+ const f=fixture({lagFormats:[8,7],lags:[28800,4800]});
+ f.model.wbs={
+  second:{naam:'Tweede werkpakket',parent:'first',seq:2,code:'1.3.1'},
+  first:{naam:'Eerste werkpakket',parent:'msp_wbs_1',seq:1,code:'1.3'},
+  peer:{naam:'Derde werkpakket',parent:'first',seq:3,code:'1.3.1'},
+  ...f.model.wbs
+ };
+ f.model.regels[0].wbs='second';
+ f.model.regels[1].wbs='peer';
+ const result=createXerExport(f),tables=read(decode(result));
+ const rows=new Map(tables.PROJWBS.map(w=>[w.wbs_name,w]));
+ assert.equal(rows.get('Tweede werkpakket').wbs_short_name,'1');
+ assert.equal(rows.get('Eerste werkpakket').wbs_short_name,'3');
+ assert.equal(rows.get('Derde werkpakket').wbs_short_name,'1-2');
+ assert.equal(rows.get('Tweede werkpakket').parent_wbs_id,rows.get('Eerste werkpakket').wbs_id);
+ assert.equal(tables.TASK[0].wbs_id,rows.get('Tweede werkpakket').wbs_id);
+ assert.equal(tables.TASK[1].wbs_id,rows.get('Derde werkpakket').wbs_id);
+ const alreadyWritten=new Set();
+ const activities=new Set(tables.TASK.map(t=>t.task_id));
+ for(const w of tables.PROJWBS){
+  if(w.parent_wbs_id)assert.ok(alreadyWritten.has(w.parent_wbs_id));
+  assert.ok(!activities.has(w.wbs_id));
+  alreadyWritten.add(w.wbs_id);
+ }
+ assert.ok(tables.TASK.every(t=>alreadyWritten.has(t.wbs_id)));
+ assert.match(result.projectCode,/^BD-[0-9A-F]{10}$/);
+ assert.notEqual(result.projectCode,createXerExport(f).projectCode);
+ tables.TASKPRED.forEach(r=>r.lag_hr_cnt=Number(r.lag_hr_cnt));
+ const reversed={...tables,PROJWBS:[...tables.PROJWBS].reverse()};
+ assert.throws(()=>validateXer(reversed,4),/bovenliggende XER-WBS/);
+});
