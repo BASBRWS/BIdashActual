@@ -166,3 +166,26 @@ test('converted codes keep identifiers unique and all links intact',()=>{
  assert.deepEqual(tables.TASK.map(t=>t.task_code),['BD-1','A_','BD-3']);
  assert.deepEqual(tables.TASKPRED.map(r=>[r.pred_task_id,r.task_id]),[['1','2'],['2','3']]);
 });
+
+test('XER declares a full project with a linked responsible manager and project WBS',()=>{
+ const result=createXerExport(fixture({lagFormats:[8,7],lags:[28800,4800]}));
+ const tables=read(decode(result));
+ const project=tables.PROJECT[0];
+ assert.equal(project.proj_short_name,result.projectCode);
+ assert.equal(project.loaded_scope_level,'7');
+ assert.equal(project.project_flag,'Y');
+ assert.equal(project.export_flag,'Y');
+ assert.equal(Buffer.from(project.guid,'base64').length,16);
+ const roots=tables.PROJWBS.filter(w=>w.proj_node_flag==='Y');
+ assert.equal(roots.length,1);
+ assert.equal(roots[0].proj_id,project.proj_id);
+ assert.equal(roots[0].obs_id,tables.OBS[0].obs_id);
+ assert.ok(tables.PROJWBS.every(w=>w.obs_id===tables.OBS[0].obs_id));
+ assert.ok(tables.CALENDAR.some(c=>c.clndr_id===project.clndr_id));
+ tables.TASKPRED.forEach(r=>r.lag_hr_cnt=Number(r.lag_hr_cnt));
+ const withoutObs=structuredClone(tables);
+ delete withoutObs.OBS;
+ assert.throws(()=>validateXer(withoutObs,4),/ontbrekende OBS/);
+ delete project.loaded_scope_level;
+ assert.throws(()=>validateXer(tables,4),/volledige P6-import/);
+});
