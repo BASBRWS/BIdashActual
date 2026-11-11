@@ -114,13 +114,70 @@ function workingDuration(start,finish,calendar){
   return minutes/60;
 }
 
-// Windows-1252 is the P6 Professional XER interchange encoding.
+const windows1252Extended='€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008dŽ\u008f\u0090‘’“”•–—˜™š›œ\u009džŸ';
+function windows1252Byte(char){
+  const point=char.codePointAt(0);
+  if(point<128||point>=160&&point<=255)return point;
+  const index=windows1252Extended.indexOf(char);
+  return index<0?null:128+index;
+}
+
+const xerTextSubstitutions=new Map([
+  ['−','-'],['‐','-'],['‑','-'],['‒','-'],['→','->'],['←','<-']
+]);
+function windows1252Text(value,fallback){
+  let result='';
+  for(const char of value.normalize('NFC')){
+    if(windows1252Byte(char)!==null){result+=char;continue;}
+    if(/[\p{Cf}\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u.test(char))continue;
+    if(/\s/u.test(char)){result+=' ';continue;}
+    const simple=xerTextSubstitutions.get(char)??char.normalize('NFKD').replace(/\p{M}/gu,'');
+    result+=simple&&[...simple].every(c=>windows1252Byte(c)!==null)?simple:fallback;
+  }
+  return result;
+}
+
+function prepareXerText(tables){
+  let adjustedFields=0;
+  for(const [rows,field,id,limit] of [
+    [tables.PROJECT,'proj_short_name','proj_id',20],
+    [tables.PROJWBS,'wbs_short_name','wbs_id',20],
+    [tables.PROJWBS,'wbs_name','wbs_id'],
+    [tables.CALENDAR,'clndr_name','clndr_id'],
+    [tables.TASK,'task_code','task_id',40],
+    [tables.TASK,'task_name','task_id']
+  ]){
+    const converted=rows.map(row=>{
+      const original=clean(row[field]);
+      return {row,original,value:windows1252Text(original,limit?'_':'?')};
+    });
+    // Reserve unchanged codes first so the conversion cannot rename an
+    // otherwise valid code just because its row came after a changed one.
+    const used=new Set(converted.filter(entry=>entry.value===entry.original).map(entry=>entry.original));
+    for(const {row,original,value} of converted){
+      if(value===original)continue;
+      let safe=value.trim();
+      if(limit)safe=safe.slice(0,limit);
+      if(!safe||limit&&used.has(safe)){
+        const base='BD-'+row[id];
+        safe=base;
+        for(let suffix=2;used.has(safe);suffix++)safe=base+'-'+suffix;
+      }
+      used.add(safe);
+      row[field]=safe;
+      adjustedFields++;
+    }
+  }
+  return adjustedFields;
+}
+
+// Keep the writer strict so an unhandled field cannot silently corrupt a record.
 export function encodeXer(text){
-  const extended='€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008dŽ\u008f\u0090‘’“”•–—˜™š›œ\u009džŸ',out=[];
-  for(const char of text){const n=char.codePointAt(0),index=extended.indexOf(char);
-    if(n<128||n>=160&&n<=255)out.push(n);
-    else if(index>=0)out.push(128+index);
-    else throw Error('XER Windows-1252 ondersteunt dit teken niet: '+char+'. Gebruik XML of pas de brontekst aan.');
+  const out=[];
+  for(const char of text){
+    const byte=windows1252Byte(char);
+    if(byte===null)throw Error('XER Windows-1252 ondersteunt U+'+char.codePointAt(0).toString(16).toUpperCase()+' niet.');
+    out.push(byte);
   }
   return new Uint8Array(out);
 }
@@ -319,8 +376,10 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   const inferred=(model.relaties||[]).filter(r=>r.inferredPair).length;
   if(inferred)warnings.push(inferred+' afgeleide CIV-relaties worden niet als bronrelaties geëxporteerd.');
   warnings.push('XER bewaart lokale datums op minuten, zonder tijdzone. Scenariodatums volgen de XML-export; werkelijke datums en constraints blijven bronwaarden.');
+  const adjustedTextFields=prepareXerText(tables);
+  if(adjustedTextFields)warnings.unshift(adjustedTextFields+' tekstvelden zijn aangepast voor Windows-1252. Onzichtbare opmaaktekens zijn verwijderd en tekens zonder equivalent zijn vervangen. De bron-XML behoudt de originele tekst.');
   validateXer(tables,model.regels.length+lagActivities);
   const text=serializeXer(tables,now);
-  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
+  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',adjustedTextFields,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
     importInstruction:'In P6: Bestand > Importeren > Primavera PM (XER). Kies een nieuw project en controleer de planning vóór herberekenen.'};
 }

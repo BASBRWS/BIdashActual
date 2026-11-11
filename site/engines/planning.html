@@ -6055,7 +6055,7 @@ async function ipl_createXerExport(){
   // Reuse the validated scenario XML so every hidden/filtered task receives
   // the same cascade dates as the existing XML exports. Do not mutate the source.
   var scenario=await ipl_createScenarioExport();
-  var api=await import('../core/primavera-xer.js?v=20261105-278');
+  var api=await import('../core/primavera-xer.js?v=20261111-279');
   var result=api.createXerExport({xml:scenario.text,filename:IPL_RAW_FILENAME,model:IPL_MODEL});
   result.changedActivities=scenario.changedActivities;
   return result;
