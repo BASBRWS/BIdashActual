@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.79 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.80 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1145,3 +1145,7 @@ Validatie: 672 unittests geslaagd, inclusief 19 XER-tests. Controles omvatten 70
 ## XER tekstcodering, versie 2.79
 
 De XER-export zet projectnamen, WBS-namen, kalendernamen en activiteitnamen en hun geëxporteerde codes om naar Windows-1252. Herkenbare tekens krijgen een equivalent, onzichtbare opmaaktekens worden verwijderd en tekens zonder equivalent krijgen een vervanging. Als aangepaste codes samenvallen, wijst de export een vrije code toe. De melding telt aangepaste velden. Bron-XML, relaties, datums en tijdsduren worden door de tekstconversie niet gewijzigd.
+
+## Primavera XER projectselectie, versie 2.80
+
+De XER bevat een OBS-root, WBS-verwijzingen naar de OBS en de PROJECT-velden voor een volledige export, waaronder loaded_scope_level 7. Project en WBS krijgen nieuwe GUIDs. De export controleert deze projectstructuur en toont de project-ID voor de selectie in Primavera.

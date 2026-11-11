@@ -6055,7 +6055,7 @@ async function ipl_createXerExport(){
   // Reuse the validated scenario XML so every hidden/filtered task receives
   // the same cascade dates as the existing XML exports. Do not mutate the source.
   var scenario=await ipl_createScenarioExport();
-  var api=await import('../core/primavera-xer.js?v=20261111-279');
+  var api=await import('../core/primavera-xer.js?v=20261111-280');
   var result=api.createXerExport({xml:scenario.text,filename:IPL_RAW_FILENAME,model:IPL_MODEL});
   result.changedActivities=scenario.changedActivities;
   return result;
@@ -6069,7 +6069,7 @@ async function ipl_exportXER(){
     if(!IPL_EXPORT_DOWNLOAD)IPL_EXPORT_DOWNLOAD=api.createFileDownload(document.getElementById('ipl-export-download'));
     var result=await ipl_createXerExport();
     IPL_EXPORT_DOWNLOAD.prepare(result);IPL_EXPORT_DOWNLOAD.attempt();
-    ipl_exportStatus('Primavera P6 XER staat klaar. '+result.sourceActivities+' bronactiviteiten'+(result.lagActivities?' en '+result.lagActivities+' extra wachttijdactiviteiten':'')+', '+result.sourceLinks+' bronrelaties, '+result.exportedSourceLinks+' XER-relaties, '+result.wbsCount+' WBS-groepen en '+result.calendarCount+' kalenders. '+result.changedActivities+' activiteiten verschoven. '+result.importInstruction+' '+result.warnings.join(' ')+' Begint de download niet, klik op de downloadlink hieronder.');
+    ipl_exportStatus('Primavera P6 XER staat klaar. Project-ID '+result.projectCode+'. '+result.sourceActivities+' bronactiviteiten'+(result.lagActivities?' en '+result.lagActivities+' extra wachttijdactiviteiten':'')+', '+result.sourceLinks+' bronrelaties, '+result.exportedSourceLinks+' XER-relaties, '+result.wbsCount+' WBS-groepen en '+result.calendarCount+' kalenders. '+result.changedActivities+' activiteiten verschoven. '+result.importInstruction+' '+result.warnings.join(' ')+' Begint de download niet, klik op de downloadlink hieronder.');
   }catch(e){ipl_exportStatus('XER-export mislukt. '+e.message,true);}
   finally{ipl_updateExportMogelijkheden();}
 }

@@ -191,13 +191,24 @@ export function serializeXer(tables,now=new Date()){
   }
   lines.push('%E');return lines.join('\r\n')+'\r\n';
 }
+// P6 stores the 16 GUID bytes as base64 without padding in XER.
+function newXerGuid(){
+  const bytes=globalThis.crypto.getRandomValues(new Uint8Array(16));
+  bytes[6]=(bytes[6]&15)|64;
+  bytes[8]=(bytes[8]&63)|128;
+  return btoa(String.fromCharCode(...bytes)).replace(/=+$/,'');
+}
+
 export function validateXer(tables,expected){
   const index=(name,key)=>{
     const rows=tables[name]||[],map=new Map();
     for(const row of rows){const id=String(row[key]);if(!/^[1-9]\d*$/.test(id)||map.has(id))throw Error('Ongeldige of dubbele XER-ID in '+name);map.set(id,row);}return map;
   };
+  const obs=index('OBS','obs_id');
   const projects=index('PROJECT','proj_id'),wbs=index('PROJWBS','wbs_id'),tasks=index('TASK','task_id'),cals=index('CALENDAR','clndr_id');index('TASKPRED','task_pred_id');
   if(projects.size!==1||tasks.size!==expected)throw Error('Het XER-activiteitenaantal wijkt af van de planning.');
+  const project=[...projects.values()][0];
+  if(!project.proj_short_name||project.project_flag!=='Y'||project.export_flag!=='Y'||String(project.loaded_scope_level)!=='7'||!cals.has(String(project.clndr_id)))throw Error('XER mist de projectgegevens voor een volledige P6-import.');
   const codes=new Set();
   for(const t of tasks.values()){
     if(!projects.has(String(t.proj_id))||!wbs.has(String(t.wbs_id))||!cals.has(String(t.clndr_id)))throw Error('Ongeldige project-, WBS- of kalenderverwijzing in XER.');
@@ -205,6 +216,7 @@ export function validateXer(tables,expected){
   }
   for(const w of wbs.values()){
     if(!projects.has(String(w.proj_id)))throw Error('WBS verwijst naar ontbrekend project.');
+    if(!obs.has(String(w.obs_id)))throw Error('WBS verwijst naar ontbrekende OBS.');
     let current=w;const seen=new Set();
     while(current.parent_wbs_id){if(seen.has(current.wbs_id))throw Error('Cirkel in XER-WBS.');seen.add(current.wbs_id);current=wbs.get(String(current.parent_wbs_id));if(!current)throw Error('Ontbrekende bovenliggende XER-WBS.');}
   }
@@ -232,7 +244,9 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   const name=val(project,'Name')||val(project,'Id')||String(filename||'Planning').replace(/\.xml$/i,'');
   const projectCode=clean(msp?'BD-SCENARIO':val(project,'Id')||'BD-SCENARIO').slice(0,20);
   tables.CURRTYPE=[{curr_id:1,decimal_digit_cnt:2,curr_symbol:'€',decimal_symbol:'.',digit_group_symbol:',',pos_curr_fmt_type:'#1.1',neg_curr_fmt_type:'(#1.1)',curr_type:'Euro',curr_short_name:'EUR',group_digit_cnt:3,base_exch_rate:1}];
-  tables.PROJECT=[];tables.SCHEDOPTIONS=[];tables.CALENDAR=[];tables.PROJWBS=[];tables.TASK=[];tables.TASKPRED=[];
+  const obsId=1;
+  tables.OBS=[{obs_id:obsId,parent_obs_id:'',guid:'',seq_num:0,obs_name:'Enterprise',obs_descr:'<HTML><BODY></BODY></HTML>'}];
+  tables.PROJECT=[];tables.CALENDAR=[];tables.SCHEDOPTIONS=[];tables.PROJWBS=[];tables.TASK=[];tables.TASKPRED=[];
   const sourceWbs=model.wbs||{},top=Object.keys(sourceWbs).filter(id=>!sourceWbs[sourceWbs[id].parent]),rootId=top.length===1?top[0]:'__xer_root';
   const wbs={...sourceWbs};if(top.length!==1)wbs[rootId]={naam:name,parent:'',seq:0};
   wbsIds.set(rootId,1);for(const id of Object.keys(wbs))if(!wbsIds.has(id))wbsIds.set(id,wbsIds.size+1);
@@ -241,7 +255,7 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
     if(seen.has(id))throw Error('Cirkel in bron-WBS.');seen.add(id);
     const item=wbs[id],parent=id===rootId?'':wbs[item.parent]?item.parent:rootId;
     if(parent&&!tables.PROJWBS.some(w=>w.wbs_id===wbsIds.get(parent)))visit(parent,seen);
-    if(!tables.PROJWBS.some(w=>w.wbs_id===wbsIds.get(id)))tables.PROJWBS.push({wbs_id:wbsIds.get(id),proj_id:1,seq_num:num(String(item.seq??0)),est_wt:1,proj_node_flag:id===rootId?'Y':'N',sum_data_flag:'Y',status_code:'WS_Open',wbs_short_name:clean(id===rootId?projectCode:item.code||val(summary.get(id),'WBS')||String(wbsIds.get(id))).slice(0,20),wbs_name:id===rootId?name:item.naam||id,parent_wbs_id:parent?wbsIds.get(parent):'',ev_compute_type:'EC_Cmp_pct',ev_etc_compute_type:'EE_Rem_hr',ev_user_pct:0,ev_etc_user_value:0.88});
+    if(!tables.PROJWBS.some(w=>w.wbs_id===wbsIds.get(id)))tables.PROJWBS.push({wbs_id:wbsIds.get(id),proj_id:1,obs_id:obsId,seq_num:num(String(item.seq??0)),proj_node_flag:id===rootId?'Y':'N',sum_data_flag:'N',status_code:'WS_Open',wbs_short_name:clean(id===rootId?projectCode:item.code||val(summary.get(id),'WBS')||String(wbsIds.get(id))).slice(0,20),wbs_name:id===rootId?name:item.naam||id,parent_wbs_id:parent?wbsIds.get(parent):'',ev_compute_type:'EC_Cmp_pct',ev_etc_compute_type:'EE_Rem_hr',ev_user_pct:0,ev_etc_user_value:0.88,orig_cost:0,indep_remain_total_cost:0,guid:newXerGuid()});
   };
   for(const id of wbsIds.keys())visit(id);
   function calId(id){
@@ -249,7 +263,7 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
     const cal=cals.resolve(id);if(!calIds.has(id)){
       const cid=calIds.size+1;calIds.set(id,cid);
       const weekHours=cal.week.flat().reduce((n,r)=>n+(r[1]-r[0])/60,0);
-      tables.CALENDAR.push({clndr_id:cid,default_flag:id===cals.defaultId?'Y':'N',clndr_name:val(cal.el,'Name')||'BiDash 5 dagen 8 uur',proj_id:1,base_clndr_id:'',last_chng_date:'',clndr_type:'CA_Project',day_hr_cnt:cal.dayHours,week_hr_cnt:weekHours,month_hr_cnt:msp?num(val(root,'MinutesPerMonth'),9600)/60:num(val(cal.el,'HoursPerMonth'),160),year_hr_cnt:msp?cal.dayHours*260:num(val(cal.el,'HoursPerYear'),2080),rsrc_private:'N',clndr_data:xerCalendarData(cal.week,cal.exceptions)});
+      tables.CALENDAR.push({clndr_id:cid,default_flag:'N',clndr_name:val(cal.el,'Name')||'BiDash 5 dagen 8 uur',proj_id:1,base_clndr_id:'',last_chng_date:'',clndr_type:'CA_Project',day_hr_cnt:cal.dayHours,week_hr_cnt:weekHours,month_hr_cnt:msp?num(val(root,'MinutesPerMonth'),9600)/60:num(val(cal.el,'HoursPerMonth'),160),year_hr_cnt:msp?cal.dayHours*260:num(val(cal.el,'HoursPerYear'),2080),rsrc_private:'N',clndr_data:xerCalendarData(cal.week,cal.exceptions)});
     }return {id:calIds.get(id),cal};
   }
   calId(cals.defaultId);
@@ -336,7 +350,7 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
         lagCalendar=tables.CALENDAR.length+1;
         tables.CALENDAR.push({clndr_id:lagCalendar,default_flag:'N',clndr_name:'BiDash kalenderwachttijd 24 uur',proj_id:1,base_clndr_id:'',last_chng_date:'',clndr_type:'CA_Project',day_hr_cnt:24,week_hr_cnt:168,month_hr_cnt:730,year_hr_cnt:8760,rsrc_private:'N',clndr_data:xerCalendarData(days.map(()=>[[0,1440]]))});
         lagWbs=tables.PROJWBS.length+1;
-        tables.PROJWBS.push({wbs_id:lagWbs,proj_id:1,seq_num:lagWbs,est_wt:1,proj_node_flag:'N',sum_data_flag:'Y',status_code:'WS_Open',wbs_short_name:'BD-LAG-'+lagWbs,wbs_name:'Kalenderwachttijden voor relaties',parent_wbs_id:wbsIds.get(rootId),ev_compute_type:'EC_Cmp_pct',ev_etc_compute_type:'EE_Rem_hr',ev_user_pct:0,ev_etc_user_value:0.88});
+        tables.PROJWBS.push({wbs_id:lagWbs,proj_id:1,obs_id:obsId,seq_num:lagWbs,proj_node_flag:'N',sum_data_flag:'N',status_code:'WS_Open',wbs_short_name:'BD-LAG-'+lagWbs,wbs_name:'Kalenderwachttijden voor relaties',parent_wbs_id:wbsIds.get(rootId),ev_compute_type:'EC_Cmp_pct',ev_etc_compute_type:'EE_Rem_hr',ev_user_pct:0,ev_etc_user_value:0.88,orig_cost:0,indep_remain_total_cost:0,guid:newXerGuid()});
       }
       const pred=tables.TASK.find(t=>t.task_id===taskIds.get(r.from));
       const anchor=r.type[0]==='F'?(pred.act_end_date||pred.early_end_date||pred.target_end_date):(pred.act_start_date||pred.early_start_date||pred.target_start_date);
@@ -367,7 +381,27 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
     link(val(rel,'PredecessorActivityObjectId'),val(rel,'SuccessorActivityObjectId'),type,num(val(rel,'Lag')));
   }
   const starts=tables.TASK.map(t=>t.target_start_date).sort(),ends=tables.TASK.map(t=>t.target_end_date).sort();
-  tables.PROJECT.push({proj_id:1,fy_start_month_num:1,rsrc_self_add_flag:'N',allow_complete_flag:'Y',rsrc_multi_assign_flag:'Y',checkout_flag:'N',project_flag:'Y',step_complete_flag:'N',cost_qty_recalc_flag:'N',batch_sum_flag:'N',name_sep_char:'.',def_complete_pct_type:'CP_Drtn',proj_short_name:projectCode,clndr_id:calIds.get(cals.defaultId),task_code_base:1000,task_code_step:10,priority_num:10,wbs_max_sum_level:0,strgy_priority_num:100,critical_drtn_hr_cnt:0,def_cost_per_qty:0,last_recalc_date:date(project,msp?'StatusDate':'DataDate')||starts[0],plan_start_date:starts[0],plan_end_date:date(project,msp?'MustFinishBy':'MustFinishByDate'),scd_end_date:ends.at(-1),def_duration_type:'DT_FixedDrtn',def_qty_type:'QT_Hour',def_rate_type:'COST_PER_QTY',def_task_type:'TT_Task',critical_path_type:'CT_TotFloat',def_rollup_dates_flag:'Y',use_project_baseline_flag:'N',rem_target_link_flag:'Y',reset_planned_flag:'N',allow_neg_act_flag:'N',sum_assign_level:'SL_Taskrsrc',export_flag:'Y'});
+  // Include the project-level fields found in a native P6 project export.
+  tables.PROJECT.push({
+    proj_id:1,fy_start_month_num:1,rsrc_self_add_flag:'N',allow_complete_flag:'Y',
+    rsrc_multi_assign_flag:'Y',checkout_flag:'N',project_flag:'Y',step_complete_flag:'N',
+    cost_qty_recalc_flag:'N',batch_sum_flag:'Y',name_sep_char:'.',def_complete_pct_type:'CP_Drtn',
+    proj_short_name:projectCode,acct_id:'',orig_proj_id:'',source_proj_id:'',base_type_id:'',
+    clndr_id:calIds.get(cals.defaultId),sum_base_proj_id:'',task_code_base:1000,task_code_step:10,
+    priority_num:10,wbs_max_sum_level:0,strgy_priority_num:100,last_checksum:'',
+    critical_drtn_hr_cnt:0,def_cost_per_qty:0,last_recalc_date:date(project,msp?'StatusDate':'DataDate')||starts[0],
+    plan_start_date:starts[0],plan_end_date:date(project,msp?'MustFinishBy':'MustFinishByDate'),
+    scd_end_date:ends.at(-1),add_date:now.toISOString().slice(0,16).replace('T',' '),
+    last_tasksum_date:'',fcst_start_date:'',def_duration_type:'DT_FixedDrtn',task_code_prefix:'A',
+    guid:newXerGuid(),def_qty_type:'QT_Hour',add_by_name:'BiDash',web_local_root_path:'',proj_url:'',
+    def_rate_type:'COST_PER_QTY',add_act_remain_flag:'N',act_this_per_link_flag:'Y',
+    def_task_type:'TT_Task',act_pct_link_flag:'Y',critical_path_type:'CT_TotFloat',
+    task_code_prefix_flag:'Y',def_rollup_dates_flag:'Y',use_project_baseline_flag:'N',rem_target_link_flag:'Y',
+    reset_planned_flag:'N',allow_neg_act_flag:'N',sum_assign_level:'SL_Taskrsrc',
+    last_fin_dates_id:'',last_baseline_update_date:'',cr_external_key:'',apply_actuals_date:'',location_id:'',
+    loaded_scope_level:7,export_flag:'Y',new_fin_dates_id:'',next_data_date:'',close_period_flag:'',
+    sum_refresh_date:'',trsrcsum_loaded:''
+  });
   if(derivedDurations)warnings.push(derivedDurations+' duren zijn uit werktijden en bronkalenders berekend omdat een XML-duur ontbreekt.');
   if(localized)warnings.push(localized+' aanwezige externe taken worden lokale P6-activiteiten.');
   if(summaryLinks)warnings.push(summaryLinks+' samenvattingsrelaties zijn naar hun randactiviteiten vertaald.');
@@ -380,6 +414,6 @@ export function createXerExport({xml,filename,model,Parser=globalThis.DOMParser,
   if(adjustedTextFields)warnings.unshift(adjustedTextFields+' tekstvelden zijn aangepast voor Windows-1252. Onzichtbare opmaaktekens zijn verwijderd en tekens zonder equivalent zijn vervangen. De bron-XML behoudt de originele tekst.');
   validateXer(tables,model.regels.length+lagActivities);
   const text=serializeXer(tables,now);
-  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',adjustedTextFields,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
+  return {text:encodeXer(text),name:primaveraExportFilename(filename,now).replace(/\.xml$/i,'.xer'),type:'application/octet-stream',formatLabel:'Primavera P6 XER',projectCode:tables.PROJECT[0].proj_short_name,adjustedTextFields,exportedActivities:tables.TASK.length,sourceActivities:model.regels.length,lagActivities,elapsedLinks,exportedSourceLinks:tables.TASKPRED.length,sourceLinks,wbsCount:tables.PROJWBS.length,calendarCount:tables.CALENDAR.length,warnings,
     importInstruction:'In P6: Bestand > Importeren > Primavera PM (XER). Kies een nieuw project en controleer de planning vóór herberekenen.'};
 }
