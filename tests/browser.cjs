@@ -1,4 +1,5 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const {leesExport}=require('./helpers/export-bestand.cjs');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const server=require('http').createServer((req,res)=>{const f=path.join(process.cwd(),'site',req.url==='/'?'index.html':new URL(req.url,'http://localhost').pathname);try{res.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(f));}catch{res.statusCode=404;res.end();}});await new Promise(r=>server.listen(8080,r));
@@ -26,7 +27,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 
  
  await page.locator('#primaryNav [data-route=data]').click();await page.locator('#none').click();await page.locator('[data-part=planning]').check();
- const downloadPromise=page.waitForEvent('download');await page.locator('#export').click();const dl=await downloadPromise;const bundle=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));assert.deepEqual(Object.keys(bundle.delen),['planning']);assert.equal(bundle.delen.planning.xml,p6);
+ const downloadPromise=page.waitForEvent('download');await page.locator('#export').click();const dl=await downloadPromise;assert.match(dl.suggestedFilename(),/\.json\.gz$/);const bundle=JSON.parse(leesExport(await dl.path()));assert.deepEqual(Object.keys(bundle.delen),['planning']);assert.equal(bundle.delen.planning.xml,p6);
  await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Werkruimte gereed'));await page.locator('#primaryNav [data-route=planning]').click();const restored=page.frames().find(f=>new URL(f.url()).pathname.endsWith('/planning.html'));await restored.locator('#iplCanvas').waitFor({state:'visible'});assert((await restored.locator('#iplCanvas').boundingBox()).width>100);
  await page.setViewportSize({width:390,height:844});await page.locator('#primaryNav [data-route=overview]').click();assert(await page.evaluate(()=>document.documentElement.scrollWidth)<=400);assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);console.log('Visible timeline, selective export, P6 restore and mobile: passed');
 

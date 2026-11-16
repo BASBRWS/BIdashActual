@@ -1,10 +1,11 @@
 import {actualStand} from './core/actual-state.js?v=20261105-1515';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261105-1515';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261116-286';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
 import {toonVersies} from './core/versie.js?v=20261116-285';
-import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js';
+import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
+import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
 import {applyQuery} from './core/query-filter.js?v=20261105-1515';
 import {createQueryEditor,createQueryPresetStore} from './core/query-builder.js?v=20261105-1515';
@@ -24,7 +25,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261116-285-dvm152';
+const APP_BUILD='20261116-286';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -265,6 +266,21 @@ function render(){
  renderQualityDashboard();
  $('#inventory').textContent=`Lokaal: DVM ${state.dvm?'geladen':'leeg'} · BI ${state.bi?'geladen':'leeg'} · planning ${state.planning?'geladen':'leeg'} · ${state.links.length} koppelingen · ${(state.expertReviews||[]).length} expertduidingen.`;
 }
+function downloadNaam(name){return globalThis.BIDASH_ACTUAL?name.replace(/^bidash-/,'bidash-actual-'):name;}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=downloadNaam(name);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+function bestandsgrootte(bytes){return bytes>=1048576?num(bytes/1048576,1)+' MB':num(Math.max(1,Math.round(bytes/1024)),0)+' kB';}
+/* JSON-exports gaan standaard ingepakt als .json.gz. De inhoud is dezelfde JSON;
+   de keuze staat bij Data & export en wordt per browser onthouden. XML en XER
+   blijven onverpakt. */
+async function exportJson(data,name){
+ const ingepakt=$('#exportGzip')?$('#exportGzip').checked:leesGzipVoorkeur();
+ const bestand=await maakJsonBestand(data,name,{gzip:ingepakt});
+ downloadBlob(bestand.blob,bestand.name);
+ const grootte=bestand.ingepakt?`${bestandsgrootte(bestand.blob.size)}, onverpakt ${bestandsgrootte(bestand.origineel)}`:bestandsgrootte(bestand.blob.size);
+ status(`Export ${downloadNaam(bestand.name)} gedownload (${grootte}).${ingepakt&&!bestand.ingepakt?' Deze browser kan niet inpakken; het bestand is gewone JSON.':''}`);
+ await schrijfExportOokNaarGekoppeldeMap(bestand.blob,bestand.name,bestand.type);
+ return bestand;
+}
 function download(obj,name,type='application/json'){if(globalThis.BIDASH_ACTUAL)name=name.replace(/^bidash-/,'bidash-actual-');const blob=new Blob([typeof obj==='string'?obj:JSON.stringify(obj)],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
 async function schrijfExportOokNaarGekoppeldeMap(data,name,type='application/json',{prepared=false}={}){
  const localStatus=prepared?'Export staat klaar via de downloadlink':'Export gedownload';
@@ -366,8 +382,8 @@ async function loadLatestSnapshot(){
 async function preview(files,{importType}={}){
  if(busy)throw Error('Wacht tot de lopende bewerking klaar is.');
  await capture();let proposed=structuredClone(state),labels=[];
- for(const f of files){const text=await f.text();const type=importType||$('#importType').value;
-  if(type==='planning'||/\.xml$/i.test(f.name)){const doc=new DOMParser().parseFromString(text,'text/xml');if(doc.querySelector('parsererror'))throw Error('Ongeldige XML: '+f.name);proposed.planning={name:f.name,xml:text,state:null};labels.push('Planning XML: '+f.name);continue;}
+ for(const f of files){const text=await leesBestandTekst(f);const type=importType||$('#importType').value;
+  if(type==='planning'||/\.xml$/i.test(zonderGzip(f.name))){const doc=new DOMParser().parseFromString(text,'text/xml');if(doc.querySelector('parsererror'))throw Error('Ongeldige XML: '+f.name);proposed.planning={name:f.name,xml:text,state:null};labels.push('Planning XML: '+f.name);continue;}
   const json=validate(JSON.parse(text));
   if(json.formaat==='DVM-dienstimpact-totaal'||json.formaat==='BiDash-integraal'){proposed=mergeImport(proposed,json);labels.push(f.name+(json.signaalgeverImport?' · alleen VC '+json.signaalgeverImport.vcs.map(v=>v.toUpperCase()).join(', '):'')+': '+(json.formaat==='DVM-dienstimpact-totaal'?DVM_PARTS.filter(k=>Object.hasOwn(json,k)&&json.exportSelectie?.[k]!==false).map(k=>LABELS[k]).join(', '):Object.keys(json.delen).join(', ')));}
   else if(type==='bi'||(Array.isArray(json.assets)&&Array.isArray(json.functies))){proposed.bi=json;labels.push('BI-model: '+f.name);}
@@ -384,8 +400,9 @@ $('#latestSnapshotFolderFallback').onchange=async event=>{const files=[...event.
 $('#exportOptions').innerHTML=[...DVM_PARTS,'biData','biRules','planning','links','expertReviews','quality'].map(k=>`<label><input type="checkbox" data-part="${k}" checked>${LABELS[k]}</label>`).join('');
 $('#exportOptions').onchange=()=>{$('#dependencies').textContent=makeExport(state,selection()).afhankelijkheden.join(' ');};
 $('#all').onclick=()=>document.querySelectorAll('[data-part]').forEach(x=>x.checked=true);$('#none').onclick=()=>document.querySelectorAll('[data-part]').forEach(x=>x.checked=false);
-$('#export').onclick=async()=>{try{if(busy)throw Error('Wacht tot import of opslag gereed is.');const snapshot=await exportSnapshot();const sel=selection();if(!sel.size)throw Error('Kies minstens één onderdeel.');const data=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(makeExport(snapshot,sel)):makeExport(snapshot,sel),name='bidash-integraal_'+new Date().toISOString().slice(0,10)+'.json';download(data,name);await schrijfExportOokNaarGekoppeldeMap(data,name);}catch(e){fail(e);}};
-for(const [id,key,basisnaam,type] of [['exportDvm','dvm','dvm-dienstimpact-totaal','application/json'],['exportBi','bi','bidash-wvm-dataset','application/json'],['exportXml','planning','planning','text/xml']])$( '#'+id).onclick=async()=>{try{if(busy)throw Error('Wacht tot de lopende bewerking gereed is.');const snapshot=key==='dvm'?await exportSnapshot():(await capture(),state);if(!snapshot[key])throw Error('Dit onderdeel is nog niet geladen.');const rawData=key==='planning'?snapshot.planning.xml:snapshot[key],data=key==='dvm'&&globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(rawData):rawData,name=`${basisnaam}_${new Date().toISOString().slice(0,10)}.${key==='planning'?'xml':'json'}`;download(data,name,type);await schrijfExportOokNaarGekoppeldeMap(data,name,type);}catch(e){fail(e);}};
+$('#export').onclick=async()=>{try{if(busy)throw Error('Wacht tot import of opslag gereed is.');const snapshot=await exportSnapshot();const sel=selection();if(!sel.size)throw Error('Kies minstens één onderdeel.');const data=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(makeExport(snapshot,sel)):makeExport(snapshot,sel),name='bidash-integraal_'+new Date().toISOString().slice(0,10)+'.json';await exportJson(data,name);}catch(e){fail(e);}};
+if($('#exportGzip')){$('#exportGzip').checked=leesGzipVoorkeur();$('#exportGzip').onchange=e=>bewaarGzipVoorkeur(e.target.checked);}
+for(const [id,key,basisnaam,type] of [['exportDvm','dvm','dvm-dienstimpact-totaal','application/json'],['exportBi','bi','bidash-wvm-dataset','application/json'],['exportXml','planning','planning','text/xml']])$( '#'+id).onclick=async()=>{try{if(busy)throw Error('Wacht tot de lopende bewerking gereed is.');const snapshot=key==='dvm'?await exportSnapshot():(await capture(),state);if(!snapshot[key])throw Error('Dit onderdeel is nog niet geladen.');const rawData=key==='planning'?snapshot.planning.xml:snapshot[key],data=key==='dvm'&&globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(rawData):rawData,name=`${basisnaam}_${new Date().toISOString().slice(0,10)}.${key==='planning'?'xml':'json'}`;if(key==='planning'){download(data,name,type);await schrijfExportOokNaarGekoppeldeMap(data,name,type);}else await exportJson(data,name);}catch(e){fail(e);}};
 const primaveraDownload=createFileDownload($('#primaveraDownload'));
 function primaveraExportStatus(message,error=false){
  const host=$('#primaveraExportStatus');host.textContent=message;host.classList.toggle('error',error);

@@ -1,3 +1,4 @@
+import {isGzipKop,leesBestandTekst,zonderGzip} from './json-gzip.js';
 const DVM_PARTS=['assetregister','netwerkschakels','storingshistorie','liveStoringen','dripHistorie','uRoutes','werkzaamheden','parameters','dripSelectie'];
 const PART_LABELS={netwerkschakels:'Netwerkschakelmatrix',assetregister:'Assetregister',storingshistorie:'Storingshistorie',liveStoringen:'Open storingen',dripHistorie:'DRIP-historie',uRoutes:'U-routes',werkzaamheden:'Werkzaamheden'};
 
@@ -213,18 +214,32 @@ async function workbookTables(file){
 }
 
 function makeJsonFile(obj,name){return new File([JSON.stringify(obj)],name,{type:'application/json'});}
+/* Een ingepakt tekstbestand (.json.gz, .xml.gz, .csv.gz) wordt hier eenmalig uitgepakt.
+   De rest van de herkenning ziet dan gewone tekst onder de oorspronkelijke naam;
+   de gzip-kop bepaalt of er iets uit te pakken valt, niet de extensie. */
+const TEKST_BINNEN_GZIP=/\.(json|geojson|ndjson|jsonl|xml|csv|tsv|txt)$/i;
+async function uitgepaktBestand(file){
+  if(typeof file?.slice!=='function')return file;
+  const kop=new Uint8Array(await file.slice(0,2).arrayBuffer());
+  if(!isGzipKop(kop))return file;
+  if(!TEKST_BINNEN_GZIP.test(zonderGzip(file.name||'')))throw new Error(`Ingepakt bestand ${file.name} bevat geen herkenbaar JSON-, XML- of tekstbestand.`);
+  const tekst=await leesBestandTekst(file);
+  return new File([tekst],file.name,{type:'application/json',lastModified:file.lastModified});
+}
+
 export async function recognizeFile(file,{hint='auto'}={}){
-  const lower=String(file.name||'').toLowerCase();
+  file=await uitgepaktBestand(file);
+  const lower=zonderGzip(String(file.name||'')).toLowerCase(),basis=zonderGzip(String(file.name||''));
   if(hint==='planning'||/\.xml$/i.test(lower))return {files:[file],label:`Planning XML: ${file.name}`,kind:'planning',passthrough:true};
 
   if(/\.json$/i.test(lower)||/\.geojson$/i.test(lower)||/\.ndjson$/i.test(lower)||/\.jsonl$/i.test(lower)){
     const text=await file.text();let json;
     if(/\.(ndjson|jsonl)$/i.test(lower))json=text.split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));else json=JSON.parse(text);
     if(knownJson(json))return {files:[file],label:`Bestaand JSON-formaat: ${file.name}`,kind:'known-json',passthrough:true};
-    const partial=partialDvmObject(json);if(partial)return {files:[makeJsonFile(partial,file.name.replace(/\.json$/i,'')+'.dvm.json')],label:`DVM-deelbestand herkend: ${file.name}`,kind:'dvm-partial'};
+    const partial=partialDvmObject(json);if(partial)return {files:[makeJsonFile(partial,basis.replace(/\.json$/i,'')+'.dvm.json')],label:`DVM-deelbestand herkend: ${file.name}`,kind:'dvm-partial'};
     const tables=extractTables(json),bundles=[],recognized=[];
     for(const t of tables){const c=classifyTable(t.rows,{fileName:file.name,sheetName:t.name,hint});if(c.kind==='dvm-part'&&!c.ambiguous){bundles.push(makeDvmPartBundle(c.part,t.rows,{fileName:file.name,sheetName:t.name}));recognized.push(`${c.label}${t.name?' ('+t.name+')':''}`);}}
-    if(bundles.length)return {files:[makeJsonFile(mergeBundles(bundles),file.name.replace(/\.json$/i,'')+'.genormaliseerd.json')],label:`${file.name}: ${recognized.join(', ')}`,kind:'normalized-json'};
+    if(bundles.length)return {files:[makeJsonFile(mergeBundles(bundles),basis.replace(/\.json$/i,'')+'.genormaliseerd.json')],label:`${file.name}: ${recognized.join(', ')}`,kind:'normalized-json'};
     if(hint==='bi'&&json&&typeof json==='object')return {files:[file],label:`BI JSON: ${file.name}`,kind:'bi',passthrough:true};
     throw new Error(`Bestand ${file.name} is geldige JSON, maar de inhoud kan niet betrouwbaar aan een BiDash-bron worden gekoppeld.`);
   }
@@ -237,7 +252,7 @@ export async function recognizeFile(file,{hint='auto'}={}){
   const bundles=[],recognized=[],ambiguous=[];
   for(const t of tables){const c=classifyTable(t.rows,{fileName:file.name,sheetName:t.name,hint});if(c.kind!=='dvm-part')continue;if(c.ambiguous){ambiguous.push(`${t.name||'eerste tabel'}: ${c.scores.slice(0,2).map(x=>`${PART_LABELS[x.part]||x.part} ${x.score}`).join(' / ')}`);continue;}bundles.push(makeDvmPartBundle(c.part,t.rows,{fileName:file.name,sheetName:t.name}));recognized.push(`${c.label}${t.name?' ('+t.name+')':''}`);}
   if(!bundles.length){const extra=ambiguous.length?' Mogelijke matches: '+ambiguous.join('; ')+'.':'';throw new Error(`Ik herken in ${file.name} geen bron met voldoende zekerheid.${extra}`);}
-  return {files:[makeJsonFile(mergeBundles(bundles),file.name+'.genormaliseerd.json')],label:`${file.name}: ${recognized.join(', ')}`,kind:'table'};
+  return {files:[makeJsonFile(mergeBundles(bundles),basis+'.genormaliseerd.json')],label:`${file.name}: ${recognized.join(', ')}`,kind:'table'};
 }
 
 export async function normalizeSelectedFiles(files,{hint='auto'}={}){
@@ -251,7 +266,7 @@ export function installUniversalImporter(){
   const input=document.getElementById('files'),type=document.getElementById('importType');
   if(!input||typeof input.onchange!=='function'||input.dataset.bidashUniversalImporter)return false;
   const original=input.onchange;
-  input.accept='.json,.geojson,.jsonl,.ndjson,.xml,.csv,.tsv,.txt,.xlsx,.xls,.xlsm,.xlsb,.ods';
+  input.accept='.json,.gz,.json.gz,.geojson,.jsonl,.ndjson,.xml,.csv,.tsv,.txt,.xlsx,.xls,.xlsm,.xlsb,.ods';
   if(type){const auto=type.querySelector('option[value="auto"]');if(auto)auto.textContent='Automatisch herkennen';if(!type.querySelector('option[value="dvm"]')){const o=document.createElement('option');o.value='dvm';o.textContent='DVM bron automatisch herkennen';type.appendChild(o);}}
   const section=input.closest('section'),p=section?.querySelector('input#files + p');if(p)p.textContent='BiDash herkent DVM totaalexports, integrale BiDash JSON, BI JSON, planning XML en losse DVM-bronnen uit JSON, CSV, TSV en Excel. Kolomnamen mogen afwijken; de importer normaliseert bekende aliassen en toont vóór verwerking welk brontype is herkend.';
   input.onchange=async event=>{

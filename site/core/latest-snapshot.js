@@ -1,4 +1,7 @@
-const JSON_EXTENSION=/\.json$/i;
+import {JSON_BESTAND,leesBestandTekst} from './json-gzip.js';
+
+/* Zowel gewone als ingepakte back-ups (.json.gz) tellen mee. */
+const JSON_EXTENSION=JSON_BESTAND;
 const SNAPSHOT_FORMATS=new Set(['BiDash-integraal','DVM-dienstimpact-totaal']);
 
 function datumWaarde(value){
@@ -26,7 +29,7 @@ export async function nieuwsteMomentopnameUitBestanden(files){
   const geldige=[];
   for(const file of jsonFiles){
     try{
-      const json=JSON.parse(await file.text());
+      const json=JSON.parse(await leesBestandTekst(file));
       if(!isOndersteundeMomentopname(json))continue;
       geldige.push({file,json,tijd:momentopnameTijd(file,json),formaat:json.formaat,opgeslagen:json.opgeslagen||null});
     }catch(_error){
@@ -37,7 +40,7 @@ export async function nieuwsteMomentopnameUitBestanden(files){
   geldige.sort((a,b)=>b.tijd-a.tijd
     ||Number(b.formaat==='BiDash-integraal')-Number(a.formaat==='BiDash-integraal')
     ||String(b.file.name).localeCompare(String(a.file.name),'nl'));
-  if(!geldige.length)throw Error('Geen geldige BiDash-integraal- of DVM-totaal-JSON gevonden in deze map.');
+  if(!geldige.length)throw Error('Geen geldige BiDash-integraal- of DVM-totaal-JSON (.json of .json.gz) gevonden in deze map.');
   return {...geldige[0],gevonden:geldige.length,onderzocht:jsonFiles.length};
 }
 
@@ -69,13 +72,14 @@ export async function schrijfBestandNaarMap(directoryHandle,{name,data,type='app
   const fileHandle=await directoryHandle.getFileHandle(name,{create:true});
   if(!fileHandle||typeof fileHandle.createWritable!=='function')throw Error('De browser kan in deze gekoppelde map geen bestand maken.');
   const writable=await fileHandle.createWritable();
-  const inhoud=typeof data==='string'?data:JSON.stringify(data);
+  /* Een kant-en-klare Blob, zoals een ingepakte .json.gz-export, wordt ongewijzigd geschreven. */
+  const blob=data instanceof Blob?data:new Blob([typeof data==='string'?data:JSON.stringify(data)],{type});
   try{
-    await writable.write(new Blob([inhoud],{type}));
+    await writable.write(blob);
     await writable.close();
   }catch(error){
     if(typeof writable.abort==='function')try{await writable.abort();}catch(_abortError){}
     throw error;
   }
-  return {name,type,bytes:new Blob([inhoud]).size};
+  return {name,type,bytes:blob.size};
 }

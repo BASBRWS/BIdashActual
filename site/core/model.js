@@ -1,7 +1,7 @@
 import './dvm-compact.js';
 import './signaalgever-import.js?v=20261017-0820';
-import './import-known-json-fastpath.js';
-import './universal-importer.js';
+import './import-known-json-fastpath.js?v=20261116-286';
+import './universal-importer.js?v=20261116-286';
 import './asset-register-special-filter.js?v=20261016-0834';
 
 export const DVM_PARTS=['assetregister','netwerkschakels','storingshistorie','liveStoringen','dripHistorie','uRoutes','werkzaamheden','parameters','dripSelectie'];

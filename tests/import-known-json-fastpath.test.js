@@ -39,8 +39,8 @@ test('grote bekende JSON wordt herkend zonder volledige file.text aan te roepen'
 
 test('fastpath wordt vóór universele importer ingepland',()=>{
   const model=read('site/core/model.js');
-  const fast=model.indexOf("import './import-known-json-fastpath.js';");
-  const universal=model.indexOf("import './universal-importer.js';");
+  const fast=model.search(/import '\.\/import-known-json-fastpath\.js(?:\?v=[\w-]+)?';/);
+  const universal=model.search(/import '\.\/universal-importer\.js(?:\?v=[\w-]+)?';/);
   assert.ok(fast>=0&&universal>fast);
 });
 
@@ -64,4 +64,13 @@ test('runtime fastpath stuurt bekende export rechtstreeks naar de oorspronkelijk
   assert.equal(coreCalls,1);
   assert.equal(universalCalls,0);
   assert.equal(shown,1);
+});
+
+test('ingepakte bekende export (.json.gz) wordt herkend uit alleen het uitgepakte begin',async()=>{
+  const {gzipSync}=await import('node:zlib');
+  const kop='{"formaat":"DVM-dienstimpact-totaal","versie":151,"rijen":[';
+  const inhoud=gzipSync(kop+Array.from({length:40000},(_,i)=>'{"id":'+i+'}').join(',')+']}');
+  assert.equal(await fileLooksLikeKnownBiDashJson(new File([inhoud],'dvm-dienstimpact-totaal_2026-11-16.json.gz')),true);
+  assert.equal(await fileLooksLikeKnownBiDashJson(new File([gzipSync('{"rows":[]}')],'tabel.json.gz')),false);
+  assert.equal(await fileLooksLikeKnownBiDashJson(new File([new Uint8Array([0x1f,0x8b,1,2])],'kapot.json.gz')),false);
 });
