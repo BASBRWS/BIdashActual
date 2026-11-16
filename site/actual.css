@@ -7,3 +7,10 @@
 #assetKpis{grid-template-columns:repeat(4,minmax(0,1fr))}
 #assetFaultCountDetails{margin-bottom:20px}
 @media(max-width:900px){#assetKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Actual-profiel: dezelfde Reel-dashboardtaal, zonder prognosefuncties te tonen. */
+.actual-stand{background:#eaf2e8;border:1px solid #d7e4d6;border-left:5px solid #789d58;border-radius:13px;color:#38533e;padding:16px 19px;box-shadow:0 5px 16px #07100b12}
+.actual-stand strong{color:#234632}
+#assetFaultCountDetails{background:#f8faf7}
+#assetKpis .card{border-radius:15px}
+@media(max-width:900px){#assetKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
