@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.83 en DVM 151, bijgewerkt op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.84 en DVM 151, bijgewerkt op 16 november 2026 met het glass-dashboardthema van de schil; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1161,3 +1161,7 @@ Na Windows-1252-conversie begrenst de XER-export WBS-namen op 100 bytes. Bij ink
 ## Primavera XER opschoning, versie 2.83
 
 De XER-export normaliseert witruimte en besturingstekens en begrenst WBS-namen op 80, activiteitnamen op 120 en overige geëxporteerde tekstnamen op 255 bytes in Windows-1252. Korte WBS-codes blijven maximaal 20 tekens per niveau. De oorspronkelijke ingekorte namen en aanwezige MSP-taak- en WBS-notities gaan naar het Notebook-onderwerp BiDash onderbouwing. Per notitie geldt een grens van 2.000 bytes inclusief veilige HTML-codering. De export meldt per soort veld hoeveel er zijn ingekort en controleert de koppeling tussen notitie en activiteit of WBS.
+
+## Glass-dashboardthema, versie 2.84
+
+De schil gebruikt een licht thema met tokens op `:root` in `site/style.css`. De navigatie staat op brede schermen in een zwevende rail en onder 1100 px in een balk boven de pagina. De DVM-overrides staan in `site/actual.css`, dat na `component.css` wordt geladen. De wijziging raakt alleen de vormgeving. Routes, rekenregels, opslag, imports en exports blijven gelijk. Er is nog geen donker thema.

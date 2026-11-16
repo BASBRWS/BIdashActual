@@ -8,40 +8,39 @@
 #assetFaultCountDetails{margin-bottom:20px}
 @media(max-width:900px){#assetKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* Actual-profiel: Reel-dashboard en behoud van de bestaande profielbeperkingen. */
-.actual-stand{background:#eaf2e8;border:1px solid #d7e4d6;border-left:5px solid #789d58;border-radius:13px;color:#38533e;padding:16px 19px;box-shadow:0 5px 16px #07100b12}
-.actual-stand strong{color:#234632}
-#assetFaultCountDetails{background:#f8faf7;border-radius:15px}
-#assetKpis .card{border-radius:15px}
+/* Actual-profiel: glass-dashboard (2.84) en behoud van de bestaande profielbeperkingen.
+   De dagstand zelf krijgt haar donkere kopkaart uit style.css. */
+#assetFaultCountDetails{border-radius:24px}
 @media(max-width:900px){#assetKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* DVM draait in een eigen iframe. Deze regels staan bewust in actual.css,
-   dat na component.css wordt geladen, zodat de themastijlen niet worden overschreven. */
-body[data-module="dvm"]{background:#101a17;color:#e7efea}
-body[data-module="dvm"] .lint{background:linear-gradient(90deg,#c8e66b 0 50%,#829f63 50%)}
-body[data-module="dvm"] .topbar{background:#15231d;border-bottom:1px solid #293a33;box-shadow:none}
-body[data-module="dvm"] .topbar h1{color:#f0f6ef}
-body[data-module="dvm"] .topbar h1 .sub{color:#a9bbb0}
-body[data-module="dvm"] .tb-btn{background:#263a30;border:1px solid #405649;color:#edf4ed;border-radius:9px}
-body[data-module="dvm"] .tb-btn:hover{background:#344b3d}
-body[data-module="dvm"] .tb-btn.primary{background:#c8e66b;border-color:#c8e66b;color:#17271d}
-body[data-module="dvm"] .wrap{background:#101a17;color:#e7efea}
-body[data-module="dvm"] .pagehead h2{color:#f0f6ef}
-body[data-module="dvm"] .pagehead p{color:#a5b6aa}
-body[data-module="dvm"] .card,body[data-module="dvm"] .data-gate,body[data-module="dvm"] .dataset-card,body[data-module="dvm"] .dienst-tile{background:#f9fbf8;border-color:#dfe8e1;border-radius:16px;box-shadow:0 8px 24px rgba(7,16,11,.14)}
-body[data-module="dvm"] .card h3,body[data-module="dvm"] .dataset-titel,body[data-module="dvm"] .dienst-tile .dt-naam{color:#234638}
-body[data-module="dvm"] .kpi,body[data-module="dvm"] .wv-kpi{background:#edf3eb;border-color:#dce7dc;border-radius:11px}
-body[data-module="dvm"] .kpi .k-val{color:#234638}
-body[data-module="dvm"] table.tbl th{background:#234638;color:#f5f8f4}
-body[data-module="dvm"] table.tbl td{background:#fff;color:#263b30}
-body[data-module="dvm"] .login-scherm{background:linear-gradient(135deg,#101a17 0%,#203c2d 100%)}
-body[data-module="dvm"] .login-lint{background:linear-gradient(to right,#c8e66b 50%,#829f63 50%)}
-body[data-module="dvm"] .login-logo,body[data-module="dvm"] .login-org{color:#234638}
-body[data-module="dvm"] .login-knop{background:#234638;border-radius:10px}
-body[data-module="dvm"] .login-knop:hover{background:#315b46}
-body[data-module="dvm"] .data-stap,body[data-module="dvm"] .import-progress,body[data-module="dvm"] .dataset-region-row{border-radius:10px}
-body[data-module="dvm"] .wv-mgmt{border-radius:16px}
-body[data-module="dvm"] .section-tabs button.active{color:#234638;border-bottom-color:#c8e66b}
+   dat na component.css wordt geladen, zodat het thema daar niet wordt overschreven. */
+body[data-module="dvm"]{background:#f3f7f5!important;color:#10261f!important;font-family:Inter,"Segoe UI",system-ui,Arial,sans-serif!important}
+body[data-module="dvm"] .lint{background:linear-gradient(90deg,#2f9f84 0 60%,#f4874f 60%)}
+body[data-module="dvm"] .topbar{background:#fff;border-bottom:1px solid #e1eae6;box-shadow:none}
+body[data-module="dvm"] .topbar h1{color:#10261f}
+body[data-module="dvm"] .topbar h1 .sub{color:#4b625a}
+body[data-module="dvm"] .tb-btn{background:#fff;border:1px solid #ccdcd5;color:#0f3a31;border-radius:999px!important}
+body[data-module="dvm"] .tb-btn:hover{background:#ecf7f2}
+body[data-module="dvm"] .tb-btn.primary{background:#0f3a31;border-color:#0f3a31;color:#fff}
+body[data-module="dvm"] .wrap{background:transparent;color:#10261f}
+body[data-module="dvm"] .pagehead h2{color:#10261f;letter-spacing:-.4px}
+body[data-module="dvm"] .pagehead p{color:#4b625a}
+body[data-module="dvm"] .card h2,body[data-module="dvm"] .card h3,body[data-module="dvm"] .card .card-title{color:#10261f!important}
+body[data-module="dvm"] .card,body[data-module="dvm"] .data-gate,body[data-module="dvm"] .dataset-card,body[data-module="dvm"] .dienst-tile{background:#fff;border:1px solid #e1eae6;border-radius:22px;box-shadow:0 1px 2px rgba(16,38,31,.04),0 12px 32px rgba(16,38,31,.07)}
+body[data-module="dvm"] .card h3,body[data-module="dvm"] .dataset-titel,body[data-module="dvm"] .dienst-tile .dt-naam{color:#10261f}
+body[data-module="dvm"] .kpi,body[data-module="dvm"] .wv-kpi{background:#ecf7f2;border-color:#d9f0e7;border-radius:16px}
+body[data-module="dvm"] .kpi .k-val{color:#0f3a31}
+body[data-module="dvm"] table.tbl th{background:#f4f8f6;color:#4b625a}
+body[data-module="dvm"] table.tbl td{background:#fff;color:#10261f}
+body[data-module="dvm"] .login-scherm{background:linear-gradient(135deg,#185246 0%,#0f3a31 100%)}
+body[data-module="dvm"] .login-lint{background:linear-gradient(to right,#2f9f84 60%,#f4874f 60%)}
+body[data-module="dvm"] .login-logo,body[data-module="dvm"] .login-org{color:#0f3a31}
+body[data-module="dvm"] .login-knop{background:#0f3a31;border-radius:12px}
+body[data-module="dvm"] .login-knop:hover{background:#185246}
+body[data-module="dvm"] .data-stap,body[data-module="dvm"] .import-progress,body[data-module="dvm"] .dataset-region-row{border-radius:12px}
+body[data-module="dvm"] .wv-mgmt{border-radius:22px}
+body[data-module="dvm"] .section-tabs button.active{color:#0f3a31;border-bottom-color:#f4874f}
 @media(max-width:720px){
  body[data-module="dvm"] .topbar{padding:12px;gap:8px}
  body[data-module="dvm"] .wrap{padding:14px 12px 40px}
