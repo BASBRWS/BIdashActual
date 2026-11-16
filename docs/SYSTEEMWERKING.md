@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.86 en DVM 152, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.86 en DVM 153, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1177,3 +1177,15 @@ In versie 2.85 is `APP_BUILD` in `site/app.js` verhoogd. Die buildcode staat in 
 - **Nog niet omgezet.** De losse planningpagina, de losse MTM-importer, de storingsbundelaar en de eigen export- en importknoppen in DVM-bronbeheer gebruiken nog gewone JSON.
 
 Controles: `tests/json-gzip.test.js` (verliesloze roundtrip met null, 0 en niet-ASCII, hernoemde gewone JSON, gzip zonder extensie, afgekapt of beschadigd bestand, terugval zonder `CompressionStream`, voorkeur, gekoppelde map), de uitbreiding van `tests/import-known-json-fastpath.test.js` en `tests/json-gzip-browser.cjs` (echte schil: import van `.json.gz`, export integraal en DVM, gewone JSON als keuze, onthouden voorkeur, beschadigd bestand geweigerd, eigen back-up teruggelezen).
+
+## Snelheid van assetkoppeling, DVM 153
+
+`koppelMeldingAanAsset` haalt de locatiekandidaten op via `assetKandidatenOpWeg(type, weg, hm)`. `assetMeldingPast` laat een asset met een eindige HM alleen toe binnen `hmTolerantieKm`. Het venster bevat daarom de assets met een HM binnen die tolerantie, plus assets zonder eindige HM en assets met een `locatieCorrectie`. Bij een weglijst onder 64 assets of een melding zonder bruikbare HM blijft de volledige weglijst gelden. De kandidaten houden de volgorde van `ASSET_INDEX.byTypeRoad`, zodat filtering, sortering en gelijke scores dezelfde uitkomst geven. Het venster per weg wordt bij elke `bouwAssetIndex()` opnieuw opgebouwd. `DVM_KANDIDAAT_VENSTER=false` schakelt het uit voor vergelijkende tests.
+
+`normRij` zoekt kolomnamen hoofdletterongevoelig via één opzoektabel per rij. Bij dubbele namen wint de eerste, zoals voorheen. `normAssetTekst`, `normAssetVc`, `normAssetRichting` en `dvmWeg` blijven op zichzelf staande functiedeclaraties. Ze onthouden hun uitkomst voor tekst- en getalinvoer in een begrensde cache aan de functie zelf (`functie.cache`, maximaal 50.000 waarden). `meldingStrook` onthoudt per melding de uitkomst zolang `strook`, `melding` en `gevolg` gelijk blijven.
+
+De knoppen voor koppelen, bulkkoppelen en locatie opslaan lopen via `assetCfgBezig`. Die schakelt de knoppen uit, toont een bezig-melding, laat de browser één keer tekenen en voert pas daarna de bestaande, ongewijzigde actie uit. `assetConfigKoppel` en `assetConfigBewaarLocatie` blijven direct aanroepbaar.
+
+Controles: `tests/assetconfig-koppeling-snelheid.test.js` vergelijkt koppeling, suggesties, redenen en kandidaatdetails met de volledige scan bij drie toleranties. Het register bevat assets zonder of met niet-eindige HM, een DVKA en een locatiecorrectie. De test controleert ook de volgorde van het venster, `normRij` bij dubbele kolomnamen en de caches. `tests/assetconfig-koppeling-browser.cjs` importeert 12.000 assets en 9.000 meldingen. Daarna vergelijkt hij het volledige matchbeeld en de inspectie met en zonder venster, en koppelt hij en wijzigt hij een locatie via de echte knoppen, met bezig-melding en een tijdsbudget van 25 s per actie.
+
+De resterende rekentijd per actie zit vooral in `renderAlles`, dat alle DVM-tabbladen opnieuw tekent, en bij locatiewijziging in `verwerkDvmLeeftijd`. Die stappen zijn ongewijzigd.

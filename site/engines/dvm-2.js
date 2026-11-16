@@ -49,8 +49,16 @@ let MC_HISTORIE_LIVE=null;
 let HISTORIE_UITGESTELD=false;
 let TOTAAL_IMPORT_GELADEN=false;
 
+/* Zuivere tekstnormalisaties worden bij het koppelen per kandidaat herhaald. Elke
+   functie onthoudt haar uitkomst voor tekst- en getalinvoer in een begrensde cache aan
+   de functie zelf (DVM 153). Zo blijft elke functie op zichzelf staan: andere scripts en
+   tests die haar los uitvoeren, krijgen dezelfde uitkomst. */
 function normAssetTekst(v){
-  return String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');
+  const t=typeof v,c=normAssetTekst.cache||(normAssetTekst.cache=new Map()),k=t==='number'?'#'+v:v,vast=t==='string'||t==='number';
+  if(vast&&c.has(k))return c.get(k);
+  const uit=String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');
+  if(vast){if(c.size>=50000)c.clear();c.set(k,uit);}
+  return uit;
 }
 /* Bronbestanden gebruiken verschillende woorden voor dezelfde functionele bron.
    Intern blijft LUS de stabiele technische sleutel; in de bediening heet dit
@@ -68,20 +76,30 @@ function canoniekAssetType(v){
   return '';
 }
 function normAssetVc(v){
+  const t=typeof v,c=normAssetVc.cache||(normAssetVc.cache=new Map()),k=t==='number'?'#'+v:v,vast=t==='string'||t==='number';
+  if(vast&&c.has(k))return c.get(k);
   let s=String(v==null?'':v).trim().toUpperCase().replace(/^VC[\s_-]*/,'').replace(/\s+/g,'');
   if(s==='WNN')s='NWN';
   if(s==='WNZ')s='ZWN';
-  return VC_MAP[s]||s;
+  const uit=VC_MAP[s]||s;
+  if(vast){if(c.size>=50000)c.clear();c.set(k,uit);}
+  return uit;
 }
 function normAssetRichting(v){
+  const t=typeof v,c=normAssetRichting.cache||(normAssetRichting.cache=new Map()),k=t==='number'?'#'+v:v,vast=t==='string'||t==='number';
+  if(vast&&c.has(k))return c.get(k);
   const s=String(v==null?'':v).trim().toUpperCase();
-  if(['L','LI','LINKS'].includes(s))return 'LI';
-  if(['R','RE','RECHTS'].includes(s))return 'RE';
-  return s;
+  const uit=['L','LI','LINKS'].includes(s)?'LI':['R','RE','RECHTS'].includes(s)?'RE':s;
+  if(vast){if(c.size>=50000)c.clear();c.set(k,uit);}
+  return uit;
 }
 function dvmWeg(v){
+  const t=typeof v,c=dvmWeg.cache||(dvmWeg.cache=new Map()),k=t==='number'?'#'+v:v,vast=t==='string'||t==='number';
+  if(vast&&c.has(k))return c.get(k);
   const s=String(v??'').trim().toUpperCase(),m=s.match(/^([AN])\s*0*(\d{1,3})$/);
-  return m&&Number(m[2])>0?m[1]+Number(m[2]):/^\d{1,3}$/.test(s)&&Number(s)>0?'A'+Number(s):'';
+  const uit=m&&Number(m[2])>0?m[1]+Number(m[2]):/^\d{1,3}$/.test(s)&&Number(s)>0?'A'+Number(s):'';
+  if(vast){if(c.size>=50000)c.clear();c.set(k,uit);}
+  return uit;
 }
 function dvmLocGet(row,keys){
   for(const k of keys)for(const [name,v] of Object.entries(row||{})){
@@ -203,7 +221,19 @@ function assetLogId(m,typeId){
   return [typeId||'',m&&m.weg||'',m&&m.richting||'',m&&m.hm!=null?Number(m.hm).toFixed(3):'',m&&m.strook||''].join(' ' ).trim();
 }
 function assetLogSleutel(v){return normAssetTekst(v);}
+/* De uitkomst hangt alleen af van strook, melding en gevolg. Bij het koppelen wordt
+   dezelfde melding tegen veel kandidaten getoetst; de cache voorkomt dat de reguliere
+   expressies telkens opnieuw lopen, en wordt ongeldig zodra een van die velden wijzigt. */
+const MELDING_STROOK_CACHE=new WeakMap();
 function meldingStrook(m){
+  if(!m||typeof m!=='object')return meldingStrookBerekend(m);
+  const c=MELDING_STROOK_CACHE.get(m);
+  if(c&&c.strook===m.strook&&c.melding===m.melding&&c.gevolg===m.gevolg)return c.uit;
+  const uit=meldingStrookBerekend(m);
+  MELDING_STROOK_CACHE.set(m,{strook:m.strook,melding:m.melding,gevolg:m.gevolg,uit});
+  return uit;
+}
+function meldingStrookBerekend(m){
   const unit=v=>{
     const s=String(v??'').trim();if(/^\d{1,2}$/.test(s))return String(Number(s));
     const hits=[...s.matchAll(/\b(?:MSI|rijstrook|strook|detector|det\.?|detectielus|meetlus|lus)\s*(\d{1,2})\b/gi)].map(x=>String(Number(x[1])));
@@ -262,9 +292,41 @@ function bouwAssetIndex(){
     voegAssetIndex(byTypeRoad,[a.tp,a.weg].join('|'),a);
     if(a.prognoseActief){voegAssetIndex(byRoad,a.weg,a);if(geldigeRdCoord(a.rdX,a.rdY))voegAssetIndex(byGrid,Math.floor(a.rdX/gridSize)+'|'+Math.floor(a.rdY/gridSize),a);}
   });
-  ASSET_INDEX={byKey,byExact,byCode,byTypeRoad,byRoad,byGrid,gridSize,aantal:ASSET_REGISTER_STATE.assets.length};
+  ASSET_INDEX={byKey,byExact,byCode,byTypeRoad,byRoad,byGrid,gridSize,aantal:ASSET_REGISTER_STATE.assets.length,byTypeRoadHm:new Map()};
   window.DVM_ASSET_INDEX=ASSET_INDEX;
   return ASSET_INDEX;
+}
+/* HM-venster voor locatiekoppeling (DVM 153). assetMeldingPast laat een asset met een
+   bekende HM alleen toe binnen de HM-tolerantie. Daarom hoeven alleen assets in dat
+   venster te worden vergeleken, plus assets zonder eindige HM en assets met een
+   handmatige locatiecorrectie (hun bronlocatie kan elders liggen). De kandidaten
+   komen terug in de oorspronkelijke volgorde van de weglijst, zodat filtering,
+   sortering en gelijke scores exact dezelfde uitkomst geven als een volledige scan.
+   Zonder bruikbare HM in de melding blijft de volledige weglijst gelden. */
+let DVM_KANDIDAAT_VENSTER=true;
+function assetHmTolerantie(){return Math.max(.01,Number(assetConfigBasis().hmTolerantieKm)||.35);}
+function assetWegVenster(typeId,weg){
+  const sleutel=[typeId,weg].join('|'),cache=ASSET_INDEX.byTypeRoadHm||(ASSET_INDEX.byTypeRoadHm=new Map());
+  let v=cache.get(sleutel);if(v)return v;
+  const lijst=ASSET_INDEX.byTypeRoad.get(sleutel)||[],gesorteerd=[],altijd=[];
+  lijst.forEach((a,i)=>{
+    const hm=Number(a.hm);
+    if(a.hm==null||!Number.isFinite(hm)||a.locatieCorrectie)altijd.push(i);
+    if(a.hm!=null&&Number.isFinite(hm))gesorteerd.push({hm,i});
+  });
+  gesorteerd.sort((x,y)=>x.hm-y.hm||x.i-y.i);
+  v={lijst,gesorteerd,altijd};cache.set(sleutel,v);return v;
+}
+function assetKandidatenOpWeg(typeId,weg,mHm){
+  const lijst=(weg&&ASSET_INDEX.byTypeRoad.get([typeId,weg].join('|')))||[];
+  const hm=mHm==null?NaN:Number(mHm);
+  if(!DVM_KANDIDAAT_VENSTER||!Number.isFinite(hm)||lijst.length<64)return lijst;
+  const v=assetWegVenster(typeId,weg),tol=assetHmTolerantie(),g=v.gesorteerd;
+  let lo=0,hi=g.length;
+  while(lo<hi){const mid=(lo+hi)>>1;if(g[mid].hm<hm-tol-1e-9)lo=mid+1;else hi=mid;}
+  const idx=new Set(v.altijd);
+  for(let i=lo;i<g.length&&g[i].hm<=hm+tol+1e-9;i++)idx.add(g[i].i);
+  return [...idx].sort((a,b)=>a-b).map(i=>v.lijst[i]);
 }
 function handmatigeAssetVoor(logId,typeId,m){
   if(!ASSET_INDEX)return null;
@@ -333,7 +395,8 @@ function koppelMeldingAanAsset(m,typeId){
   const weg=String(m&&m.weg||'').trim().toUpperCase(),richting=normAssetRichting(m&&m.richting),vc=normAssetVc(m&&m.vc);
   const hm=m&&m.hm!=null&&!isNaN(m.hm)?Number(m.hm):null;
   const strook=meldingStrook(m);
-  let pool=(weg&&ASSET_INDEX.byTypeRoad.get([typeId,weg].join('|')))||[];
+  const wegKandidaten=assetKandidatenOpWeg(typeId,weg,m&&m.hm);
+  let pool=weg?wegKandidaten:[];
   if(richting&&!['MSI','LUS'].includes(typeId))pool=pool.filter(a=>!a.richting||normAssetRichting(a.richting)===richting||a.locatieCorrectie&&normAssetRichting(a.bronLocatie?.richting)===richting);
   if(vc)pool=pool.filter(a=>!a.vc||normAssetVc(a.vc)===vc);
   pool=pool.filter(a=>assetMeldingPast(m,a,typeId));
@@ -349,7 +412,7 @@ function koppelMeldingAanAsset(m,typeId){
   const tol=Math.max(.01,Number(cfg.hmTolerantieKm)||.35);
   const technisch=['MSI','LUS'].includes(typeId);
   if(technisch&&!rang.length&&hm!==null){
-    const afgeleid=(ASSET_INDEX.byTypeRoad.get([typeId,weg].join('|'))||[])
+    const afgeleid=wegKandidaten
       .filter(a=>assetMeldingPast(m,a,typeId,{dvka:'hoofdrichting'}))
       .map(a=>({a,afstand:a.hm!=null?Math.abs(a.hm-hm):Infinity}))
       .filter(x=>x.afstand<=tol).sort((a,b)=>a.afstand-b.afstand);
@@ -363,7 +426,7 @@ function koppelMeldingAanAsset(m,typeId){
   if(binnen&&uniek)return {asset:best.a,status:'gekoppeld',methode:'locatie'+(strook&&best.a.strook===strook?' + strook':''),afstand:best.afstand,logId,logKey,suggesties:uniekSuggesties};
   let reden=hm==null?'Hectometrering ontbreekt.':!weg?'Weg ontbreekt.':binnen?'Meerdere assets passen even goed; handmatige keuze nodig.':`Geen asset binnen ${tol.toFixed(2).replace('.',',')} km.`;
   if(!technisch)return geenKoppeling(reden,uniekSuggesties,best?.afstand??null);
-  const nabij=(ASSET_INDEX.byTypeRoad.get([typeId,weg].join('|'))||[])
+  const nabij=wegKandidaten
     .filter(a=>hm!==null&&a.hm!=null&&assetMeldingPast(m,a,typeId,{zijdeNegeren:true,eenheidNegeren:true}));
   const details=nabij.map(a=>{
     const redenen=[];
@@ -1043,7 +1106,12 @@ function num(v){const x=parseFloat(String(v).replace(',','.'));return isNaN(x)?n
    storingsduur_peildatum | kruislampfout | MSI | splitsing | samenvoeging |
    opeenvolgend | verbindingsboog | kruislamp | google_link | Gevolg | ... */
 function normRij(m){
-  const g = k => { for(const kk of Object.keys(m)){ if(lc(kk)===lc(k)) return m[kk]; } return undefined; };
+  /* Kolomnamen zijn hoofdletterongevoelig. Eén opzoektabel per rij vervangt een
+     volledige sleutelscan per veld (DVM 153). Bij dubbele namen die alleen in
+     hoofdletters verschillen wint, zoals voorheen, de eerste in de rij. */
+  const sleutels=new Map();
+  for(const kk of Object.keys(m)){const l=lc(kk);if(!sleutels.has(l))sleutels.set(l,kk);}
+  const g = k => { const kk=sleutels.get(lc(k)); return kk===undefined?undefined:m[kk]; };
   const vlag=(...namen)=>{
     for(const naam of namen){
       const v=g(naam);if(v==null||v==='')continue;

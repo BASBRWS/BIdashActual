@@ -5282,11 +5282,26 @@ async function assetConfigBewaarLocatie(keyEnc,loc){
   await assetConfigLocatieToepassen(key,'Locatiecorrectie opgeslagen. Areaal, storingen en afhankelijke analyses zijn herberekend.');
   return ASSET_INDEX.byKey.get(key);
 }
+/* Koppelen en locatie wijzigen rekenen areaal, storingen en analyses opnieuw door.
+   Bij een groot register duurt dat enkele seconden. De knoppen tonen eerst zichtbaar
+   dat BiDash bezig is en laten de browser één keer tekenen voordat het rekenen begint. */
+function assetCfgNaTekenen(){
+  return new Promise(resolve=>{const raf=typeof requestAnimationFrame==='function'?requestAnimationFrame:f=>setTimeout(f,16);raf(()=>setTimeout(resolve,0));});
+}
+async function assetCfgBezig(tekst,werk){
+  const knoppen=[...document.querySelectorAll('#rulePaneAssets button,[data-asset-locatie] button')].filter(b=>!b.disabled);
+  knoppen.forEach(b=>b.disabled=true);document.body.classList.add('dvm-bezig');document.body.setAttribute('aria-busy','true');
+  const el=document.getElementById('assetCfgStatus');if(el){el.textContent=tekst;el.style.color='var(--sub)';}
+  try{await assetCfgNaTekenen();return await werk();}
+  finally{document.body.classList.remove('dvm-bezig');document.body.removeAttribute('aria-busy');knoppen.filter(b=>b.isConnected).forEach(b=>b.disabled=false);}
+}
+function assetConfigKoppelUi(logEnc,keyEnc){
+  return assetCfgBezig('Koppeling opslaan en alles herberekenen. Bij een groot register kan dit enkele seconden duren…',()=>assetConfigKoppel(logEnc,keyEnc));
+}
 async function assetConfigLocatieOpslaan(button,keyEnc){
   const host=button.closest('[data-asset-locatie]'),loc=Object.fromEntries([...host.querySelectorAll('[data-asset-locatie-field]')].map(el=>[el.dataset.assetLocatieField,el.value]));
-  button.disabled=true;
-  try{await assetConfigBewaarLocatie(keyEnc,loc);}catch(error){assetCfgMelding(error.message,false);}
-  finally{button.disabled=false;}
+  try{await assetCfgBezig('Locatie opslaan en alles herberekenen. Bij een groot register kan dit enkele seconden duren…',()=>assetConfigBewaarLocatie(keyEnc,loc));}
+  catch(error){assetCfgMelding(error.message,false);}
 }
 async function assetConfigLocatieHerstellen(keyEnc){
   const key=decodeURIComponent(keyEnc),cfg=assetConfigBasis(),ov=cfg.overrides[key];
@@ -5339,6 +5354,9 @@ function assetConfigKoppelBesteAlle(){
   const groepen=((ASSET_MATCH_STATE&&ASSET_MATCH_STATE.groepen)||[]).filter(g=>g.bulkToegestaan!==false&&g.suggesties&&g.suggesties[0]&&ASSET_INDEX&&ASSET_INDEX.byKey.has(g.suggesties[0].key));
   if(!groepen.length){assetCfgMelding('Er zijn geen foutgroepen met een beste kandidaat.',false);return;}
   if(!confirm(`Koppel ${groepen.length} foutgroep(en) aan de beste kandidaat die nu per groep wordt getoond? Groepen zonder kandidaat blijven handmatig openstaan.`))return;
+  return assetCfgBezig(`${groepen.length} koppelingen opslaan en alles herberekenen. Bij een groot register kan dit enkele seconden duren…`,()=>assetConfigKoppelBesteAlleUitvoeren(groepen));
+}
+function assetConfigKoppelBesteAlleUitvoeren(groepen){
   const cfg=assetConfigBasis();
   groepen.forEach(g=>{
     const lk=assetLogSleutel(g.id),key=g.suggesties[0].key;
@@ -5421,7 +5439,7 @@ function assetKandidaatKnop(g,a,tekst){
   const technisch=['MSI','LUS'].includes(g.typeId);
   const past=!technisch||assetMeldingPast(g.melding,a,g.typeId,{dvka:'bevestigd'});
   const dvka=technisch&&past&&!assetMeldingPast(g.melding,a,g.typeId);
-  return `<button class="asset-koppel-btn primary" ${past?`onclick="assetConfigKoppel('${encodeURIComponent(g.id)}','${encodeURIComponent(a.key)}')"`:'disabled'}>${dvka?'Bevestig DVKA-koppeling':past?esc(tekst||'Koppel aan dit asset'):'Controleer wegtak / eenheid'}</button>`;
+  return `<button class="asset-koppel-btn primary" ${past?`onclick="assetConfigKoppelUi('${encodeURIComponent(g.id)}','${encodeURIComponent(a.key)}')"`:'disabled'}>${dvka?'Bevestig DVKA-koppeling':past?esc(tekst||'Koppel aan dit asset'):'Controleer wegtak / eenheid'}</button>`;
 }
 function renderAssetConfigLijstHtml(){
   const sel=assetConfigSelectie(),cfg=assetConfigBasis();
