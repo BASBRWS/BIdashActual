@@ -26,7 +26,7 @@ eerst met OneDrive op je computer synchroniseren. Bij de eerste keer kies je die
 lokale map. Edge of Chrome onthoudt de koppeling in deze browser; na een herstart
 kan de browser nogmaals om leestoestemming vragen.
 
-BiDash bekijkt alleen de JSON-bestanden direct in de gekozen map. Een integrale
+BiDash bekijkt alleen de JSON-bestanden direct in de gekozen map, zowel `.json` als ingepakt `.json.gz`. Een integrale
 BiDash-back-up en een DVM-totaalbestand worden herkend; auditrapporten, losse
 bron-JSON en kapotte bestanden worden overgeslagen. De exporttijd in het veld
 `opgeslagen` bepaalt welke geldige stand het nieuwste is. Ontbreekt die, dan volgt
@@ -50,6 +50,18 @@ datum. Exporteer je op dezelfde dag nogmaals, dan wordt de versie van die dag in
 de map bijgewerkt. De browser kan bij de eerste export nog om schrijfrechten
 vragen. Weiger je die, of lukt schrijven niet, dan is de gewone download al wel
 gemaakt en toont BiDash dat alleen het opslaan in de map is mislukt.
+
+## Ingepakt opslaan als .json.gz
+
+Vanaf versie 2.86 slaat BiDash JSON-exports standaard ingepakt op als `.json.gz`. De inhoud is precies dezelfde JSON, maar het bestand is ongeveer tien keer kleiner. Dat scheelt bij downloaden, mailen en synchroniseren via OneDrive. Na de export toont de statusregel de ingepakte en de onverpakte grootte.
+
+Wil je het bestand zelf inzien of in een ander programma gebruiken? Zet dan bij **Data & export** het vinkje **Ingepakt opslaan als .json.gz** uit. De browser onthoudt die keuze. Een `.json.gz` kun je ook met 7-Zip uitpakken.
+
+De keuze geldt voor de integrale back-up, de DVM-totaal-JSON en de BI Dash JSON, en voor de kopie in de gekoppelde map. De oorspronkelijke planning-XML en de Primavera-exports (XML en XER) blijven onverpakt.
+
+Bij laden herkent BiDash zelf of een bestand ingepakt is. Gewone `.json` blijft gewoon werken, ook oude back-ups. Is een `.json.gz` beschadigd of niet volledig gedownload, dan meldt BiDash dat vóór er iets wordt vervangen. Inpakken en uitpakken doet de browser zelf; daarvoor is een recente Edge of Chrome nodig.
+
+De losse planningpagina, de losse MTM-importer en de eigen knoppen in DVM-bronbeheer gebruiken voorlopig nog gewone JSON.
 
 De terugval waarbij je in een andere browser iedere keer een map uploadt kan die
 map niet beschrijven. Automatisch terugschrijven werkt daarom in Edge of Chrome

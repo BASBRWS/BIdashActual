@@ -1,3 +1,4 @@
+import {isGzipKop} from './json-gzip.js';
 const HEAD_BYTES=256*1024;
 
 export function knownBiDashJsonHead(text){
@@ -5,10 +6,24 @@ export function knownBiDashJsonHead(text){
   return /"formaat"\s*:\s*"(?:BiDash-integraal|DVM-dienstimpact-totaal)"/.test(s);
 }
 
-export async function fileLooksLikeKnownBiDashJson(file){
-  if(!file||!/\.json$/i.test(String(file.name||''))||typeof file.slice!=='function')return false;
-  const head=await file.slice(0,HEAD_BYTES).text();
-  return knownBiDashJsonHead(head);
+/* Bij een ingepakte back-up (.json.gz) wordt alleen het begin uitgepakt. De volledige
+   inhoud leest de gewone import daarna één keer. */
+async function uitgepaktBegin(file,scope=globalThis){
+  if(typeof scope.DecompressionStream!=='function'||typeof file.stream!=='function')return '';
+  const reader=file.stream().pipeThrough(new scope.DecompressionStream('gzip')).pipeThrough(new scope.TextDecoderStream()).getReader();
+  let tekst='';
+  try{while(tekst.length<HEAD_BYTES){const {value,done}=await reader.read();if(done)break;tekst+=value;}}
+  catch(_error){return '';}
+  finally{reader.cancel().catch(()=>{});}
+  return tekst;
+}
+
+export async function fileLooksLikeKnownBiDashJson(file,scope=globalThis){
+  const naam=String(file?.name||'');
+  if(!file||!/\.json(?:\.gz)?$/i.test(naam)||typeof file.slice!=='function')return false;
+  if(/\.json$/i.test(naam))return knownBiDashJsonHead(await file.slice(0,HEAD_BYTES).text());
+  const kop=new Uint8Array(await file.slice(0,2).arrayBuffer());
+  return knownBiDashJsonHead(isGzipKop(kop)?await uitgepaktBegin(file,scope):await file.slice(0,HEAD_BYTES).text());
 }
 
 export function installKnownJsonFastPath(scope=globalThis){

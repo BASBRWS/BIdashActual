@@ -1,4 +1,5 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const {leesExport}=require('./helpers/export-bestand.cjs');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const ns='http://xmlns.oracle.com/Primavera/P6/V23.12/API/BusinessObjects';
 // Uitsluitend synthetische gegevens, met dezelfde objectsoorten als een P6-export.
@@ -105,7 +106,7 @@ async function compareStructure(frame,before,after){
   assert(await page.locator('#primaveraExportStatus').isVisible());assert(await page.locator('#primaveraDownload').isHidden());
   await frame.evaluate(()=>{IPL_MSHIFT={'11':1};});
   await page.locator('#none').click();await page.locator('[data-part=planning]').check();
-  waiting=page.waitForEvent('download');await page.locator('#export').click();download=await waiting;const bundle=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
+  waiting=page.waitForEvent('download');await page.locator('#export').click();download=await waiting;const bundle=JSON.parse(leesExport(await download.path()));
   assert.equal(bundle.delen.planning.xml,fixture);assert.equal(bundle.delen.planning.state.ipl.mshift['11'],1);
   await page.locator('#save').click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Lokaal opgeslagen'));
   await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Werkruimte gereed'));

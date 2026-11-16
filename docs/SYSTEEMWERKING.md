@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.85 en DVM 152, bijgewerkt op 16 november 2026 met het glass-dashboardthema van de schil en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.86 en DVM 152, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1167,3 +1167,13 @@ De XER-export normaliseert witruimte en besturingstekens en begrenst WBS-namen o
 De schil gebruikt een licht thema met tokens op `:root` in `site/style.css`. De navigatie staat op brede schermen in een zwevende rail en onder 1100 px in een balk boven de pagina. De DVM-overrides staan in `site/actual.css`, dat na `component.css` wordt geladen. De wijziging raakt alleen de vormgeving. Routes, rekenregels, opslag, imports en exports blijven gelijk. Er is nog geen donker thema.
 
 In versie 2.85 is `APP_BUILD` in `site/app.js` verhoogd. Die buildcode staat in de adressen van de engine-iframes. Verhoog haar bij elke stijlwijziging aan een engine, anders blijft de browser de oude enginepagina gebruiken. In 2.85 zijn ook de zwakke grijstinten in de schil op minimaal 4,5:1 contrast gebracht.
+
+## Ingepakte JSON (.json.gz), versie 2.86
+
+`site/core/json-gzip.js` verpakt en ontpakt JSON aan de bestandsgrens met de `CompressionStream` en `DecompressionStream` van de browser. De JSON-inhoud, formaten (`BiDash-integraal`, `DVM-dienstimpact-totaal`, BI), compacte storingscodec en null/0-betekenis blijven ongewijzigd. Herkenning gebeurt op de gzip-kop `1f 8b`, niet op de extensie. Gewone JSON blijft dus leesbaar, ook als die hernoemd is.
+
+- **Export.** De integrale back-up, de DVM-totaal-JSON en de BI Dash JSON in Data & export gaan standaard als `.json.gz` (`application/gzip`). De keuze `#exportGzip` wordt per browser in `localStorage` onthouden (`bidash-export-gzip`). Zonder `CompressionStream` volgt gewone JSON met een melding. Dezelfde Blob gaat ongewijzigd naar de gekoppelde map. Oorspronkelijke XML, P6-XML en XER blijven onverpakt.
+- **Import.** `preview()` in `app.js`, de universele importer en de gekoppelde map accepteren `.json` en `.json.gz`. De universele importer pakt ingepakte tekstbestanden eenmalig uit. De fastpath voor bekende exports leest bij `.json.gz` alleen het uitgepakte begin (256 kB). De volledige inhoud wordt daarna één keer gelezen. Een beschadigd of afgekapt gzip-bestand geeft een fout met de bestandsnaam vóór vervanging van de werkruimte.
+- **Nog niet omgezet.** De losse planningpagina, de losse MTM-importer, de storingsbundelaar en de eigen export- en importknoppen in DVM-bronbeheer gebruiken nog gewone JSON.
+
+Controles: `tests/json-gzip.test.js` (verliesloze roundtrip met null, 0 en niet-ASCII, hernoemde gewone JSON, gzip zonder extensie, afgekapt of beschadigd bestand, terugval zonder `CompressionStream`, voorkeur, gekoppelde map), de uitbreiding van `tests/import-known-json-fastpath.test.js` en `tests/json-gzip-browser.cjs` (echte schil: import van `.json.gz`, export integraal en DVM, gewone JSON als keuze, onthouden voorkeur, beschadigd bestand geweigerd, eigen back-up teruggelezen).

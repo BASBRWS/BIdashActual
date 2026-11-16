@@ -1,4 +1,5 @@
 /* Echte downloads, totaalherstel en hervatting. Uitsluitend synthetische data. */
+const {leesExport}=require('./helpers/export-bestand.cjs');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
@@ -31,7 +32,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await upload(page,source,'oude-totaal.json',true);
   const frame=page.frames().find(f=>/engines\/dvm.html/.test(f.url()));await frame.waitForFunction(()=>typeof ASSET_REGISTER_STATE!=='undefined'&&ASSET_REGISTER_STATE?.ruweRegisterRijen?.length===20001);assert.equal(await frame.evaluate(()=>ASSET_REGISTER_STATE.ruweRegisterRijen.length),20001);
   await page.evaluate(()=>location.hash='data');await page.locator('#all').click();
-  const download=page.waitForEvent('download');await page.locator('#export').click();const first=JSON.parse(fs.readFileSync(await(await download).path(),'utf8'));
+  const download=page.waitForEvent('download');await page.locator('#export').click();const first=JSON.parse(leesExport(await(await download).path()));
   assert.equal(first.formaat,'BiDash-integraal');assert.equal(first.delen.dvm.compacteStoringen.versie,1);assert.ok(first.delen.dvm.liveStoringen.every(b=>Array.isArray(b.rijenRefs)&&!('rijen' in b)));
   const decoded=await page.evaluate(b=>DVM_COMPACT.unpackAny(b),first);assert.equal(decoded.delen.dvm.assetregister.rijen.length,20001);assert.deepEqual(decoded.delen.dvm.parameters.cfg.compactProbe,{zero:0,unknown:null,disabled:false});
   const pending=decoded.delen.dvm.liveStoringen.flatMap(b=>b.rijen).find(r=>r.event_id==='1');assert.equal(pending.afwezig_sinds,'2026-10-15T10:00:00.000Z');
@@ -49,10 +50,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.equal(after.live.find(r=>r.event_id==='2').incident_id,decoded.delen.dvm.liveStoringen.flatMap(b=>b.rijen).find(r=>r.event_id==='2').incident_id);assert.equal(after.meta.laatstePerVc.nwn,source.bronbeheer.signaalgeverTotaal.laatstePerVc.nwn);
   const repeat=await run();assert.deepEqual(repeat,after);
   await rf.evaluate(()=>document.getElementById('sgMapProgress')?.close());await restored.evaluate(()=>location.hash='data');await restored.locator('#all').click();
-  const secondDownload=restored.waitForEvent('download');await restored.locator('#export').click();const second=JSON.parse(fs.readFileSync(await(await secondDownload).path(),'utf8'));
+  const secondDownload=restored.waitForEvent('download');await restored.locator('#export').click();const second=JSON.parse(leesExport(await(await secondDownload).path()));
   const unpacked=await restored.evaluate(b=>DVM_COMPACT.unpackAny(b),second);assert.equal(unpacked.delen.dvm.storingshistorie.flatMap(b=>b.rijen).length,4);assert.equal(unpacked.delen.dvm.liveStoringen.flatMap(b=>b.rijen).length,3);assert.deepEqual(unpacked.delen.dvm.parameters.cfg.compactProbe,{zero:0,unknown:null,disabled:false});
   // De afzonderlijke DVM-download gebruikt hetzelfde formaat.
-  await restored.locator('#exportDvm').evaluate(e=>e.closest('details').open=true);const nativeDownload=restored.waitForEvent('download');await restored.locator('#exportDvm').click();const native=JSON.parse(fs.readFileSync(await(await nativeDownload).path(),'utf8'));assert.equal(native.compacteStoringen.versie,1);
+  await restored.locator('#exportDvm').evaluate(e=>e.closest('details').open=true);const nativeDownload=restored.waitForEvent('download');await restored.locator('#exportDvm').click();const native=JSON.parse(leesExport(await(await nativeDownload).path()));assert.equal(native.compacteStoringen.versie,1);
   const before=await rf.evaluate(()=>JSON.stringify([LIVE_STORINGSBRONNEN,STORINGSBRONNEN,__BIDASH_SIGNAALGEVER_TOTAAL__]));
   const bad=structuredClone(second);delete bad.delen.dvm.compacteStoringen;await restored.locator('#files').setInputFiles({name:'beschadigd.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await restored.waitForFunction(()=>document.getElementById('status').textContent.includes('Ongeldige of onvolledige compacte storingsopslag'));
   assert.equal(await restored.locator('#applyImport').count(),0);assert.equal(await rf.evaluate(()=>JSON.stringify([LIVE_STORINGSBRONNEN,STORINGSBRONNEN,__BIDASH_SIGNAALGEVER_TOTAAL__])),before);
