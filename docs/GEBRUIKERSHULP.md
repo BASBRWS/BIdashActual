@@ -516,7 +516,7 @@ Bij meldingen zonder registerkoppeling opent **Assetkoppeling oplossen** de best
 
 ## Kaart bij Gebied & knelpunten, BiDash 2.55 / DVM 135
 
-Open Dienstverlening, Gebied & knelpunten. De kaart laadt automatisch de topografische achtergrond van Kadaster / PDOK met wegen, plaatsen en water. Gekleurde punten tonen de knelpunten uit jouw geladen gegevens. Kies een gebied, gebruik plus/min om te zoomen of klik een knelpunt in de ranglijst aan. Hele regio herstelt de uitsnede.
+Open Dienstverlening, Gebied & knelpunten. De kaart laadt automatisch de topografische achtergrond van Kadaster / PDOK met wegen, plaatsen en water. Gekleurde punten tonen de knelpunten uit jouw geladen gegevens. Kies een gebied, gebruik plus/min om te zoomen of klik een knelpunt in de ranglijst aan. Sleep de kaart met de muis of je vinger om te verschuiven. Met het toetsenbord verschuif je met de pijltoetsen en zoom je met plus en min. De kaart past zich aan de breedte van het scherm aan. Hele regio herstelt de uitsnede.
 
 De kaart gebruikt de beschikbare RD-coördinaten. Zonder bruikbare locatie blijft een knelpunt in de ranglijst; de app verzint geen positie. Zonder coördinaten verschijnt de landelijke kaart met uitleg. Voor de achtergrondkaart is internet nodig. Als de kaart niet laadt, blijven de knelpunten en ranglijst beschikbaar. De kaartbron ontvangt alleen openbare tegelverzoeken; jouw bronbestanden worden niet geüpload.
 

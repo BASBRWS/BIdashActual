@@ -510,7 +510,12 @@ h3 .tip,h4 .tip{font-size:10px}
 .choke-map-buttons button{min-width:36px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--wit);color:var(--rws-blauw);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .choke-map-buttons button:hover{background:var(--panel)}
 .choke-map-box{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--panel)}
-.choke-map-svg{display:block;width:100%;height:auto;max-height:560px;background:linear-gradient(180deg,var(--wit),var(--panel));touch-action:manipulation}
+.choke-map-svg{display:block;width:100%;height:auto;background:linear-gradient(180deg,var(--wit),var(--panel));touch-action:manipulation;cursor:grab;user-select:none;-webkit-user-select:none}
+.choke-map-svg.ingezoomd{touch-action:none}
+.choke-map-svg.sleept{cursor:grabbing}
+.choke-map-svg.sleept .choke-punt{cursor:grabbing}
+.choke-map-svg:focus-visible{outline:3px solid var(--oranje);outline-offset:-3px}
+.choke-map-hint{margin:-4px 0 8px;font-size:11.5px;color:var(--sub)}
 .choke-map-svg .rijksweg-a{fill:none;stroke:var(--grijs-mid);stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;opacity:.88}
 .choke-map-svg .rijksweg-n{fill:none;stroke:var(--grijs-mid);stroke-width:.8;stroke-linecap:round;stroke-linejoin:round;opacity:.55}
 .choke-map-svg .choke-halo{fill:var(--wit);stroke:var(--wit);stroke-width:4;opacity:.92}
@@ -525,7 +530,7 @@ h3 .tip,h4 .tip{font-size:10px}
 .choke-map-meta{font-size:11.5px;color:var(--sub);margin-top:8px;line-height:1.45}
 .choke-klikrij:hover td{background:var(--rws-blauw-l)}
 .choke-kaart-link{border:0;background:transparent;padding:2px 0;color:var(--rws-blauw);font-family:var(--mono);font-size:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
-@media(max-width:620px){.choke-map-toolbar{align-items:stretch}.choke-map-toolbar .map-keuze{width:100%}.choke-map-toolbar label{flex:1}.choke-map-toolbar select{width:100%;min-width:0}.choke-map-buttons{width:100%}.choke-map-buttons button{flex:1}.choke-map-svg{max-height:430px}.choke-map-detail{align-items:flex-start;gap:6px 12px}}
+@media(max-width:620px){.choke-map-toolbar{align-items:stretch}.choke-map-toolbar .map-keuze{width:100%}.choke-map-toolbar label{flex:1}.choke-map-toolbar select{width:100%;min-width:0}.choke-map-buttons{width:100%}.choke-map-buttons button{flex:1}.choke-map-detail{align-items:flex-start;gap:6px 12px}}
 .grid2-chart{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media(max-width:900px){.grid2-chart{grid-template-columns:1fr}}
 .mini-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
@@ -782,8 +787,8 @@ h3 .tip,h4 .tip{font-size:10px}
 <script src="dvm-memo-besluit.js?v=20261103-1400"></script>
 <script src="dvm-2.js?v=20261103-1400"></script>
 
-<script src="dvm-3.js?v=20261103-1400"></script>
+<script src="dvm-3.js?v=20261116-152"></script>
 <style>@media print{.kosten-invoer{display:none!important}.kosten-blok{break-inside:avoid}} .kosten-blok{border-left:4px solid #003082;padding:12px;margin-top:16px}.kosten-blok p{font-size:12px;line-height:1.5}</style>
 <script src="dvm-actual.js?v=20261103-1400"></script>
-<script src="dvm-adapter.js?v=20261103-1400"></script></body>
+<script src="dvm-adapter.js?v=20261116-152"></script></body>
 </html>
