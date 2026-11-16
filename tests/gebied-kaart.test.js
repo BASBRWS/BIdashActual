@@ -43,3 +43,12 @@ test('alleen de PDOK-tegelbron is als externe afbeelding toegestaan, brondata bl
  assert.match(html,/connect-src 'self';/);assert.match(html,/<meta name="referrer" content="no-referrer">/);
  assert.doesNotMatch(html,/connect-src[^;]*pdok|img-src[^;]*\*/);
 });
+
+test('passende kaartmaten blijven binnen de PDOK-tegelgrens van 64 per uitsnede',()=>{
+ const r=dvmRuntime();
+ for(const W of [320,900,1500])for(const H of [340,530,720])for(let lg=2;lg<=19;lg+=.25){
+  const bw=(W-44)*2**lg/10,bh=bw*(H-44)/(W-44),n=r.gebiedKaartTegels({links:100037,rechts:100037+bw,onder:400011,boven:400011+bh,W,H,pad:22}).length;
+  assert.ok(n>0&&n<=64,`${W}x${H} niveau ${lg}: ${n} tegels`);
+ }
+ const m=r.gebiedKaartMaat();assert.equal(m.W,900);assert.equal(m.H,530);
+});

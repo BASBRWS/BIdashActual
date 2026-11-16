@@ -128,7 +128,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* Werkvlak */
 .workspace{margin-left:calc(var(--g-rail) + var(--g-gap)*2);min-height:100vh;background:transparent}
-.workspace-head{position:sticky;top:0;z-index:15;display:flex;align-items:center;justify-content:space-between;gap:14px;height:auto;min-height:72px;padding:14px 32px 10px;border:0;background:linear-gradient(180deg,rgba(238,244,241,.92) 60%,rgba(238,244,241,0));backdrop-filter:blur(10px);color:var(--g-ink)}
+.workspace-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;height:auto;min-height:72px;padding:14px 32px 10px;border:0;background:transparent;color:var(--g-ink)}
 .eyebrow{color:var(--g-ink-3);font-size:10px;font-weight:650;letter-spacing:.14em}
 #breadcrumb{color:var(--g-ink-2);font-size:12.5px}
 .head-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px}
@@ -224,6 +224,9 @@ progress{accent-color:var(--g-mint)}progress::-webkit-progress-bar{background:va
 .page-content .signal,.signal{border:0;border-left:4px solid var(--g-peach);border-radius:var(--g-r-md);background:#fff8f3;color:var(--g-ink)}
 #simulationBadge.signal{border-left-color:var(--g-mint);background:var(--g-mint-wash)}
 .muted{color:var(--g-ink-3)}
+/* 2.85: oudere grijstinten in schilcomponenten halen geen 4,5:1 op de glaskaarten. */
+.page-content small,.page-content .pager span,.page-content .muted,.page-content label{color:var(--g-ink-2)}
+.page-content .card small{color:var(--g-ink-3)}
 .empty{border:1px dashed var(--g-line-2);border-radius:var(--g-r-md);background:rgba(255,255,255,.55);color:var(--g-ink-2)}
 .empty b{color:var(--g-ink)}
 .empty button{border-radius:var(--g-r-pill)}

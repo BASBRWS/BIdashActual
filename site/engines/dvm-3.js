@@ -3195,6 +3195,9 @@ let GEBIED_KAART_SELECTIE='';
 const U_ROUTE_GEOMETRIE={"meta": {}, "relaties": {}};
 const WERK_GEOMETRIE_INDEX={"meta": {}, "werken": {}};
 let GEBIED_KAART_CHOKES=[];
+let GEBIED_KAART_VIEW=null;
+let GEBIED_KAART_SLEEP=null;
+let GEBIED_KAART_NEGEER_KLIK_TOT=0;
 let GEBIED_NETWERK_CACHE=null;
 
 function gebiedRegioNaam(vc){
@@ -3316,11 +3319,95 @@ function wijzigGebiedZoom(richting){
 }
 function herstelGebiedKaart(){GEBIED_KAART_ZOOM=1;GEBIED_KAART_FOCUS=null;renderGebied();}
 function selecteerChokeOpKaart(index){
+  if(Date.now()<GEBIED_KAART_NEGEER_KLIK_TOT)return;
   const c=GEBIED_KAART_CHOKES[index];if(!c)return;
   const p=chokeKaartPunt(c);GEBIED_KAART_SELECTIE=chokeKaartId(c);
   if(p){GEBIED_KAART_FOCUS={x:p.x,y:p.y};GEBIED_KAART_ZOOM=Math.max(2.6,GEBIED_KAART_ZOOM);}
   renderGebied();
   const el=document.getElementById('chokeRijkswegKaart');if(el)el.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+/* Kaartmaat volgt de beschikbare breedte, zodat de kaart het vak vult in plaats van
+   een vaste 900x530 te verkleinen met lege zijkanten. Zonder meetbare breedte, zoals
+   in een verborgen tab of de testruntime, blijft de oude maat gelden. */
+function gebiedKaartMaat(){
+  let w=0,vh=800;
+  try{
+    const host=document.getElementById('chokeRijkswegKaart');
+    w=Number(host?.clientWidth)||0;
+    if(w<320){const tab=document.getElementById('tab-gebied');w=(Number(tab?.clientWidth)||0)-44;}
+    vh=Number(window.innerHeight)||800;
+  }catch(e){w=0;}
+  if(!Number.isFinite(w)||w<320)return {W:900,H:530};
+  /* Bovengrens houdt het aantal PDOK-tegels per uitsnede onder 64; een breder vak
+     schaalt de kaart op met dezelfde verhouding. */
+  const W=Math.round(Math.min(w,1500));
+  const H=Math.round(Math.max(340,Math.min(W*.62,vh*.78,720)));
+  return {W,H};
+}
+function gebiedKaartControleerMaat(){
+  const box=document.getElementById('chokeRijkswegKaart');
+  if(!box||!GEBIED_KAART_VIEW||!box.clientWidth)return;
+  if(Math.abs(box.clientWidth-GEBIED_KAART_VIEW.W)>8)renderGebied();
+}
+let GEBIED_KAART_RESIZE=null;
+if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>{
+  clearTimeout(GEBIED_KAART_RESIZE);GEBIED_KAART_RESIZE=setTimeout(gebiedKaartControleerMaat,180);
+});
+
+/* Verschuiven door te slepen. Tijdens het slepen schuift alleen de kaartlaag mee;
+   bij loslaten wordt de nieuwe uitsnede berekend en worden de tegels voor dat gebied
+   geladen. Een korte beweging (minder dan 5 px) blijft een klik op een knelpunt. */
+function gebiedKaartBegrensFocus(x,y){
+  return {x:Math.max(-7000,Math.min(300000,x)),y:Math.max(289000,Math.min(629000,y))};
+}
+function gebiedKaartVerschuif(dxEenheden,dyEenheden){
+  const v=GEBIED_KAART_VIEW;if(!v)return;
+  const mpe=v.bw/(v.W-2*v.pad);
+  GEBIED_KAART_FOCUS=gebiedKaartBegrensFocus(v.cx-dxEenheden*mpe,v.cy+dyEenheden*mpe);
+  renderGebied();
+}
+function gebiedKaartPointerDown(e,svg){
+  if(e.button!==undefined&&e.button!==0)return;
+  GEBIED_KAART_SLEEP={id:e.pointerId,x:e.clientX,y:e.clientY,dx:0,dy:0,bewogen:false,svg};
+  svg.addEventListener('pointermove',gebiedKaartPointerMove);
+  svg.addEventListener('pointerup',gebiedKaartPointerUp);
+  svg.addEventListener('pointercancel',gebiedKaartPointerUp);
+}
+function gebiedKaartPointerMove(e){
+  const s=GEBIED_KAART_SLEEP;if(!s||e.pointerId!==s.id)return;
+  s.dx=e.clientX-s.x;s.dy=e.clientY-s.y;
+  if(!s.bewogen&&Math.hypot(s.dx,s.dy)>=5){
+    s.bewogen=true;s.svg.classList.add('sleept');
+    try{s.svg.setPointerCapture(e.pointerId);}catch(err){}
+  }
+  if(!s.bewogen)return;
+  e.preventDefault();
+  const schaal=GEBIED_KAART_VIEW.W/(s.svg.getBoundingClientRect().width||GEBIED_KAART_VIEW.W);
+  s.schaal=schaal;
+  const laag=s.svg.querySelector('[data-kaart-laag]');
+  if(laag)laag.setAttribute('transform',`translate(${(s.dx*schaal).toFixed(1)} ${(s.dy*schaal).toFixed(1)})`);
+}
+function gebiedKaartPointerUp(e){
+  const s=GEBIED_KAART_SLEEP;if(!s||e.pointerId!==s.id)return;
+  s.svg.removeEventListener('pointermove',gebiedKaartPointerMove);
+  s.svg.removeEventListener('pointerup',gebiedKaartPointerUp);
+  s.svg.removeEventListener('pointercancel',gebiedKaartPointerUp);
+  GEBIED_KAART_SLEEP=null;
+  if(!s.bewogen)return;
+  GEBIED_KAART_NEGEER_KLIK_TOT=Date.now()+350;
+  const schaal=s.schaal||1;
+  gebiedKaartVerschuif(s.dx*schaal,s.dy*schaal);
+}
+function gebiedKaartToets(e){
+  const v=GEBIED_KAART_VIEW;if(!v)return;
+  const stap={ArrowLeft:[1,0],ArrowRight:[-1,0],ArrowUp:[0,1],ArrowDown:[0,-1]}[e.key];
+  if(stap){e.preventDefault();GEBIED_KAART_SLEEP=null;gebiedKaartVerschuif(stap[0]*v.W*.2,stap[1]*v.H*.2);gebiedKaartHerstelFocus();return;}
+  if(e.key==='+'||e.key==='='){e.preventDefault();wijzigGebiedZoom(1);gebiedKaartHerstelFocus();}
+  else if(e.key==='-'||e.key==='_'){e.preventDefault();wijzigGebiedZoom(-1);gebiedKaartHerstelFocus();}
+}
+function gebiedKaartHerstelFocus(){
+  const svg=document.querySelector('#chokeRijkswegKaart .choke-map-svg');if(svg)svg.focus({preventScroll:true});
 }
 
 /* PDOK BRT WMTS, RD New. Tegelmatrix uit de officiële capabilities:
@@ -3370,7 +3457,7 @@ function renderRijkswegKaart(chokes){
   if(zonderPosities)allePunten.push({x:0,y:300000},{x:280000,y:625000});
   let minX=minGetal(allePunten.map(p=>p.x)),maxX=maxGetal(allePunten.map(p=>p.x));
   let minY=minGetal(allePunten.map(p=>p.y)),maxY=maxGetal(allePunten.map(p=>p.y));
-  const W=900,H=530,pad=22,doel=(W-2*pad)/(H-2*pad);
+  const {W,H}=gebiedKaartMaat(),pad=22,doel=(W-2*pad)/(H-2*pad);
   let bw=Math.max(maxX-minX,10000),bh=Math.max(maxY-minY,10000),cx=(minX+maxX)/2,cy=(minY+maxY)/2;
   if(bw/bh>doel)bh=bw/doel;else bw=bh*doel;
   minX=cx-bw/2;maxX=cx+bw/2;minY=cy-bh/2;maxY=cy+bh/2;
@@ -3378,10 +3465,11 @@ function renderRijkswegKaart(chokes){
   const zoom=Math.max(1,Math.min(8,GEBIED_KAART_ZOOM));
   bw/=zoom;bh/=zoom;cx=focus.x;cy=focus.y;
   const links=cx-bw/2,rechts=cx+bw/2,onder=cy-bh/2,boven=cy+bh/2;
+  GEBIED_KAART_VIEW={W,H,pad,bw,bh,cx,cy};
   const sx=x=>pad+(x-links)/bw*(W-2*pad),sy=y=>pad+(boven-y)/bh*(H-2*pad);
   const zichtbareSegmenten=segmenten.filter(s=>s.maxX>=links&&s.minX<=rechts&&s.maxY>=onder&&s.minY<=boven);
-  let svg=`<svg viewBox="0 0 ${W} ${H}" class="choke-map-svg" role="img" aria-label="Rijkswegennet met ${kaartChokes.length} gepositioneerde choke-points in ${esc(regio?gebiedRegioNaam(regio):'Nederland')}">`;
-  svg+=`<defs><clipPath id="chokeKaartClip"><rect x="0" y="0" width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#chokeKaartClip)">`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="choke-map-svg${zoom>1?' ingezoomd':''}" role="img" tabindex="0" onpointerdown="gebiedKaartPointerDown(event,this)" onkeydown="gebiedKaartToets(event)" aria-label="Rijkswegennet met ${kaartChokes.length} gepositioneerde choke-points in ${esc(regio?gebiedRegioNaam(regio):'Nederland')}. Sleep of gebruik de pijltoetsen om te verschuiven, plus en min om te zoomen.">`;
+  svg+=`<defs><clipPath id="chokeKaartClip"><rect x="0" y="0" width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#chokeKaartClip)"><g data-kaart-laag>`;
   const tegels=gebiedKaartTegels({links,rechts,onder,boven,W,H,pad});
   for(const t of tegels)svg+=`<image data-kaart-tegel="${t.niveau}/${t.col}/${t.row}" href="${t.url}" x="${t.x.toFixed(3)}" y="${t.y.toFixed(3)}" width="${(t.width+.02).toFixed(3)}" height="${(t.height+.02).toFixed(3)}" preserveAspectRatio="none" crossorigin="anonymous" referrerpolicy="no-referrer" onload="gebiedKaartTegelStatus(this,true)" onerror="gebiedKaartTegelStatus(this,false)"/>`;
   zichtbareSegmenten.forEach(s=>{
@@ -3396,7 +3484,7 @@ function renderRijkswegKaart(chokes){
     svg+=`<g onclick="selecteerChokeOpKaart(${x.i})" role="button" aria-label="${esc(c.key)} hectometer ${c.hmMin.toFixed(1)}, ${c.n} storingen, lokale beschikbaarheid ${fmt(c.beschLok,1)} procent, ${esc(plaatsing)}"><circle class="choke-halo" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(r+2).toFixed(1)}"/><circle class="choke-punt${sel?' geselecteerd':''}" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r.toFixed(1)}" fill="${chokeKleur(c.beschLok)}"><title>${esc(c.key)} hm ${c.hmMin.toFixed(1)}${c.hmMax>c.hmMin?'-'+c.hmMax.toFixed(1):''}, ${c.n} storingen, lokaal ${fmt(c.beschLok,1)}%, ${esc(plaatsing)}</title></circle></g>`;
     if(sel){const rechtsLabel=px<W*.72;svg+=`<text x="${(px+(rechtsLabel?r+6:-r-6)).toFixed(1)}" y="${(py-7).toFixed(1)}" text-anchor="${rechtsLabel?'start':'end'}" class="kaart-label">${esc(c.key)} hm ${c.hmMin.toFixed(1)}</text>`;}
   });
-  svg+=`</g><g aria-hidden="true"><line x1="${W-34}" y1="45" x2="${W-34}" y2="20" stroke="var(--rws-blauw)" stroke-width="2"/><path d="M ${W-40} 28 L ${W-34} 17 L ${W-28} 28 Z" fill="var(--rws-blauw)"/><text x="${W-34}" y="58" text-anchor="middle" class="kaart-label">N</text></g></svg>`;
+  svg+=`</g></g><g aria-hidden="true"><line x1="${W-34}" y1="45" x2="${W-34}" y2="20" stroke="var(--rws-blauw)" stroke-width="2"/><path d="M ${W-40} 28 L ${W-34} 17 L ${W-28} 28 Z" fill="var(--rws-blauw)"/><text x="${W-34}" y="58" text-anchor="middle" class="kaart-label">N</text></g></svg>`;
   const gekozenPunt=gekozen?chokeKaartPunt(gekozen):null;
   const plaatsDetail=gekozenPunt?(gekozenPunt.gesnapt?`<span>NWB-snap: ${Math.round(gekozenPunt.afstandNwb)} m vanaf ${esc(gekozenPunt.basisBron)}</span>`:`<span>Assetpositie: geen veilige NWB-match binnen 250 m</span>`):'';
   const detail=gekozen?`<b>${esc(gekozen.key)} hm ${gekozen.hmMin.toFixed(1)}${gekozen.hmMax>gekozen.hmMin?'-'+gekozen.hmMax.toFixed(1):''}</b><span>${gekozen.n} storingen</span><span>${gekozen.dichtheid.toFixed(1)} per km</span><span style="color:${chokeKleur(gekozen.beschLok)};font-weight:700">${fmt(gekozen.beschLok,1)}% lokaal beschikbaar</span>${plaatsDetail}`:`<span>Geen choke-point met een betrouwbare kaartpositie in deze selectie.</span>`;
@@ -3436,6 +3524,7 @@ function renderGebied(){
   h+=`<div class="card"><h3>Choke-points op het Rijkswegennet ${tip('De achtergrondkaart toont wegen, plaatsen en water. Gekleurde punten tonen de knelpunten uit jouw selectie. Klik op een punt of een rij in de ranglijst om in te zoomen. Als NWB-wegassen geladen zijn, wordt alleen binnen 250 meter op dezelfde weg gesnapt.')}</h3>
     <div class="choke-map-toolbar"><div class="map-keuze"><label>Gebied<select onchange="wijzigGebiedRegio(this.value)"><option value=""${!GEBIED_REGIO?' selected':''}>Heel Nederland</option>${regioCodes.map(v=>`<option value="${esc(v)}"${GEBIED_REGIO===v?' selected':''}>${esc(gebiedRegioNaam(v))}</option>`).join('')}</select></label></div>
     <div class="choke-map-buttons"><button type="button" onclick="wijzigGebiedZoom(-1)" aria-label="Uitzoomen">−</button><button type="button" onclick="wijzigGebiedZoom(1)" aria-label="Inzoomen">+</button><button type="button" onclick="herstelGebiedKaart()">Hele regio</button></div></div>
+    <p class="choke-map-hint">Sleep de kaart om te verschuiven. Toetsenbord: pijltoetsen verschuiven, plus en min zoomen.</p>
     ${renderRijkswegKaart(alle)}
     <div class="chart-legend"><span><i style="background:var(--groen)"></i>lokaal ≥95%</span><span><i style="background:var(--rws-geel)"></i>80-95%</span><span><i style="background:var(--oranje)"></i>50-80%</span><span><i style="background:var(--rood)"></i>&lt;50%</span></div>
   </div>`;
@@ -3468,6 +3557,7 @@ function renderGebied(){
     h+=`<div class="card"><div class="dd-duiding" style="margin:0"><b>Duiding.</b> In ${esc(selectieNaam)} ligt het zwaarste choke-point op <b>${esc(zwaarste.key)} hm ${zwaarste.hmMin.toFixed(1)}</b>. Het omvat ${zwaarste.n} storingen over ${zwaarste.lengte.toFixed(1)} km, met een lokale beschikbaarheid van <b>${fmt(zwaarste.beschLok,1)}%</b>. Het wegdeelgemiddelde is ${fmt(zwaarste.wd.besch,1)}%. ${ernstig>0?`Er zijn <b>${ernstig} ernstige choke-points</b> met minder dan 80% lokale beschikbaarheid.`:'Er zijn geen ernstige lokale knelpunten in deze selectie.'}</div></div>`;
   }
   document.getElementById('tab-gebied').innerHTML=h;
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(gebiedKaartControleerMaat);
 }
 
 /* ══════════════════════════════════════════════════════════════

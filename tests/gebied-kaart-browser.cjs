@@ -41,6 +41,30 @@ const site=path.join(__dirname,'../site');
   assert.equal(await page.locator('.choke-punt').count(),1);
   await page.locator('.choke-kaart-link').click();
   assert.equal(await page.evaluate(()=>GEBIED_KAART_ZOOM>=2.6),true);
+  // De kaart vult de breedte van haar vak (geen vaste 900x530 met lege zijkanten).
+  await page.waitForTimeout(100);
+  const maat=await page.locator('#chokeRijkswegKaart').evaluate(el=>{const svg=el.querySelector('svg'),vb=svg.viewBox.baseVal,r=svg.getBoundingClientRect();return {vbW:vb.width,vbH:vb.height,boxW:el.clientWidth,svgW:r.width,svgH:r.height};});
+  assert.ok(Math.abs(maat.vbW-maat.boxW)<=8,JSON.stringify(maat));
+  assert.ok(Math.abs(maat.svgH/maat.svgW-maat.vbH/maat.vbW)<.01,JSON.stringify(maat));
+  // Slepen verschuift de uitsnede; een korte klik op een punt blijft een selectie.
+  const voor=await page.evaluate(()=>({...GEBIED_KAART_VIEW,zoom:GEBIED_KAART_ZOOM}));
+  const kader=await page.locator('.choke-map-svg').boundingBox();
+  await page.mouse.move(kader.x+kader.width*.3,kader.y+kader.height*.5);await page.mouse.down();
+  await page.mouse.move(kader.x+kader.width*.3+120,kader.y+kader.height*.5+60,{steps:6});
+  assert.match(await page.locator('[data-kaart-laag]').getAttribute('transform'),/^translate\(/);
+  await page.mouse.up();
+  const na=await page.evaluate(()=>({...GEBIED_KAART_VIEW,zoom:GEBIED_KAART_ZOOM}));
+  assert.equal(na.zoom,voor.zoom);assert.ok(na.cx<voor.cx,'naar rechts slepen toont gebied naar het westen');assert.ok(na.cy>voor.cy,'naar beneden slepen toont gebied naar het noorden');
+  const mpp=voor.bw/(voor.W-2*voor.pad)*voor.W/kader.width;
+  assert.ok(Math.abs((voor.cx-na.cx)-120*mpp)<mpp*2,'verschuiving volgt de muis');
+  await page.waitForFunction(()=>document.querySelector('[data-kaart-status]')?.textContent==='Achtergrondkaart geladen.');
+  await page.locator('.choke-map-svg').focus();await page.keyboard.press('ArrowLeft');
+  assert.ok(await page.evaluate(x=>GEBIED_KAART_VIEW.cx<x,na.cx));
+  assert.equal(await page.evaluate(()=>document.activeElement?.classList.contains('choke-map-svg')),true);
+  await page.evaluate(()=>herstelGebiedKaart());
+  await page.waitForTimeout(400);
+  await page.locator('.choke-punt').first().click({force:true});
+  assert.equal(await page.evaluate(()=>GEBIED_KAART_ZOOM>=2.6),true);
   offline=true;await page.evaluate(()=>wijzigGebiedRegio('NWN'));
   await page.waitForFunction(()=>document.querySelector('[data-kaart-status]')?.textContent.includes('niet beschikbaar'));
   assert.equal(await page.locator('.choke-punt').count(),1);
@@ -48,6 +72,6 @@ const site=path.join(__dirname,'../site');
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.locator('#chokeRijkswegKaart').evaluate(el=>el.getBoundingClientRect().width<=390));
   assert.deepEqual(errors,[]);
-  console.log('Gebiedskaart geslaagd: kaarttegels, CSP, geen referrer/cookies, zoom, VC-filter, selectie, mobiel en uitval van de kaartbron.');
+  console.log('Gebiedskaart geslaagd: kaarttegels, CSP, geen referrer/cookies, zoom, passende breedte, slepen en pijltoetsen, VC-filter, selectie, mobiel en uitval van de kaartbron.');
  }finally{await browser?.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
