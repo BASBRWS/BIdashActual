@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.84 en DVM 151, bijgewerkt op 16 november 2026 met het glass-dashboardthema van de schil; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.85 en DVM 151, bijgewerkt op 16 november 2026 met het glass-dashboardthema van de schil en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1165,3 +1165,5 @@ De XER-export normaliseert witruimte en besturingstekens en begrenst WBS-namen o
 ## Glass-dashboardthema, versie 2.84
 
 De schil gebruikt een licht thema met tokens op `:root` in `site/style.css`. De navigatie staat op brede schermen in een zwevende rail en onder 1100 px in een balk boven de pagina. De DVM-overrides staan in `site/actual.css`, dat na `component.css` wordt geladen. De wijziging raakt alleen de vormgeving. Routes, rekenregels, opslag, imports en exports blijven gelijk. Er is nog geen donker thema.
+
+In versie 2.85 is `APP_BUILD` in `site/app.js` verhoogd. Die buildcode staat in de adressen van de engine-iframes. Verhoog haar bij elke stijlwijziging aan een engine, anders blijft de browser de oude enginepagina gebruiken. In 2.85 zijn ook de zwakke grijstinten in de schil op minimaal 4,5:1 contrast gebracht.

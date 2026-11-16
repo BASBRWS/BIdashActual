@@ -31,6 +31,11 @@ body[data-module="dvm"] .card,body[data-module="dvm"] .data-gate,body[data-modul
 body[data-module="dvm"] .card h3,body[data-module="dvm"] .dataset-titel,body[data-module="dvm"] .dienst-tile .dt-naam{color:#10261f}
 body[data-module="dvm"] .kpi,body[data-module="dvm"] .wv-kpi{background:#ecf7f2;border-color:#d9f0e7;border-radius:16px}
 body[data-module="dvm"] .kpi .k-val{color:#0f3a31}
+/* Dienstkleuren komen inline uit de DVM-definitie en blijven gelijk voor grafieken;
+   alleen als tekst op wit worden ze donkerder gezet voor minimaal 4,5:1. */
+body[data-module="dvm"] .dienst-tile .dt-naam,body[data-module="dvm"] .dienst-tile .dt-klik{filter:brightness(.76)}
+body[data-module="dvm"] .dienst-tile .dt-klik{opacity:1}
+body[data-module="dvm"] .kpi .k-lab,body[data-module="dvm"] .wv-kpi .k-lab{color:#4b625a}
 body[data-module="dvm"] table.tbl th{background:#f4f8f6;color:#4b625a}
 body[data-module="dvm"] table.tbl td{background:#fff;color:#10261f}
 body[data-module="dvm"] .login-scherm{background:linear-gradient(135deg,#185246 0%,#0f3a31 100%)}
@@ -40,6 +45,7 @@ body[data-module="dvm"] .login-knop{background:#0f3a31;border-radius:12px}
 body[data-module="dvm"] .login-knop:hover{background:#185246}
 body[data-module="dvm"] .data-stap,body[data-module="dvm"] .import-progress,body[data-module="dvm"] .dataset-region-row{border-radius:12px}
 body[data-module="dvm"] .wv-mgmt{border-radius:22px}
+body[data-module="dvm"] footer{background:#0f3a31;color:#cfe6dd}
 body[data-module="dvm"] .section-tabs button.active{color:#0f3a31;border-bottom-color:#f4874f}
 @media(max-width:720px){
  body[data-module="dvm"] .topbar{padding:12px;gap:8px}
