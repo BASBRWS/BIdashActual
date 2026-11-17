@@ -18,6 +18,16 @@ Onderin de navigatie staat hetzelfde nummer als `Integratie 2.28`. Noem dat numm
 bij een melding over een verschil in uitkomsten; zonder versie is een uitkomst niet
 terug te vinden.
 
+## Welke regels worden gebruikt, vanaf 2.90
+
+Op **Regels & signalen → Impactregels** en **Organisatieregels** staat een * achter regels die BIdashActual niet volledig gebruikt.
+
+- **Rode \***: de regel wordt niet gebruikt. Wijzigen verandert de dagstand niet, bijvoorbeeld omdat de regel alleen voor prognoses dient of nergens wordt gelezen.
+- **Oranje \***: beperkt gebruikt. De regel staat alleen in tekst, een label of een filter, of heeft standaard geen effect.
+- **Geen \***: de regel werkt door.
+
+Beweeg over een * voor de reden. Open bovenaan het scherm **Gebruik van deze regels** voor de volledige lijst, ook van regels die niet op het scherm staan.
+
 ## Laatste stand uit SharePoint laden
 
 Ga naar **Data & export** en klik op **Laad laatste stand**. BiDash kan de
