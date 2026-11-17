@@ -121,6 +121,8 @@ function civFormatiePanel(){civFormatieInit();
 }
 function civRuleTab(which){CIV_RULE_TAB=which;['main','civ','vwm','cap'].forEach(x=>{let p=document.getElementById('rules-'+x+'-panel'),b=document.getElementById('rules-tab-'+x);if(p)p.style.display=which===x?'':'none';if(b)b.className=which===x?'btn primary':'btn'});}
 
+/* * achter een regel die BIdashActual niet of beperkt gebruikt (core/regelgebruik.js). */
+function rgm(id){return globalThis.BIDASH_REGELGEBRUIK?BIDASH_REGELGEBRUIK.markering('bi',id):'';}
 function renderRules(){
   const p=activeParams();
   /* config-parameters gegroepeerd, met per parameter de doorwerking */
@@ -157,7 +159,7 @@ function renderRules(){
       ['sim.incident_multiplier','\u00d7','\u2192 idem']]}
   ];
   const cfgHTML=groepen.map(g=>`<details class="rulecat" ${g.titel.startsWith('Personeel')?'open':''}><summary>${g.titel}</summary><div class="rc-body"><div class="cfg-grid">
-    ${g.rows.map(([k,unit,link])=>`<div class="cfg-row"><span class="k">${k}</span><span><span class="v">${esc(String(cfg(k,'\u2014')))}${unit?' '+unit:''}</span><span class="cfg-link">${link}</span></span></div>`).join('')}
+    ${g.rows.map(([k,unit,link])=>`<div class="cfg-row"><span class="k">${k}${rgm('cfg.'+k)}</span><span><span class="v">${esc(String(cfg(k,'\u2014')))}${unit?' '+unit:''}</span><span class="cfg-link">${link}</span></span></div>`).join('')}
   </div></div></details>`).join('');
 
   const rows=DB.functies.map(f=>`<tr>
@@ -175,6 +177,7 @@ function renderRules(){
 
   $('#page-rules').innerHTML=`
     <div class="pagehead"><h2>Rule engine</h2><div class="desc">De regels komen uit config.html en werken door op alle afhankelijke onderdelen: formatie, assets, financi\u00ebn, planning en Monte Carlo.</div></div>
+    ${globalThis.BIDASH_REGELGEBRUIK?BIDASH_REGELGEBRUIK.overzichtHtml('bi'):''}
     <div class="card"><h3>Gekoppelde configuratie (config.html) <span class="hint">bron: ${esc(DB.configBron)}</span></h3>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <button class="btn primary" onclick="document.getElementById('cfgfile').click()">\u2b06 Importeer vwl_scenario_config.json</button>
@@ -211,7 +214,7 @@ function renderRules(){
       <div class="card"><h3>Normen & wegingen per asset <span class="hint">normen zijn afgeleid uit config.html; alleen weging is lokaal</span></h3>
         <table><thead><tr><th>Asset</th><th>CMDB</th><th>Locatie</th><th class="num">Norm % (bron)</th><th class="num">Weging</th></tr></thead><tbody>${assetRows}</tbody></table></div>
       <div class="card"><h3>Wettelijke richtlijnen</h3>
-        ${DB.richtlijnen.map(r=>`<div style="padding:8px 0;border-bottom:1px solid #eef1f5"><b>${esc(r.naam)}</b><div style="font-size:12px;color:var(--sub)">${esc(r.oms)}</div></div>`).join('')}
+        ${DB.richtlijnen.map(r=>`<div style="padding:8px 0;border-bottom:1px solid #eef1f5"><b>${esc(r.naam)}</b>${rgm('richtlijn.'+r.id)}<div style="font-size:12px;color:var(--sub)">${esc(r.oms)}</div></div>`).join('')}
         <div class="footnote" style="margin-top:10px">ATW-parameters: max ${cfg('atw.max_uren_week',60)} u/week \u00b7 ${cfg('atw.rust_dagelijks',11)} u dagelijkse rust \u00b7 max ${cfg('atw.max_nachten_14d',5)} nachten/14d \u00b7 ${cfg('atw.rust_na_nachtreeks',46)} u rust na nachtreeks \u2014 rechtstreeks uit config.html.</div></div>
     </div>`;
 }

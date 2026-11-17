@@ -11,6 +11,7 @@ modelaannames en vereiste controles. Deze korte ingang bevat geen tweede set rek
 - Voer de tests uit die bij de wijziging horen; Pages-CI draait niet alle browsertests.
 - Verhoog bij elke functionele wijziging het versienummer: de schil in `site/core/versie.js`, een engine in haar eigen constante. Zet hetzelfde nummer in de release notes en werk de tests bij die het vastleggen.
 - Werk de centrale beschrijving bij als de werking verandert en benoem ongeteste beperkingen.
+- Verandert het gebruik van een impact- of organisatieregel, of voeg je een standaardregel toe, werk dan de status in `site/core/regelgebruik.js` bij (de * op de regelschermen).
 - Maak geen tests of kwaliteitsafspraken zwakker om een wijziging te laten slagen.
 
 Deze instructies gelden voor de hele repository, voor zover niet door hogere

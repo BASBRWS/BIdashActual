@@ -5475,9 +5475,9 @@ function renderAssetConfigLijstHtml(){
         <label>Zwaartefactor<input type="number" min="0" max="5" step="0.05" value="${val('impactFactor')}" placeholder="1,00" onchange="assetConfigVeld('${keyE}','impactFactor',this)"></label>
         <label>Factor beschikbaarheid<input type="number" min="0" max="5" step="0.05" value="${val('fAvail')}" placeholder="1,00" onchange="assetConfigVeld('${keyE}','fAvail',this)"></label>
         <label>Factor prestatie<input type="number" min="0" max="5" step="0.05" value="${val('fPerf')}" placeholder="1,00" onchange="assetConfigVeld('${keyE}','fPerf',this)"></label>
-        <label>Levensduur B50 (jaar)<input type="number" min="1" max="100" step="0.5" value="${val('levensduur')}" placeholder="${fmt(rel.L,1)}" onchange="assetConfigVeld('${keyE}','levensduur',this)"></label>
-        <label>Weibull β<input type="number" min="1.01" max="10" step="0.05" value="${val('beta')}" placeholder="${fmt(rel.beta,2)}" onchange="assetConfigVeld('${keyE}','beta',this)"></label>
-        <label>MTTR (uur)<input type="number" min="0.1" max="720" step="0.5" value="${val('mttr')}" placeholder="${fmt((assetTypeRec(a.tp)||{}).mttr||RULES.cfg.hw_mttr,1)}" onchange="assetConfigVeld('${keyE}','mttr',this)"></label>
+        <label>Levensduur B50 (jaar)${rgm('assetConfig.levensduur')}<input type="number" min="1" max="100" step="0.5" value="${val('levensduur')}" placeholder="${fmt(rel.L,1)}" onchange="assetConfigVeld('${keyE}','levensduur',this)"></label>
+        <label>Weibull β${rgm('assetConfig.beta')}<input type="number" min="1.01" max="10" step="0.05" value="${val('beta')}" placeholder="${fmt(rel.beta,2)}" onchange="assetConfigVeld('${keyE}','beta',this)"></label>
+        <label>MTTR (uur)${rgm('assetConfig.mttr')}<input type="number" min="0.1" max="720" step="0.5" value="${val('mttr')}" placeholder="${fmt((assetTypeRec(a.tp)||{}).mttr||RULES.cfg.hw_mttr,1)}" onchange="assetConfigVeld('${keyE}','mttr',this)"></label>
       </div>
       <div class="asset-fout-acties"><button onclick="assetConfigResetAsset('${keyE}')">Herstel bron- en groepsregels</button></div>
     </div></details>`;
@@ -5516,6 +5516,8 @@ function renderAssetConfigPane(){
   <div class="card"><h3>Assets zoeken en individueel configureren</h3><div class="filterbar"><label>Zoeken <input id="assetConfigSearch" value="${esc(ASSET_CFG_UI.query)}" oninput="assetConfigZoek(this.value)" placeholder="assetnaam, entity-id, weg, hm, fabrikant" style="min-width:280px"></label><label>Assettype <select onchange="assetConfigType(this.value)"><option value="">Alle typen</option>${RULES.assetTypen.map(a=>`<option value="${esc(a.id)}" ${ASSET_CFG_UI.type===a.id?'selected':''}>${esc(a.id)}</option>`).join('')}</select></label></div>${ASSET_CFG_UI.pendingLogId?`<div class="asset-config-note" style="margin-bottom:10px">Je configureert de fout <b>${esc(ASSET_CFG_UI.pendingLogId)}</b>. Kies alleen een asset als identiteit en locatie inhoudelijk overeenkomen.</div>`:''}<div id="assetConfigListHost">${renderAssetConfigLijstHtml()}</div></div>`;
 }
 
+/* * achter een regel die BIdashActual niet of beperkt gebruikt (core/regelgebruik.js). */
+function rgm(id){return globalThis.BIDASH_REGELGEBRUIK?BIDASH_REGELGEBRUIK.markering('dvm',id):'';}
 function renderRegels(){
   const sub=ASSET_CFG_UI.subtab||'regels';
   let h=`<div class="rule-subtabs" role="tablist"><button id="ruleSubRegels" class="${sub==='regels'?'active':''}" onclick="toonRuleSubtab('regels')">Rekenregels</button><button id="ruleSubAssets" class="${sub==='assets'?'active':''}" onclick="toonRuleSubtab('assets')">Assetconfiguratie${ASSET_MATCH_STATE&&ASSET_MATCH_STATE.nietGekoppeld?` · ${ASSET_MATCH_STATE.nietGekoppeld}`:''}</button></div>
@@ -5529,7 +5531,7 @@ function renderRegels(){
       <input type="file" id="paramImport" accept=".json" class="hidden">
       <span id="reStatus" class="re-status"></span>
     </div>
-    <div id="applyResultHost"></div>`;
+    <div id="applyResultHost"></div>${globalThis.BIDASH_REGELGEBRUIK?BIDASH_REGELGEBRUIK.overzichtHtml('dvm'):''}`;
 
   // 0 · Impactmodel & choke-instellingen
   h+=`<details class="rule" open><summary>0 · Impactmodel &amp; gebiedsinstellingen ${tip('Bepaalt hoe zwaarte boven 100% wordt verwerkt. <b>Afkappen</b>: impact stopt bij 100% — extra gewicht op een al fatale fout doet niets. <b>Opstapelen</b>: het overschot boven 100% werkt door als extra verlies-uren, zodat gewicht en locatiefactor ook fatale fouten zwaarder laten wegen.')}</summary><div class="rb">
@@ -5550,7 +5552,7 @@ function renderRegels(){
   // 1 · Assettypen
   h+=`<details class="rule" open><summary>1 · Assettypen — gewichten &amp; levensduur ${tip('Per assettype (MSI, camera, lus, wisselbord, DRIP): het impactgewicht in de dienstverlening en de betrouwbaarheidsparameters voor de prognose. <b>Levensduur</b> is de generieke mediane modellevensduur; <b>β</b> is de Weibull-vormparameter (>1 = oplopende leeftijdshazard). Een expliciete levensduurreferentie per fabrikant/model krijgt voorrang.')}</summary><div class="rb">
     <p class="muted" style="font-size:11.5px;margin:2px 0 8px">Gewichten schalen de basisimpact per assettype (1,0 = volledige impact). Levensduur en β zijn modelparameters en moeten met eigen storings- en vervangingshistorie worden gevalideerd. Waar een geladen referentie expliciet life_median_years bevat, gebruikt de tool die per asset automatisch.</p>
-    <table class="tbl re-tbl"><thead><tr><th></th><th>Type</th><th>Functie</th><th class="num">w_besch</th><th class="num">w_prest</th><th class="num">Levensduur (jr)</th><th class="num">β</th><th class="num">MTTR (uur)</th></tr></thead><tbody>`;
+    <table class="tbl re-tbl"><thead><tr><th>${rgm('assetTypen.actief')}</th><th>Type</th><th>Functie</th><th class="num">w_besch</th><th class="num">w_prest</th><th class="num">Levensduur (jr)${rgm('assetTypen.levensduur')}</th><th class="num">β${rgm('assetTypen.beta')}</th><th class="num">MTTR (uur)${rgm('assetTypen.mttr')}</th></tr></thead><tbody>`;
   RULES.assetTypen.forEach((r,i)=>h+=`<tr>
     <td><input type="checkbox" data-p="assetTypen" data-i="${i}" data-k="actief" ${r.actief?'checked':''}></td>
     <td><b>${r.id}</b></td><td class="muted" style="font-size:11.5px">${esc(r.functie)}</td>
@@ -5567,11 +5569,11 @@ function renderRegels(){
   // 2 · Foutcodes
   h+=`<details class="rule"><summary>2 · Foutcodes → basisimpact ${tip('De <b>basisimpact</b> die elke foutcode heeft op beschikbaarheid en prestatie (0–100%). Een melding wordt op tekstpatroon aan een foutcode gekoppeld; die percentages vormen het startpunt vóór asset- en locatieweging. Vinkje uit = code telt niet mee.')}</summary><div class="rb">
     <p class="muted" style="font-size:11.5px;margin:2px 0 8px">Basisimpact per foutcode op beschikbaarheid en prestatie (0–100%). Vinkje uit = regel telt niet mee.</p>
-    <table class="tbl re-tbl"><thead><tr><th></th><th>Code</th><th>Patroon</th><th>Type</th><th>Ernst</th><th class="num">besch%</th><th class="num">prest%</th></tr></thead><tbody>`;
+    <table class="tbl re-tbl"><thead><tr><th></th><th>Code</th><th>Patroon</th><th>Type</th><th>Ernst${rgm('foutcodes.severity')}</th><th class="num">besch%</th><th class="num">prest%</th></tr></thead><tbody>`;
   RULES.foutcodes.forEach((f,i)=>{const tg=f.severity==='kritiek'?'r':f.severity==='hoog'?'o':f.severity==='middel'?'b':'g';
     h+=`<tr>
       <td><input type="checkbox" data-p="foutcodes" data-i="${i}" data-k="actief" ${f.actief?'checked':''}></td>
-      <td class="mono"><b>${f.code}</b></td>
+      <td class="mono"><b>${f.code}</b>${rgm('foutcode.'+f.code)}</td>
       <td style="max-width:220px">${esc(f.patroon)}<br><span class="muted" style="font-size:10.5px">${esc(f.oms)}</span></td>
       <td><span class="tag gy">${f.assetType}</span></td>
       <td><span class="tag ${tg}">${f.severity}</span></td>
@@ -5586,7 +5588,7 @@ function renderRegels(){
     <table class="tbl re-tbl"><thead><tr><th></th><th>ID</th><th>Type</th><th>Context</th><th class="num">Ernstrang 1–4</th><th class="num">f_besch</th><th class="num">f_prest</th></tr></thead><tbody>`;
   RULES.locatieRegels.forEach((l,i)=>h+=`<tr>
     <td><input type="checkbox" data-p="locatieRegels" data-i="${i}" data-k="actief" ${l.actief?'checked':''}></td>
-    <td class="mono">${l.id}</td><td><span class="tag gy">${l.assetType}</span></td><td class="muted" style="font-size:11.5px">${esc(l.label||l.context)}</td>
+    <td class="mono">${l.id}${rgm('locatie.'+l.id)}</td><td><span class="tag gy">${l.assetType}</span></td><td class="muted" style="font-size:11.5px">${esc(l.label||l.context)}</td>
     <td class="num">${l.assetType==='MSI'?`<input class="re-in" type="number" step="1" min="1" max="4" value="${msiErnstWaarde(l)}" data-p="locatieRegels" data-i="${i}" data-k="ernst">`:'—'}</td>
     <td class="num"><input class="re-in" type="number" step="0.05" min="0" max="3" value="${l.fAvail}" data-p="locatieRegels" data-i="${i}" data-k="fAvail"></td>
     <td class="num"><input class="re-in" type="number" step="0.05" min="0" max="3" value="${l.fPerf}" data-p="locatieRegels" data-i="${i}" data-k="fPerf"></td>
@@ -5599,7 +5601,7 @@ function renderRegels(){
     <table class="tbl re-tbl"><thead><tr><th></th><th>ID</th><th>Omschrijving</th><th class="num">max km</th><th class="num">+besch</th><th class="num">+prest</th></tr></thead><tbody>`;
   RULES.combiRegels.forEach((c,i)=>h+=`<tr>
     <td><input type="checkbox" data-p="combiRegels" data-i="${i}" data-k="actief" ${c.actief?'checked':''}></td>
-    <td class="mono">${c.id}</td><td style="max-width:230px;font-size:11.5px">${esc(c.oms)}</td>
+    <td class="mono">${c.id}${rgm('combi.'+c.id)}</td><td style="max-width:230px;font-size:11.5px">${esc(c.oms)}</td>
     <td class="num"><input class="re-in" type="number" step="0.1" min="0" max="5" value="${c.maxKm}" data-p="combiRegels" data-i="${i}" data-k="maxKm"></td>
     <td class="num"><input class="re-in" type="number" step="1" min="0" max="100" value="${c.extraAvail}" data-p="combiRegels" data-i="${i}" data-k="extraAvail"></td>
     <td class="num"><input class="re-in" type="number" step="1" min="0" max="100" value="${c.extraPerf}" data-p="combiRegels" data-i="${i}" data-k="extraPerf"></td>
@@ -5618,7 +5620,7 @@ function renderRegels(){
         <div style="font-weight:700;color:${d.kleur}">${d.naam}</div>
         <div style="font-size:12px;color:var(--sub)"><span data-aandeel-totaal="${di}" style="margin-right:12px;font-weight:700;color:var(--groen)">Totaal 100%</span>norm % <input class="re-in" type="number" step="0.1" min="0" max="100" value="${d.norm}" data-p="dienstNorm" data-i="${di}" style="width:70px"></div>
       </div>
-      <div class="tbl-scroll" style="max-height:none"><table class="tbl re-tbl"><thead><tr><th>Subproces</th><th class="num">Aandeel dienst %</th><th class="num">Signalering %</th><th class="num">Camera %</th><th class="num">Detectie %</th><th class="num">DRIP %</th><th class="num">Communicatie %</th><th class="num">Dyn. strook %</th></tr></thead><tbody>`;
+      <div class="tbl-scroll" style="max-height:none"><table class="tbl re-tbl"><thead><tr><th>Subproces</th><th class="num">Aandeel dienst %</th><th class="num">Signalering %</th><th class="num">Camera %</th><th class="num">Detectie %</th><th class="num">DRIP %</th><th class="num">Communicatie %${rgm('subproces.communicatie')}</th><th class="num">Dyn. strook %${rgm('subproces.dynamische_strook')}</th></tr></thead><tbody>`;
     subs.forEach((sp,si)=>{
       const vak=o=>`<input class="re-in" type="number" step="1" min="0" max="100" value="${Math.round(((sp.afh&&sp.afh[o])||0)*100)}" data-p="subprocesAfh" data-di="${di}" data-si="${si}" data-k="${o}">`;
       h+=`<tr><td><b>${esc(sp.naam)}</b><br><span class="muted" style="font-size:10.5px">${esc(sp.tekst)}</span></td><td class="num"><input class="re-in" type="number" step="0.01" min="0" max="100" value="${Number(((sp.gewicht||0)*100).toFixed(2))}" data-p="subprocesGewicht" data-di="${di}" data-si="${si}"></td><td class="num">${vak('signalering')}</td><td class="num">${vak('camera')}</td><td class="num">${vak('detectie')}</td><td class="num">${vak('drip')}</td><td class="num">${vak('communicatie')}</td><td class="num">${vak('dynamische_strook')}</td></tr>`;
@@ -5631,7 +5633,7 @@ function renderRegels(){
   const dr=RULES.drip;
   h+=`<details class="rule"><summary>7 · DRIP — functie &amp; levensduur ${tip('DRIP telt als volwaardig assettype mee in de dienstverlening (sectie 1: gewicht, levensduur, β; sectie 5: dienstafhankelijkheden). Hier staan de functieclassificatie en eventuele handmatige levensduuroverrides; asset-EOL komt uit All Assets.')}</summary><div class="rb">
     <div class="re-lab">Functie-classificatie (BKN) — gewicht in de keten</div>
-    <table class="tbl re-tbl"><thead><tr><th>Code</th><th>Label</th><th class="num">Gewicht</th><th>Dienst</th></tr></thead><tbody>`;
+    <table class="tbl re-tbl"><thead><tr><th>Code</th><th>Label</th><th class="num">Gewicht${rgm('drip.functies.gewicht')}</th><th>Dienst</th></tr></thead><tbody>`;
   dr.functies.forEach((f,i)=>{
     h+=`<tr><td class="mono">${esc(f.code)}</td><td>${esc(f.label)}</td>
       <td class="num"><input class="re-in" type="number" step="0.1" min="0" max="1" value="${f.gewicht}" data-p="dripFunctie" data-i="${i}" data-k="gewicht"></td>
@@ -5640,8 +5642,8 @@ function renderRegels(){
   h+=`</tbody></table>`;
 
   // ── Levensduur per fabrikant × type (instelbaar) ──
-  h+=`<div class="re-lab" style="margin-top:18px">Levensduur per fabrikant × type (B50, jaren)</div>
-    <div style="margin:2px 0 8px"><label style="font-size:11.5px;color:var(--sub)">Laatste terugval als ook de assettype-levensduur leeg is:
+  h+=`<div class="re-lab" style="margin-top:18px">Levensduur per fabrikant × type (B50, jaren)${rgm('drip.levensduurOverride')}</div>
+    <div style="margin:2px 0 8px"><label style="font-size:11.5px;color:var(--sub)">Laatste terugval als ook de assettype-levensduur leeg is${rgm('drip.standaardLevensduur')}:
       <input class="re-in" type="number" step="1" min="1" max="40" value="${RULES.drip.standaardLevensduur}" data-p="dripStandaard" style="width:70px"> jaar</label></div>`;
   const Ddata=(STATE&&STATE.drips)||DRIP_STATE;
   if(Ddata && Ddata.drips && Ddata.drips.length){

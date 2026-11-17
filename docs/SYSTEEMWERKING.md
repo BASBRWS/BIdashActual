@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.89 en DVM 161, bijgewerkt op 17 november 2026 met NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.90 en DVM 162, bijgewerkt op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -893,6 +893,7 @@ worden vastgelegd met de consequenties voor data, uitkomsten en validatie.
 | Beheerder in de storingslijst | `tests/storingslijst-beheerder.test.js`: nooit een getal als beheerder, afleiding uit de verkeerscentrale, herkende bronwaarde blijft staan |
 | Planning zonder projectdata | `tests/planning-geen-projectdata.test.js`: geen objectnamen in de code, lege P6-, portfolio- en modelstructuren, tellers op nul, werkende triggerlaadroute met overgeslagen onvolledige regels |
 | Versiebalk | `tests/versiebalk.test.js`: schilversie zichtbaar zonder geladen module, gemelde engineversies erachter, lege melding blijft weg, versienummer op precies één plek |
+| Regelgebruik (*) | `tests/regelgebruik.test.js`: register compleet voor standaard-DVM-regels en config.html-parameters, ongelezen BI-parameters niet gelezen, gelezen parameters geregistreerd, codekenmerken achter niet-gebruikt-statussen, * en overzicht op Impactregels, laden in beide engines |
 | Kwaliteitsaudit | `tests/quality-audit.test.js`: lege werkruimte, gezonde keten, bron-dashboardbreuk, onbekende impact naast exact dienstpercentage, veilig geblokkeerd conflict als waarschuwing, gelekt conflict als blokker, lege BI-werkruimte, asset- en bronregelverschil, duplicaat op event-ID en bronbestand, en zichtbare bediening/export |
 | Queryfilters | `tests/query-filter.test.js`: EN, OF, tekstnormalisatie, numerieke vergelijking en foutcodes op hetzelfde asset |
 | Foutcodebeheer | `tests/fault-rule-manager.test.js`: code maken, expliciet toewijzen, typecontrole, locatieconflict niet omzeilen en adaptervolgorde |
@@ -1161,6 +1162,16 @@ Na Windows-1252-conversie begrenst de XER-export WBS-namen op 100 bytes. Bij ink
 ## Primavera XER opschoning, versie 2.83
 
 De XER-export normaliseert witruimte en besturingstekens en begrenst WBS-namen op 80, activiteitnamen op 120 en overige geëxporteerde tekstnamen op 255 bytes in Windows-1252. Korte WBS-codes blijven maximaal 20 tekens per niveau. De oorspronkelijke ingekorte namen en aanwezige MSP-taak- en WBS-notities gaan naar het Notebook-onderwerp BiDash onderbouwing. Per notitie geldt een grens van 2.000 bytes inclusief veilige HTML-codering. De export meldt per soort veld hoeveel er zijn ingekort en controleert de koppeling tussen notitie en activiteit of WBS.
+
+## Regelgebruik, versie 2.90 / DVM 162
+
+`site/core/regelgebruik.js` legt per impact- en organisatieregel vast of BIdashActual hem gebruikt: `gebruikt` (werkt door in een getoonde berekening of signaal), `beperkt` (alleen tekst, label of filter, of standaard zonder effect) of `niet`. Elke afwijkende regel heeft een reden en een bronverwijzing. Het register is beschrijvend: het verandert geen rekenregel, default, import of export. De status geldt voor het profiel BIdashActual; een regel die alleen prognose, Monte Carlo of simulatie voedt, staat daarom op `niet`.
+
+`dvm.html` en `bi.html` laden het register vóór de engines. `renderRegels()` (DVM) en `renderRules()` (BI) zetten met `rgm(id)` een `<sup class="rg-mark">*</sup>` achter een niet (rood) of beperkt (oranje) gebruikte regel, met de reden als `title` en `aria-label`. `overzichtHtml(domein)` geeft bovenaan het scherm een ingeklapte kaart met alle afwijkende regels, ook die het scherm zelf niet toont. Een eigen foutcode van de gebruiker staat niet in het register en geldt als gebruikt.
+
+Bijhouden is verplicht: wie het gebruik van een regel verandert of een standaardregel toevoegt, werkt de status in het register bij. `tests/regelgebruik.test.js` controleert dat iedere standaard-DVM-regel (`RULES.cfg`, assettypevelden, foutcodes, locatie- en combiregels, DRIP-velden) en iedere config.html-parameter (`CFG_DEFAULTS`) in het register staat; dat een BI-parameter met `controle:'ongelezen'` nergens als letterlijke sleutel voorkomt behalve in een weergaverij van `renderRules`; dat iedere via `cfg('…')` gelezen parameter geregistreerd is en niet als ongelezen staat; en dat de codekenmerken achter de `niet`-statussen nog gelden (geen cameracontext in `locatieFactor`, peildatum als tijdstip in de dagstand, 24 uur in plaats van MTTR, geen aanroep van `dripBeschikbaarheid`, geen dynamische strook in de standaardsubprocessen, geen wisselbord in `OBJ_BRON`). Verzwak die controles niet; pas de status aan.
+
+Niet gecontroleerd: een regel met status `gebruikt` wordt niet automatisch op werkelijk gebruik getoetst. De lijst is bij 2.90 met codeanalyse opgesteld.
 
 ## Glass-dashboardthema, versie 2.84
 
