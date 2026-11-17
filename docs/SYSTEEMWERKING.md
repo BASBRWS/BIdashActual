@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.89 en DVM 158, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.89 en DVM 159, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1250,3 +1250,13 @@ Dit is een bewust gewijzigde producteis. Tot DVM 157 bevatte de bevestigingssleu
 - **Kostenberekening.** Ongewijzigd: de NDW-intensiteit werd en wordt gebruikt ongeacht de bevestiging.
 
 Controles: `tests/ndw-confirmation.test.js` dekt automatisch passend apart van bevestigd, afwijzen door uitvinken, uitgezet gebruik, een ruimere koppeling die nooit automatisch passend wordt, een bevestiging die een nieuwe ophaalronde overleeft, en een gewijzigde configuratieversie die haar ongeldig maakt. `tests/ndw-import.cjs` controleert de tellers in de echte module met 50 wegdelen.
+
+## Leesfouten bij DRIP uit map, DVM 159
+
+- **Foutnaam bewaren.** `sbLeesTekst` en `leesBlobAlsArrayBuffer` geven de foutnaam van de browser door (`browserFout`).
+- **Indeling naar reden.** `sbLeesReden` deelt een fout in als `niet-lokaal` (NotReadableError), `niet-gevonden`, `geen-toestemming`, `te-traag` of `overig`.
+- **Tweede poging.** `leesDripMapKern` leest de bestanden die in de parallelle ronde (6 tegelijk) mislukten daarna één voor één opnieuw.
+- **Blijvende fouten.** Wat dan nog faalt, levert met `sbLeesDiagnose` een melding op met per reden het aantal, het datumbereik en drie voorbeeldpaden. Tot 500 regels gaan via `console.warn` naar het storingslog.
+- **Ongewijzigde regel.** Elke blijvend onleesbare bron blokkeert de import en behoudt de vorige stand.
+
+Controle: `tests/drip-map-dialoog-browser.cjs` dekt een tijdelijke NotReadableError (wordt bij de tweede poging gelezen) en een blijvende (melding met reden, datum, pad en tip, zonder afgeleide incidenten).

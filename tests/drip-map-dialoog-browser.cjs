@@ -66,6 +66,38 @@ const LOGS={
    assert.doesNotMatch(r.fase,/geen enkel incident kon aan een DRIP-asset worden gekoppeld/,'incidenten koppelen aan All Assets: '+r.fase);
    assert.deepEqual(errors,[]);await page.close();}
 
+  // 2b. DVM 159: bestanden die eerst falen worden opnieuw gelezen; blijvende fouten krijgen een reden.
+  for(const scenario of ['tijdelijk','blijvend']){
+   const {page,errors}=await nieuwePagina();
+   await page.evaluate(({logs,scenario})=>{
+    const pogingen=new Map();
+    const map=(name,kinderen)=>({kind:'directory',name,async *entries(){for(const k of kinderen)yield [k.name,k];}});
+    const bestand=(name,tekst)=>({kind:'file',name,async getFile(){
+     const n=(pogingen.get(name)||0)+1;pogingen.set(name,n);
+     // Het bestand van 15 januari staat 'alleen online': eerst (of altijd) NotReadableError.
+     if(name==='a.txt'&&(scenario==='blijvend'||n===1))throw new DOMException('A requested file or directory could not be read','NotReadableError');
+     return new File([tekst],name);}});
+    const boom={};for(const [pad,tekst] of Object.entries(logs)){let node=boom;const delen=pad.split('/');delen.slice(0,-1).forEach(d=>{node=node[d]=node[d]||{};});node[delen.at(-1)]=tekst;}
+    const bouw=(name,obj)=>map(name,Object.entries(obj).map(([k,v])=>typeof v==='string'?bestand(k,v):bouw(k,v)));
+    window.showDirectoryPicker=async()=>bouw('X',boom);
+   },{logs:LOGS,scenario});
+   await kiesEnStart(page);
+   if(scenario==='tijdelijk'){
+    await page.waitForFunction(()=>/Klaar \(MN\)/.test(document.getElementById('dgPFase')?.textContent||''),null,{timeout:60000});
+    const r=await uitkomst(page);
+    assert.match(r.fase,/1 pas bij een tweede poging gelezen/);assert.deepEqual(r.incidenten,[['DBD80','dicht'],['DBD81','open']]);
+   }else{
+    await page.waitForFunction(()=>/Mislukt/.test(document.getElementById('dgPFase')?.textContent||''),null,{timeout:60000});
+    const fase=await page.locator('#dgPFase').innerText();
+    assert.match(fase,/1 van 2 DRIP-bestanden niet leesbaar, ook niet bij een tweede poging/);
+    assert.match(fase,/1× Bestand niet lokaal beschikbaar of vergrendeld \(NotReadableError\)/);
+    assert.match(fase,/Datums 15-1-2025 t\/m 15-1-2025/);assert.match(fase,/cdms\/mn\/log\/2025\/0?1\/15\/a\.txt/);
+    assert.match(fase,/Altijd op dit apparaat bewaren/);
+    assert.equal(await page.evaluate(()=>(DRIP_HIST_STATE?.incidenten||[]).length),0,'vorige stand behouden, niets afgeleid');
+   }
+   assert.deepEqual(errors,[]);await page.close();
+  }
+
   // 3. Terugvalroute zonder moderne mapkiezer: de mapkeuze via de browser.
   {tmp=fs.mkdtempSync(path.join(os.tmpdir(),'bidash-cdms-'));
    for(const [pad,tekst] of Object.entries(LOGS)){const p=path.join(tmp,'X',pad);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,tekst);}
