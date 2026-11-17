@@ -8,7 +8,7 @@ test('openbare NDW-kopie valideert gzip, XML, tijd, hash en veilige terugval zon
 });
 test('NDW wordt uitsluitend in Pages-artifact bijgewerkt, geen gebruikersupload of Git-write',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
-  assert.match(workflow,/cron: '2-57\/5 \* \* \* \*'/);
+  assert.match(workflow,/cron: '17 \*\/4 \* \* \*'/);
   assert.match(workflow,/fetch-ndw\.py --output site\/ndw/);
   assert.match(workflow,/contents: read/);assert.doesNotMatch(workflow,/contents: write|git push/);
   assert.match(readFileSync(new URL('../.gitignore',import.meta.url),'utf8'),/site\/ndw\//);

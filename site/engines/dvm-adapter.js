@@ -137,7 +137,7 @@
 
   window.addEventListener('load',installeerImportGuard,{once:true});
 
-  document.write('<script src="dvm-adapter-original.js?v=20261103-1400"></script>');
+  document.write('<script src="dvm-adapter-original.js?v=20261117-0900"></script>');
   document.write('<script src="dvm-fault-rule-manager.js?v=20261103-1400"></script>');
   // Classificatielijsten zijn aparte lichte bronnen en worden vóór bronbeheer geladen.
   document.write('<script src="dvm-special-drip-lists.js?v=20261103-1400"></script>');
@@ -147,7 +147,7 @@
   document.write('<script src="dvm-mtm-bss.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-netwerkschakels.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261103-1400"></script>');
-  document.write('<script src="dvm-source-manager.js?v=20261116-153"></script>');
+  document.write('<script src="dvm-source-manager.js?v=20261117-0900"></script>');
   document.write('<script src="../core/signaalgever-import.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-source-export-completeness.js?v=20261103-1400"></script>');
 })();
