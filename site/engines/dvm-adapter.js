@@ -137,7 +137,7 @@
 
   window.addEventListener('load',installeerImportGuard,{once:true});
 
-  document.write('<script src="dvm-adapter-original.js?v=20261117-1000"></script>');
+  document.write('<script src="dvm-adapter-original.js?v=20261117-1100"></script>');
   document.write('<script src="dvm-fault-rule-manager.js?v=20261103-1400"></script>');
   // Classificatielijsten zijn aparte lichte bronnen en worden vóór bronbeheer geladen.
   document.write('<script src="dvm-special-drip-lists.js?v=20261103-1400"></script>');

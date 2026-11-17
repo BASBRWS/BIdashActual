@@ -300,3 +300,73 @@ dialog::backdrop{background:rgba(15,58,49,.45);backdrop-filter:blur(3px)}
  .cards,.journey,.scenario-grid{grid-template-columns:1fr}
  .section-heading{flex-wrap:wrap}
 }
+
+/* Overzichtsdashboard (2.88): KPI-kaarten, pijplijn, verloop en meterlijsten.
+   Alleen klassen; staafbreedtes staan als SVG-attributen (geen inline stijl). */
+.ov-kop{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 4px}
+.ov-kop h2{margin:0;font-size:22px;letter-spacing:-.5px}
+.ov-kop .eyebrow{color:var(--g-mint-text)}
+.ov-kop-acties{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ov-periode{display:inline-flex;gap:2px;padding:4px;border:1px solid var(--g-line);border-radius:var(--g-r-pill);background:var(--g-card);box-shadow:var(--g-shadow)}
+.ov-periode button{min-height:34px;padding:6px 13px;border:0;border-radius:var(--g-r-pill);background:transparent;color:var(--g-ink-2);font-size:12.5px;font-weight:550}
+.ov-periode button:hover{background:var(--g-mint-wash);color:var(--g-ink)}
+.ov-periode button.active{background:var(--g-forest);color:#fff}
+.ov-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ov-kpi{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:182px;text-align:left;font:inherit;cursor:pointer}
+.ov-kpi:before{flex:0 0 auto}
+.ov-kpi .ov-kpi-label{color:var(--g-ink-2);font-size:12.5px;font-weight:550}
+.ov-kpi strong{margin:4px 0 2px}
+.ov-kpi small{color:var(--g-ink-3)}
+.ov-kpi .ov-kpi-voet{margin-top:auto;padding-top:8px;color:var(--g-mint-text);font-size:11.5px;font-weight:600}
+.ov-spark{display:block;width:100%;height:34px;margin:2px 0 4px}
+.page-content .ov-pijplijn{padding:20px 22px}
+.ov-steps{display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr);align-items:stretch;gap:8px}
+.ov-step{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:150px;padding:14px 16px;border:1px solid var(--g-line);border-radius:var(--g-r-md);background:#fff;color:var(--g-ink);text-align:left;font:inherit;transition:border-color .15s,box-shadow .15s}
+.ov-step:hover{border-color:var(--g-mint);box-shadow:var(--g-shadow);background:#fff}
+.ov-step-nr{padding:3px 9px;border-radius:var(--g-r-pill);background:var(--g-mint-soft);color:var(--g-forest);font-size:10.5px;font-weight:700}
+.ov-step-titel{font-size:14px;font-weight:650}
+.ov-step-vraag{color:var(--g-ink-3);font-size:11.5px}
+.ov-step strong{margin-top:auto;font-size:21px;font-weight:650;letter-spacing:-.5px}
+.ov-step small{color:var(--g-ink-2);font-size:11.5px}
+.ov-step-geen{color:var(--g-ink-3);font-size:11px}
+.ov-step-pijl{align-self:center;justify-self:center;color:var(--g-ink-3);font-size:20px}
+.ov-meter{display:block;width:100%;height:8px}
+.ov-track{fill:#e8efec}
+.ov-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:18px;align-items:start}
+.ov-grid>section{min-width:0}
+.ov-chart{position:relative}
+.ov-chart svg{display:block;width:100%;height:auto;overflow:visible}
+.ov-chart svg:focus-visible{outline:3px solid var(--g-peach);outline-offset:4px;border-radius:8px}
+.ov-grid-lijn{stroke:#e3ebe7;stroke-width:1}
+.ov-as{fill:var(--g-ink-3);font-size:11px;font-family:var(--g-font)}
+.ov-crosshair{stroke:var(--g-ink-3);stroke-width:1;stroke-dasharray:3 3}
+.ov-punt{stroke:#fff;stroke-width:2}
+.ov-hit{fill:transparent;cursor:crosshair}
+.ov-tooltip{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;gap:1px;padding:7px 10px;border-radius:10px;background:var(--g-forest);color:#fff;font-size:11.5px;pointer-events:none;white-space:nowrap;box-shadow:0 8px 20px rgba(15,58,49,.25)}
+.ov-tooltip strong{font-size:13.5px}
+.ov-tooltip span{color:#cfe6dd}
+.ov-tabel{margin-top:8px}
+.page-content .ov-tabel{padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none}
+.ov-tabel summary{font-size:12px;color:var(--g-mint-text)}
+.ov-tabel .table-scroll{max-height:240px;overflow:auto;margin-top:8px}
+.ov-meterlijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ov-meter-rij{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:baseline}
+.ov-meter-rij .ov-meter{grid-column:1/-1}
+.ov-meter-naam{font-size:13px;font-weight:600;color:var(--g-ink)}
+.ov-meter-waarde{font-size:13px;font-weight:650;color:var(--g-ink)}
+.ov-meter-waarde small{font-weight:500;color:var(--g-ink-3)}
+.ov-meter-meta{grid-column:1/-1;color:var(--g-ink-3);font-size:11px}
+.ov-legenda{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 12px;color:var(--g-ink-2);font-size:11.5px}
+.ov-legenda span{display:inline-flex;align-items:center;gap:6px}
+.ov-legenda svg{width:10px;height:10px}
+.ov-dienst{padding:10px 0;border-bottom:1px solid #edf2ef}
+.ov-dienst:last-of-type{border-bottom:0}
+.ov-dienstbalk{display:block;width:100%;height:10px;margin:6px 0}
+.ov-norm{stroke:var(--g-ink);stroke-width:2}
+.ov-dienst[data-oordeel="binnen"] .ov-oordeel{color:var(--g-mint-text);font-weight:650}
+.ov-dienst[data-oordeel="onder"] .ov-oordeel{color:#a3361a;font-weight:650}
+.ov-dienst[data-oordeel="onzeker"] .ov-oordeel{color:var(--g-ink-2);font-weight:650}
+@media(max-width:1200px){.ov-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-step-pijl{display:none}}
+@media(max-width:1000px){.ov-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.ov-kop{align-items:flex-start}.ov-kpi{min-height:0}}
+@media(max-width:430px){.ov-kpis,.ov-steps{grid-template-columns:1fr}}
