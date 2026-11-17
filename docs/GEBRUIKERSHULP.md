@@ -599,6 +599,17 @@ Op Open storingen volgt de telling je actuele filters. Een verdwenen melding bli
 Het vinkje Volledige actuele storingsbron voor dit areaal blijft staan als je de bron bevestigt. Bij onzekere, verdwenen of verouderde meldingen verschijnt Bevestiging opgeslagen. Die meldingen houden hun onzekerheid en het dienstpercentage houdt een databand. Bevestigen is een uitspraak over de volledigheid van je bron; het verklaart geen storing opgelost. Je keuze blijft bewaard in de lokale werkruimte, parameters en totaalexport. Uitvinken trekt die keuze weer in. Het geopende tabblad en de details blijven staan.
 
 
+## Rekenkeuze voor de dienstband, DVM 154
+
+Onder **Brondekking bekijken en bevestigen** staan twee keuzes. Ze gelden voor alle dienstbanden, regio's en memo's.
+
+- **Meldingen zonder assetkoppeling meerekenen** staat standaard aan. Een open melding die niet aan een asset kan worden gekoppeld, bijvoorbeeld omdat de locatie ontbreekt, heeft een onbekende impact. Zolang het vinkje aan staat, houdt zo'n melding de ondergrens van de band laag. Zet je het uit, dan telt die mogelijke impact niet mee. De meldingen blijven zichtbaar en geteld; achter het vinkje staat hoeveel het er zijn.
+- **Telt mee** staat per assetbron in Tabel 1. Zet je bijvoorbeeld Camera uit, dan verdeelt BiDash het gewicht van Camera over de overige bronnen van hetzelfde subproces. Een subproces dat alleen op Camera leunt, valt uit de dienst; de overige subprocessen worden herwogen. Een dienst zonder meetellende bron toont **Geen meetellende assetbron**.
+
+Wijkt de berekening af van de standaard, dan staat boven de dienstbanden een oranje regel **Aangepaste berekening** met wat niet meetelt. De keuzes worden lokaal bewaard en gaan mee in de parameter- en totaalexport. Zet alles weer aan voor de oorspronkelijke berekening.
+
+Let op: een uitgezette bron of melding is daarmee niet gezond verklaard. Het percentage gaat dan alleen nog over wat wel meetelt.
+
 ## Dienstband na bronbevestiging, versie 2.69
 
 Aanvinken van Volledige actuele storingsbron voor dit areaal berekent de dienstband direct opnieuw. Bevestigde uitval beperkt de bovengrens. Een onzeker gekoppeld asset kan in de ondergrens volledig uitvallen en in de bovengrens beschikbaar zijn. De rest van het bevestigde areaal blijft meetellen. Bij tien assets, één bevestigde volledige uitval en één ander onzeker asset is de band 80 tot 90 procent. Meerdere meldingen op hetzelfde asset maken geen extra onzekere assets.

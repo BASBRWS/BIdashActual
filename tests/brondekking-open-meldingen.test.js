@@ -56,7 +56,7 @@ function context({liveRijen,meldingen,dekking}){
   vm.runInContext(haalConst(bron,'V68_LABEL'),ctx);
   // OBJ_BRON staat in dvm-1.js; v68Subproces vertaalt er de subprocesafhankelijkheden mee naar assettypen.
   vm.runInContext(read('site/engines/dvm-1.js').match(/^const OBJ_BRON = \{.*$/m)[0],ctx);
-  for(const naam of ['v68DekkingCfg','v68Assets','v68LiveBronnenVoorType','v68BronRijenPerType','v68MeldingOnzeker','v68TypeBand','v68TypeStatus','v68ObjType','v68Subproces'])
+  for(const naam of ['v68DekkingCfg','v68ScopeLees','v68Assets','v68LiveBronnenVoorType','v68BronRijenPerType','v68MeldingOnzeker','v68TypeBand','v68TypeStatus','v68ObjType','v68Subproces'])
     vm.runInContext(haalFunctie(bron,naam),ctx,{filename:naam});
   return ctx;
 }
