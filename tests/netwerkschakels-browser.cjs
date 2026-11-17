@@ -68,6 +68,10 @@ const buffer=Buffer.from(x.XLSX.write(wb,{type:'base64',bookType:'xlsx'}),'base6
   await page.locator('[data-netwerk-remove="2"]').click();
   assert.equal(await page.locator('#netwerkGrenzenBody tr').count(),2);
   await page.locator('#netwerkGrenzenClose').click();
+  // 2.89: het overzicht telt gekoppelde schakels en zet 'Niet gekoppeld' apart.
+  const net=await page.evaluate(()=>HUB.summary().netwerk);
+  assert.equal(net.actief,true);assert.equal(net.soort,'netwerkschakels');assert.equal(net.totaal,3);assert.equal(net.gekoppeld,2);
+  assert.equal(net.geraakt,1);assert.equal(net.laagste[0].gekoppeld,true);assert.match(net.laagste[0].key,/^TEST1 /);
   assert.deepEqual(errors,[]);console.log('Netwerkschakel-upload, grenscorrectie, VC-verschil, herberekening en totaalherstel geslaagd.');
  }finally{await browser?.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,0 +1,8 @@
+# BIdashActual 2.89 / DVM 156, netwerkschakels, formatie en mijlpalen op het overzicht
+
+- **Geen dubbele "0 van 4" meer.** De tweede KPI-kaart toont de zwakste dienst met haar band. Daaronder staat één keer hoeveel diensten aantoonbaar binnen de norm zijn. Pijplijnstap 02 "Gevolgen" toont nu waar het de weg raakt: geraakte netwerkschakels of wegdelen en hoeveel daarvan onder de norm zitten.
+- **Netwerkschakels.** Een nieuwe kaart toont hoeveel schakels of wegdelen geraakt zijn en hoeveel onder de norm zitten. Met een geladen netwerkschakelmatrix staat erbij welk deel gekoppeld is. Daaronder staan de zes laagste areaalbeschikbaarheden, met VC, open storingen, assets, zwakste dienst en een label "niet gekoppeld". De gegevens zijn gelijk aan die in de tabel "Actuele gevolgen open signaalgeverstoringen".
+- **Eerstvolgende mijlpalen.** De vijf volgende mijlpalen uit de planning, met datum, aantal dagen en project. Scenarioverschuivingen tellen mee, dus de datums zijn gelijk aan die op de tijdlijn. De KPI-kaart toont de eerstvolgende mijlpaal en hoeveel activiteiten nu lopen.
+- **Formatie & planning.** De FTE-vraag uit de planning per dienst: nu, de piek vanaf nu en de beschikbare FTE. Dit is dezelfde weekreeks als de grafiek "alle diensten", inclusief het VWM-formatiemodel. Tekorten in het komende jaar worden alleen getoond als de beschikbare FTE zijn ingevuld. Staan die nog op de standaardwaarden, dan staat dat er. BI-bedrijfsfuncties blijven getoond als ze geladen zijn.
+
+"Vandaag" voor mijlpalen en formatie is de kalenderdag van de gebruiker, want de planning kijkt vooruit. Het storingsbeeld blijft de bronpeildatum volgen. Rekenregels zijn niet gewijzigd.
