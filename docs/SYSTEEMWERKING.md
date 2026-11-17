@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.89 en DVM 157, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.89 en DVM 158, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1239,3 +1239,14 @@ Controle: `tests/drip-map-dialoog-browser.cjs` drukt op de echte knop. De test c
 - de moderne mapkiezer met een nagebootste mapboom, inclusief een bestand buiten de periode en een niet-gekozen VC;
 - de terugvalroute met een echte map;
 - de episodes, het toevoegen aan de DRIP-historie, de koppeling aan All Assets op CDMS-code en de eindtelling.
+
+## NDW-locatiecontrole, DVM 158
+
+Dit is een bewust gewijzigde producteis. Tot DVM 157 bevatte de bevestigingssleutel de hash van de NDW-momentopname. Elke ophaalronde, sinds 2.87 elke vier uur, maakte daardoor alle bevestigingen ongeldig.
+
+- **Bevestigingssleutel.** `ndw69Link` gebruikt nu `['v2', meetpunt-id, configuratieversie, weg, richting, doel-hm]`. Een nieuwe momentopname met hetzelfde meetpunt houdt de bevestiging. Een ander meetpunt, een gewijzigde meetpuntconfiguratie (`version`) of een andere doel-hectometer vraagt opnieuw om controle. Oude sleutels zonder `v2` gelden niet meer; door de oude regel stonden die in de praktijk al op nul.
+- **Automatisch passend.** Een koppeling met een geldige intensiteit op hooguit `NDW69_AUTO_KM` (1 km), op dezelfde weg en rijrichting, telt als automatisch passend. Dat geldt niet als het NDW-gebruik is uitgezet of als de gebruiker de koppeling heeft afgewezen door het vinkje uit te zetten (`afgewezen:true`).
+- **Tellers.** `ndw69Coverage` levert `confirmed` (door een gebruiker bevestigd), `automatisch`, `inOrde`, `pending` (nog te controleren), `extendedPending`, `disabled` en `unmatched`. Verkeerskosten tonen NDW locaties in orde met beide aantallen. De bronkaart toont een aparte regel Automatisch passend.
+- **Kostenberekening.** Ongewijzigd: de NDW-intensiteit werd en wordt gebruikt ongeacht de bevestiging.
+
+Controles: `tests/ndw-confirmation.test.js` dekt automatisch passend apart van bevestigd, afwijzen door uitvinken, uitgezet gebruik, een ruimere koppeling die nooit automatisch passend wordt, een bevestiging die een nieuwe ophaalronde overleeft, en een gewijzigde configuratieversie die haar ongeldig maakt. `tests/ndw-import.cjs` controleert de tellers in de echte module met 50 wegdelen.
