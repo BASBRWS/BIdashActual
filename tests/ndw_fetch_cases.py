@@ -64,13 +64,29 @@ class CacheTests(unittest.TestCase):
             m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now, fetch)
             self.assertEqual(m['status'], 'unavailable')
 
+    def test_retains_previous_within_four_hour_schedule(self):
+        previous = ndw.refresh(self.output, now=self.now, fetch=lambda u: self.data)
+        def fetch(url):
+            if url == ndw.SOURCE:
+                raise OSError('Offline')
+            return json.dumps(previous).encode() if url.endswith('latest.json') else self.data
+        m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now + timedelta(hours=4, minutes=30), fetch)
+        self.assertEqual(m['status'], 'ready')
+        self.assertTrue(m['retained'])
+        self.assertEqual(m['refreshMinutes'], 240)
+
+    def test_fresh_fetch_still_needs_recent_publication(self):
+        old = gzip.compress(self.xml.replace('2026-01-02T11:59:00Z', '2026-01-02T11:00:00Z').encode())
+        m = ndw.refresh(self.output, now=self.now, fetch=lambda u: old)
+        self.assertEqual(m['status'], 'unavailable')
+
     def test_previous_too_old(self):
         previous = ndw.refresh(self.output, now=self.now, fetch=lambda u: self.data)
         def fetch(url):
             if url == ndw.SOURCE:
                 raise OSError('Offline')
             return json.dumps(previous).encode() if url.endswith('latest.json') else self.data
-        m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now + timedelta(hours=1), fetch)
+        m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now + timedelta(hours=6), fetch)
         self.assertEqual(m['status'], 'unavailable')
 
     def test_limits(self):

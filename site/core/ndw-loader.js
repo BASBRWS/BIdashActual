@@ -3,6 +3,10 @@ const PATCH_SOURCE=String.raw`
 (function(){
   if(globalThis.__BIDASH_NDW_LOADER_ACTIVE__)return;
   if(typeof ndw69Summary!=='function'||typeof kostenDagRows!=='function')return;
+  /* De openbare NDW-kopie wordt elke vier uur ververst (2.87). Een kopie tot vijf uur
+     oud is geldig: vier uur plus speling voor vertraagde geplande GitHub-runs. */
+  const NDW_VERVERS_MINUTEN=240;
+  const NDW_MAX_LEEFTIJD_MS=5*60*60000;
 
   const originalSummary=ndw69Summary;
   const DEFAULT_BRON='NDW verkeersintensiteit; hinderuren: spits 07:00–10:00 en 16:00–19:00; generieke snelheidsreductie 30%';
@@ -11,7 +15,7 @@ const PATCH_SOURCE=String.raw`
   function loaderHtml(){
     return '<div class="bidash-ndw-loader" style="margin:12px 0;padding:12px;background:#fff;border:1px solid #b7c9d8;border-radius:6px">'
       +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="tb-btn primary" id="bidashNdwLatestButton" onclick="bidashHaalLaatsteNdw().catch(error=>alert(error.message))">Haal laatste NDW op</button><button type="button" class="tb-btn primary" id="bidashNdwLoadButton" onclick="bidashLaadNdw()">Gebruik NDW uit werkruimte</button><button type="button" class="tb-btn" id="bidashNdwChooseButton" onclick="bidashKiesNdwBestand()">Kies export met NDW</button></div>'
-      +'<p class="muted" style="margin:8px 0 0">Voor de verkeerskosten wordt NDW-verkeersintensiteit gebruikt. Dit is een andere bron dan de NDW CMDB-import van MSI- en DRIP-areaal. Kies Haal laatste NDW op voor de openbare kopie met meetlocaties, snelheden en intensiteiten. Die kopie wordt gepland elke vijf minuten ververst; de meettijd blijft zichtbaar. Je kunt ook zelf bestanden laden, eerst NDW meetlocaties en daarna NDW trafficspeed. Dat mag ook andersom of via één selectie. De bestandsnaam hoeft niet exact measurement_current.xml.gz te zijn; de app herkent gzip en de XML-inhoud. DATEX II v3 via het gecombineerde snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties.xml.gz blijft ook bruikbaar.</p>'
+      +'<p class="muted" style="margin:8px 0 0">Voor de verkeerskosten wordt NDW-verkeersintensiteit gebruikt. Dit is een andere bron dan de NDW CMDB-import van MSI- en DRIP-areaal. Kies Haal laatste NDW op voor de openbare kopie met meetlocaties, snelheden en intensiteiten. Die kopie wordt gepland elke vier uur ververst; de meettijd blijft zichtbaar. Je kunt ook zelf bestanden laden, eerst NDW meetlocaties en daarna NDW trafficspeed. Dat mag ook andersom of via één selectie. De bestandsnaam hoeft niet exact measurement_current.xml.gz te zijn; de app herkent gzip en de XML-inhoud. DATEX II v3 via het gecombineerde snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties.xml.gz blijft ook bruikbaar.</p>'
       +'<p class="muted" style="margin:6px 0 0"><b>Let op:</b> NDW levert het voertuigaantal. De standaard 6 hinderuren en 30% snelheidsreductie zijn scenarioaannames en geen NDW-metingen. Controleer die per wegdeel als je kosten gebruikt.</p>'
       +'<input id="bidashNdwSourceFile" type="file" accept=".xml,.gz,.json,.html,.htm" multiple style="display:none" onchange="bidashNdwBestand(this)">'
       +'<div id="bidashNdwProgress" style="margin-top:8px;display:none"><div style="height:8px;background:#dbe5ec;border-radius:6px;overflow:hidden"><span id="bidashNdwProgressBar" style="display:block;height:100%;width:0;background:#007bc7;transition:width .15s"></span></div><div id="bidashNdwProgressLabel" style="font-size:12px;margin-top:5px">Nog niet gestart</div></div>'
@@ -515,7 +519,7 @@ const PATCH_SOURCE=String.raw`
       const manifest=await meta.json(),pub=Date.parse(manifest.publication),retrieved=Date.parse(manifest.downloadedAt);
       if(manifest.schema!==1||manifest.status!=='ready')throw new Error('NDW kon bij de laatste verversing niet worden opgehaald. De vorige geladen meting blijft staan.');
       if(manifest.source!==SOURCE||!/^[a-f0-9]{64}$/.test(manifest.sha256||'')||manifest.file!=='snapshot-'+manifest.sha256+'.xml.gz'||!Number.isInteger(manifest.bytes)||manifest.bytes<1||manifest.bytes>25*1024*1024)throw new Error('De NDW-kopie heeft een ongeldig bronmanifest.');
-      if(!Number.isFinite(pub)||!Number.isFinite(retrieved)||Date.now()-pub>30*60000||pub-Date.now()>5*60000||retrieved-Date.now()>5*60000)throw new Error('De NDW-kopie is niet actueel, ouder dan 30 minuten of heeft een ongeldige tijd. De vorige meting blijft staan.');
+      if(!Number.isFinite(pub)||!Number.isFinite(retrieved)||Date.now()-pub>NDW_MAX_LEEFTIJD_MS||pub-Date.now()>5*60000||retrieved-Date.now()>5*60000)throw new Error('De NDW-kopie is niet actueel, ouder dan 5 uur of heeft een ongeldige tijd. De vorige meting blijft staan.');
       const current=typeof ndw69Data==='function'?ndw69Data():null;
       if(current?.online&&Date.parse(current.publication)>pub)throw new Error('De aangeboden NDW-kopie is ouder dan de al geladen meting. De nieuwere meting blijft staan.');
       setProgress(5,'NDW meetlocaties, snelheden en intensiteiten downloaden.');
@@ -536,7 +540,7 @@ const PATCH_SOURCE=String.raw`
       if(!globalThis.crypto?.subtle||await ndwCompressedHash(file)!==manifest.sha256)throw new Error('NDW-download heeft een afwijkende vingerafdruk. Probeer opnieuw.');
       const snapshot=await ndwCombinedStream(file);
       if(Date.parse(snapshot.publication)!==pub)throw new Error('De NDW-meettijd wijkt af van het bronmanifest.');
-      snapshot.online={source:SOURCE,downloadedAt:manifest.downloadedAt,fetchedAt:new Date().toISOString(),retained:manifest.retained===true,refreshMinutes:5};
+      snapshot.online={source:SOURCE,downloadedAt:manifest.downloadedAt,fetchedAt:new Date().toISOString(),retained:manifest.retained===true,refreshMinutes:NDW_VERVERS_MINUTEN};
       await applySnapshot(snapshot,'NDW Open Data, automatisch opgehaald');
       globalThis.__BIDASH_NDW_PENDING_V23__=null;globalThis.__BIDASH_LAST_NDW_PENDING__=null;
       if(typeof renderDatasetBeheer==='function')renderDatasetBeheer();

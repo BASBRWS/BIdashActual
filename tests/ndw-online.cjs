@@ -6,11 +6,17 @@ const site=path.join(__dirname,'../site'),SOURCE='https://opendata.ndw.nu/snelhe
 const pub=new Date(Date.now()-60000).toISOString();
 const xml='<mc:messageContainer xmlns:mc="urn:synthetic:container" xmlns:com="urn:synthetic:common" xmlns:roa="urn:synthetic:road" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><mc:payload xsi:type="roa:MeasurementSiteTablePublication"><com:publicationTime>'+pub+'</com:publicationTime><roa:measurementSite id="S" version="1"><roa:measurementSiteName><com:value>A15 km 25.000 Re</com:value></roa:measurementSiteName><roa:measurementSpecificCharacteristics index="1"><roa:specificMeasurementValueType>trafficFlow</roa:specificMeasurementValueType><roa:specificLane>lane1</roa:specificLane><roa:vehicleType>anyVehicle</roa:vehicleType></roa:measurementSpecificCharacteristics></roa:measurementSite></mc:payload><mc:payload xsi:type="roa:MeasuredDataPublication"><com:publicationTime>'+pub+'</com:publicationTime><roa:siteMeasurements><roa:measurementSiteReference id="S" version="1"/><roa:measurementTimeDefault>'+pub+'</roa:measurementTimeDefault><roa:physicalQuantity index="1"><roa:vehicleFlowRate>900</roa:vehicleFlowRate></roa:physicalQuantity></roa:siteMeasurements></mc:payload></mc:messageContainer>';
 let bytes=zlib.gzipSync(xml),sha=crypto.createHash('sha256').update(bytes).digest('hex');
-let manifest={schema:1,status:'ready',source:SOURCE,file:'snapshot-'+sha+'.xml.gz',sha256:sha,bytes:bytes.length,publication:pub,downloadedAt:new Date().toISOString(),refreshMinutes:5,retained:false};
+let manifest={schema:1,status:'ready',source:SOURCE,file:'snapshot-'+sha+'.xml.gz',sha256:sha,bytes:bytes.length,publication:pub,downloadedAt:new Date().toISOString(),refreshMinutes:240,retained:false};
 if(process.env.NDW_REAL_CACHE){
  manifest=JSON.parse(fs.readFileSync(path.join(process.env.NDW_REAL_CACHE,'latest.json')));
  bytes=fs.readFileSync(path.join(process.env.NDW_REAL_CACHE,manifest.file));
 }
+// 2.87: de openbare kopie wordt elke vier uur ververst; een synthetische kopie van vier uur
+// oud moet worden geaccepteerd, een van zes uur niet. Manifest en XML delen dezelfde meettijd.
+const oudeFeeds=Object.fromEntries([['vieruur',4],['zesuur',6]].map(([naam,uur])=>{
+ const p=new Date(Date.now()-uur*3600000).toISOString(),b=zlib.gzipSync(xml.split(pub).join(p)),h=crypto.createHash('sha256').update(b).digest('hex');
+ return [naam,{bytes:b,manifest:{file:'snapshot-'+h+'.xml.gz',sha256:h,bytes:b.length,publication:p}}];
+}));
 let mode='ready',release;
 (async()=>{
  const requests=[];
@@ -23,11 +29,14 @@ let mode='ready',release;
    if(uri.endsWith('latest.json')){
     const m={...manifest};
     if(mode==='old')m.publication='2025-01-01T00:00:00Z';
+    // 2.87: de openbare kopie wordt elke vier uur ververst; vier uur oud is geldig, zes uur niet.
+    if(oudeFeeds[mode])Object.assign(m,oudeFeeds[mode].manifest);
     if(mode==='unsafe')m.file='https://external.invalid/feed';
     if(mode==='retained')m.retained=true;
     res.setHeader('Content-Type','application/json');res.end(JSON.stringify(m));return;
    }
    res.setHeader('Content-Type','application/gzip');
+   if(oudeFeeds[mode]){res.end(oudeFeeds[mode].bytes);return;}
    if(mode==='broken'){const b=Buffer.from(bytes);b[bytes.length-1]^=1;res.end(b);return;}
    if(mode==='partial'){res.end(bytes.subarray(0,-10));return;}
    res.end(bytes);return;
@@ -56,10 +65,12 @@ let mode='ready',release;
    HUB.open('datasets');
   });
   assert.equal(await page.locator('[data-ndw-latest]').count(),2);
+  if(!process.env.NDW_REAL_CACHE)mode='vieruur';
   await page.locator('[data-ndw-latest]').first().click();
   await page.waitForFunction(()=>ndw69Data()?.online?.source,{},{timeout:180000});
   assert.match(await page.locator('#tab-datasets').innerText(),/Meetlocaties uit gecombineerde snapshot/i);
   assert.match(await page.locator('#tab-datasets').innerText(),/minuten oud/);
+  if(!process.env.NDW_REAL_CACHE){assert.match(await page.locator('#tab-datasets').innerText(),/\b2(39|40|41) minuten oud/,'kopie van vier uur geaccepteerd');mode='ready';}
   assert.equal(await page.evaluate(()=>HUB.export({fullSources:true}).parameters.kosten.ndw69Snapshot.online.source),SOURCE);
   assert.equal(await page.evaluate(()=>__BIDASH_NDW_PENDING_V23__),null);
   assert.ok(await page.evaluate(()=>ndwParseLengths.every(n=>n<2000000)),'XML wordt per blok gelezen');
@@ -76,7 +87,7 @@ let mode='ready',release;
   assert.equal(await page.evaluate(()=>sc67Config(ndwOnlineRoad).uren),2);
   assert.equal(await page.evaluate(()=>sc67Config(ndwOnlineRoad).reductie),20);
   const previous=await page.evaluate(()=>JSON.stringify(ndw69Data()));
-  for(const failure of ['unavailable','old','unsafe','broken','partial']){
+  for(const failure of ['unavailable','old','zesuur','unsafe','broken','partial']){
    mode=failure;
    const error=await page.evaluate(async()=>{try{await bidashHaalLaatsteNdw();return '';}catch(e){return e.message;}});
    assert.ok(error,failure);

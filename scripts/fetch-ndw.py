@@ -14,6 +14,11 @@ SOURCE = 'https://opendata.ndw.nu/snelheden_en_intensiteiten_meetgegevens_en_con
 MAX_BYTES = 25 * 1024 * 1024
 MAX_XML_BYTES = 256 * 1024 * 1024
 MAX_AGE = timedelta(minutes=30)
+# De workflow ververst elke vier uur. Een vorige openbare kopie mag daarom tot vijf
+# uur oud zijn: vier uur plus speling voor vertraagde geplande GitHub-runs. Een vers
+# opgehaalde NDW-publicatie moet nog steeds binnen MAX_AGE liggen.
+MAX_AGE_RETAINED = timedelta(hours=5)
+REFRESH_MINUTES = 240
 
 
 def iso(value):
@@ -33,7 +38,7 @@ def fetch_bytes(url):
         return data
 
 
-def validate(data, now):
+def validate(data, now, max_age=MAX_AGE):
     if not data.startswith(b'\x1f\x8b'):
         raise ValueError('NDW-bron is geen gzipbestand.')
     with gzip.GzipFile(fileobj=io.BytesIO(data)) as stream:
@@ -55,7 +60,7 @@ def validate(data, now):
     if not config or not traffic or not publications:
         raise ValueError('Gecombineerde NDW-bron mist configuratie, meetgegevens of publicatietijd.')
     publication = max(publications)
-    if now - publication > MAX_AGE or publication - now > timedelta(minutes=5):
+    if now - publication > max_age or publication - now > timedelta(minutes=5):
         raise ValueError('NDW-publicatie is te oud of ligt in de toekomst.')
     return iso(publication)
 
@@ -68,7 +73,7 @@ def write(output, data, publication, downloaded, attempt, retained=False):
     manifest = {'schema': 1, 'status': 'ready', 'source': SOURCE, 'file': filename,
                 'sha256': sha, 'bytes': len(data), 'publication': publication,
                 'downloadedAt': downloaded, 'attemptedAt': attempt,
-                'retained': retained, 'refreshMinutes': 5}
+                'retained': retained, 'refreshMinutes': REFRESH_MINUTES}
     (output / 'latest.json').write_text(json.dumps(manifest, ensure_ascii=False) + '\n')
     return manifest
 
@@ -92,7 +97,7 @@ def refresh(output, previous_base='', now=None, fetch=fetch_bytes):
                 sha = hashlib.sha256(data).hexdigest()
                 if manifest.get('sha256') != sha or filename != 'snapshot-' + sha + '.xml.gz':
                     raise ValueError('Vorige kopie heeft een afwijkende vingerafdruk.')
-                publication = validate(data, now)
+                publication = validate(data, now, MAX_AGE_RETAINED)
                 if date(manifest['downloadedAt']) > now + timedelta(minutes=5):
                     raise ValueError('Ongeldige ophaaltijd.')
                 return write(output, data, publication, manifest['downloadedAt'], attempt, True)
@@ -100,7 +105,7 @@ def refresh(output, previous_base='', now=None, fetch=fetch_bytes):
                 pass
         output.mkdir(parents=True, exist_ok=True)
         manifest = {'schema': 1, 'status': 'unavailable', 'source': SOURCE,
-                    'attemptedAt': attempt, 'refreshMinutes': 5}
+                    'attemptedAt': attempt, 'refreshMinutes': REFRESH_MINUTES}
         (output / 'latest.json').write_text(json.dumps(manifest) + '\n')
         return manifest
 

@@ -5,7 +5,8 @@ on:
     paths: ['site/**', 'docs/**', 'scripts/**', 'tests/**', 'package.json', '.github/workflows/pages.yml']
   workflow_dispatch:
   schedule:
-    - cron: '2-57/5 * * * *'
+    # Elke vier uur de openbare NDW-kopie verversen (UTC; 01:17, 05:17, ... Nederlandse wintertijd).
+    - cron: '17 */4 * * *'
 permissions:
   contents: read
   pages: write
