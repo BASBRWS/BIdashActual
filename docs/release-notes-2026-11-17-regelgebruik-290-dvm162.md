@@ -1,4 +1,4 @@
-# BIdashActual 2.90 / DVM 160, zichtbaar welke regels worden gebruikt
+# BIdashActual 2.90 / DVM 162, zichtbaar welke regels worden gebruikt
 
 Op **Impactregels** en **Organisatieregels** staat nu een * achter een regel die BIdashActual niet of slechts beperkt gebruikt.
 
@@ -9,4 +9,4 @@ Op **Impactregels** en **Organisatieregels** staat nu een * achter een regel die
 
 De markeringen komen uit één register, `site/core/regelgebruik.js`. `tests/regelgebruik.test.js` faalt wanneer een nieuwe standaardregel niet in het register staat, wanneer een als ongelezen gemarkeerde BI-parameter toch wordt gelezen, of wanneer de code achter een niet-gebruikt-status verandert. Zo blijft het overzicht bij.
 
-Rekenregels, defaults, imports en exports zijn niet gewijzigd. De schilversie is 2.90 en de DVM-engineversie 160.
+Rekenregels, defaults, imports en exports zijn niet gewijzigd. De schilversie is 2.90 en de DVM-engineversie 162.

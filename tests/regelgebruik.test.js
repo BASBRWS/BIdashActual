@@ -1,4 +1,4 @@
-/* Regelgebruik (2.90 / DVM 160): het register in core/regelgebruik.js moet
+/* Regelgebruik (2.90 / DVM 162): het register in core/regelgebruik.js moet
    bijblijven met de code. Faalt deze test na een wijziging, werk dan de status
    in het register bij in plaats van de controle te verzwakken. */
 import test from 'node:test';

@@ -6,6 +6,11 @@ import {readFileSync} from 'node:fs';
 test('openbare NDW-kopie valideert gzip, XML, tijd, hash en veilige terugval zonder netwerk',()=>{
   execFileSync('python3',[new URL('./ndw_fetch_cases.py',import.meta.url).pathname,'-q'],{stdio:'pipe'});
 });
+test('DVM 161: openbare kopie van de NDW-planningsfeed valideert en valt veilig terug',()=>{
+  execFileSync('python3',[new URL('./ndw_werk_fetch_cases.py',import.meta.url).pathname,'-q'],{stdio:'pipe'});
+  const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
+  assert.match(workflow,/fetch-ndw-werk\.py --output site\/ndw\/werk/);
+});
 test('NDW wordt uitsluitend in Pages-artifact bijgewerkt, geen gebruikersupload of Git-write',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
   assert.match(workflow,/cron: '17 \*\/4 \* \* \*'/);

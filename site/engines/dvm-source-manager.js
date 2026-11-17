@@ -4,7 +4,7 @@
 (() => {
   /* De versie van de schil hoort bij de schil; die staat in site/core/versie.js.
      Deze module kent alleen haar eigen engineversie en meldt die aan de schil. */
-  const DVM_VERSION='160';
+  const DVM_VERSION='162';
   const SPECIAL_ACCEPT='.xlsx,.xls,.xlsm,.xlsb,.ods,.csv,.tsv,.txt';
   const SOURCE_CONFIG = Object.freeze({
     netwerkschakels:{input:'netwerkschakelInput',label:'Netwerkschakelmatrix laden',multiple:false,requiresAsset:false,handler:'leesNetwerkschakels',accept:'.xlsx,.xls'},
@@ -16,7 +16,7 @@
     ria4Drips:{input:'ria4DripListInput',label:'RIA4 DRIP’s laden',multiple:false,requiresAsset:true,handler:'special:ria4',accept:SPECIAL_ACCEPT},
     storingshistorie:{input:'autoLogInput',label:'Storingshistorie toevoegen',multiple:true,requiresAsset:true,handler:'leesStoringsBestanden'},
     uRoutes:{input:'uRouteInput',label:'U-routes laden',multiple:false,requiresAsset:true,handler:'leesURouteBestand'},
-    werkzaamheden:{input:'werkInput',label:'Werkzaamheden laden',multiple:false,requiresAsset:true,handler:'leesWerkBestand'},
+    werkzaamheden:{input:'werkInput',label:'Werkzaamheden laden',multiple:false,requiresAsset:true,handler:'leesWerkBestand',accept:'.xlsx,.xls,.xlsm,.csv,.json,.xml,.gz'},
     liveStoringen:{input:'liveLogInput',label:'Open storingen laden',multiple:true,requiresAsset:true,handler:'leesLiveStoringsBestanden'},
     signaalgeverTotaal:{input:'signaalgeverTotaalInput',label:'Signaalgevers totaal (JSON) laden',multiple:false,requiresAsset:true,handler:'leesSignaalgeverTotaal',accept:'.json'},
     signaalgeverMap:{input:'signaalgeverMapInput',label:'Signaalgevers uit map lezen (MTM)',multiple:true,directory:true,requiresAsset:true,handler:'leesSignaalgeverMap'},
@@ -35,7 +35,7 @@
     dvmHistorie:{titel:'DVM storingshistorie',meta:'De historie uit Signaalgevers totaal en DRIP totaal wordt automatisch gebruikt. Camera, Detectielus, MSI en DRIP horen bij DVM. Zonder cameraregels is geen camerahistorie geladen.'},
     storingshistorie:{titel:'Aanvullende losse storingshistorie',meta:'Optioneel voor historische DVM-regels die niet in de totaalbronnen staan, bijvoorbeeld camera. Signaalgevers totaal en DRIP totaal leveren hun eigen historie al.'},
     uRoutes:{titel:'U-routes',meta:'Niet geladen. U-routes zijn operationele routecontext.'},
-    werkzaamheden:{titel:'Werkzaamheden',meta:'Niet geladen. Werkzaamheden zijn operationele context.'},
+    werkzaamheden:{titel:'Werkzaamheden',meta:'Niet geladen. Werkzaamheden zijn operationele context. Kies Haal NDW werkzaamheden op voor de NDW-planningsfeed, of laad een eigen werkzaamhedenbestand of planningsfeed_wegwerkzaamheden_en_evenementen.xml.gz.'},
     liveStoringen:{titel:'Aanvullende losse open storingen',meta:'Optioneel voor een losse DVM-momentopname. Signaalgevers totaal levert open MSI en Detectielus; DRIP totaal levert open DRIP-incidenten. Laad dezelfde meldingen niet nogmaals.'},
     signaalgeverTotaal:{titel:'Signaalgevers totaal (JSON)',meta:'Nog niet geladen. Eén gecombineerd JSON-bestand (datasets.mtm) met open alarmen én historische storingen. Alternatief voor de losse Open storingen- en Storingshistorie-uploads; bij het laden vervangt het die twee bronnen zodat oud en nieuw niet mengen.'},
     signaalgeverMap:{titel:'Signaalgevers uit map (MTM)',meta:'Nog niet geladen. Kies de X-hoofdmap of de mtm-map; BIdashActual leest standaard alleen *_openstaandestoringen.txt: alle dumps binnen de gekozen periode op volgorde per VC. Een verdwenen melding blijft onzeker tot minimaal 48 uur na de eerste afwezigheid; terugkeer onderbreekt de wachttijd. Technische meldingen en unieke storingslocaties worden afzonderlijk geteld; het exacte herstelmoment blijft onbekend. BSS-logs worden in deze snelle methode overgeslagen. Vult dezelfde bron als Signaalgevers totaal en vervangt de losse Open storingen en Storingshistorie. Werkt in Edge en Chrome.'},
@@ -373,6 +373,7 @@
       let upload=`<button class="tb-btn primary dataset-upload" onclick="openDatasetUpload('${item.type}')" ${disabled?'disabled':''} title="${title}">⭱ ${knopTekst(item)}</button>`;
       if(item.type==='ndwVerkeer')upload=`<button class="tb-btn primary dataset-upload" onclick="openDatasetUpload('ndwTrafficspeed')" ${disabled?'disabled':''}>⭱ Trafficspeed laden</button><button class="tb-btn dataset-upload" onclick="openDatasetUpload('ndwVerkeer')" ${disabled?'disabled':''}>Gecombineerd bestand of export</button><button class="tb-btn dataset-upload" onclick="bidashLaadNdw().then(()=>renderDatasetBeheer()).catch(error=>alert(error.message||String(error)))" title="Zoek een NDW-verkeerssnapshot in de actieve of lokaal opgeslagen werkruimte.">Gebruik uit werkruimte</button>`;
       if(item.type==='ndwMeetlocaties'||item.type==='ndwVerkeer')upload+=`<button type="button" class="tb-btn primary" data-ndw-latest onclick="bidashHaalLaatsteNdw().catch(error=>alert(error.message))" ${disabled?'disabled':''}>Haal laatste NDW op</button><p data-ndw-latest-status role="status" aria-live="polite"></p>`;
+      if(item.type==='werkzaamheden')upload+=`<button type="button" class="tb-btn primary" data-ndw-werk onclick="bidashHaalNdwWerkzaamheden().catch(error=>alert(error.message))" ${disabled?'disabled':''} title="Laatste NDW-planningsfeed wegwerkzaamheden; alleen werkzaamheden op het hoofdwegennet blijven over.">Haal NDW werkzaamheden op</button><p data-ndw-werk-status role="status" aria-live="polite"></p>`;
       if(item.type==='signaalgeverMap')upload+=`<a class="tb-btn" href="../signaalgever-importer.html" target="_blank" rel="noopener">Losse signaalgeverimporter</a>`;
       if(item.type==='dripTotaal'&&item.aanwezig)upload+=`<button class="tb-btn dataset-upload" onclick="openDripTotaalToevoegen()" ${disabled?'disabled':''} title="Voeg een extra DRIP totaal JSON complementair toe; bestaande DRIP-bronnen blijven staan.">＋ Voeg JSON toe</button>`;
       if(isSpecial(item.type)&&item.aanwezig)upload+=`<button class="tb-btn" onclick="clearSpecialDripSource('${item.type}')">Wissen</button>`;
