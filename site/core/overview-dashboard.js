@@ -23,7 +23,7 @@ const isOnzeker=f=>!!f.levenscyclus_status&&f.levenscyclus_status!=='OPEN_BEVEST
 
 /* Kern: één samengesteld beeld waar alle onderdelen uit putten, zodat de getallen
    onderling kloppen. */
-export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30}={}){
+export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30,planning=null}={}){
   const p=PERIODES.includes(Number(periode))?Number(periode):30;
   const verloop=dvm?.verloop?.dagen?.length?dvm.verloop.dagen.slice(-p):[];
   const open=meldingen.length,doorgerekend=meldingen.filter(f=>(f.rekenStatus||'Doorgerekend')==='Doorgerekend').length;
@@ -47,8 +47,13 @@ export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30
     diensten,binnen:diensten.filter(x=>x.oordeel==='binnen').length,onder:diensten.filter(x=>x.oordeel==='onder').length,
     onzekerDienst:diensten.filter(x=>x.oordeel==='onzeker'||x.oordeel==='onbekend').length,meetbareDiensten:meetbaar.length,dekking,
     kosten:bekend.length?bekend.reduce((s,r)=>s+r.kosten,0):null,kostenBekend:bekend.length,kostenTotaal:wegen.length,netwerkschakels:!!dvm?.netwerkschakelmatrix,
-    planning:bi?.planning||null,fte:fte.length?{nodig:fteNodig,actueel:fteActueel,functies:fte.length}:null,
-    signalen:signalen.length,vcs
+    planning:bi?.planning||null,fte:fte.length?{nodig:fteNodig,actueel:fteActueel,functies:fte.length,lijst:fte}:null,
+    signalen:signalen.length,vcs,
+    // 2.89: zwakste dienst (laagste ondergrens), netwerkschakels, planningoverzicht.
+    zwaksteDienst:meetbaar.filter(x=>Number.isFinite(x.lo)).slice().sort((a,b)=>a.lo-b.lo||a.hi-b.hi)[0]||null,
+    netwerk:dvm?.netwerk||null,
+    planOverzicht:planning||null,
+    planActiviteiten:planning?.taken??null
   };
 }
 
@@ -76,11 +81,13 @@ export function kpiHtml(m){
   const tegels=[
     {label:'Open storingen',waarde:m.heeftDvm?getal(m.open):'Onbekend',sub:m.heeftDvm?`${getal(m.doorgerekend)} doorgerekend · ${getal(m.nietDoorgerekend)} niet doorgerekend · ${getal(m.onzeker)} onzeker`:'Laad een DVM-totaalbestand met open storingen',extra:spark,route:'faults',
       voet:m.verloop.length?`${getal(m.nieuwInPeriode)} nieuw in de laatste ${m.periode} dagen`:''},
-    {label:'Diensten aantoonbaar binnen norm',waarde:m.diensten.length?`${getal(m.binnen)} van ${getal(m.meetbareDiensten)}`:'Onbekend',sub:m.diensten.length?`${getal(m.onder)} zeker onder norm · ${getal(m.onzekerDienst)} onzeker door brondekking`:'Dienstimpact wacht op brondata',route:'services',
-      voet:m.dekking!=null?`Gemiddelde bekende brondekking ${pct(m.dekking*100)}`:''},
+    {label:m.zwaksteDienst?`Zwakste dienst · ${m.zwaksteDienst.naam}`:'Zwakste dienst',waarde:m.zwaksteDienst?dienstWaarde(m.zwaksteDienst):'Onbekend',
+      sub:m.diensten.length?`${getal(m.binnen)} van ${getal(m.meetbareDiensten)} aantoonbaar binnen norm · ${getal(m.onder)} zeker onder norm · ${getal(m.onzekerDienst)} onzeker`:'Dienstimpact wacht op brondata',route:'services',
+      voet:m.zwaksteDienst?`Norm ${pct(m.zwaksteDienst.norm,1)} · bekende brondekking ${pct((Number(m.zwaksteDienst.dekking)||0)*100,0)}`:''},
     {label:'Verkeerskosten / brondag',waarde:m.kostenBekend?geld(m.kosten):'Onbekend',sub:`${getal(m.kostenBekend)} van ${getal(m.kostenTotaal)} ${m.netwerkschakels?'netwerkschakelrichtingen':'wegdelen'} berekenbaar${m.kostenBekend<m.kostenTotaal?' · bekend subtotaal':''}`,route:'costs',voet:'Som van scenario’s; controleer overlap'},
-    {label:'Planning & formatie',waarde:m.planning?`${getal(m.planning.regels)} activiteiten`:'Nog niet geladen',sub:m.planning?String(m.planning.naam||''):'Laad je planning-XML',route:'planning',
-      voet:m.fte?`Formatie ${getal(m.fte.actueel,1)} van ${getal(m.fte.nodig,1)} FTE`:'Formatie onbekend'}
+    (()=>{const po=m.planOverzicht,vm=po?.mijlpalen?.[0];return {label:'Eerstvolgende mijlpaal',waarde:vm?dagenTekst(vm.dagen):po?'Geen komende mijlpaal':m.planning?'Planning niet geopend':'Nog niet geladen',
+      sub:vm?`${vm.naam} · ${datumLabel(vm.datum)}`:m.planning?`${getal(m.planning.regels)} activiteiten in ${String(m.planning.naam||'de planning')}`:'Laad je planning-XML',route:'planning',
+      voet:po?`${getal(po.lopend)} activiteiten lopen nu · ${getal(po.mijlpalenKomend)} komende mijlpalen`:''};})()
   ];
   return tegels.map(t=>`<button type="button" class="card ov-kpi" data-ov-route="${t.route}"><span class="ov-kpi-label">${esc(t.label)}</span><strong>${esc(t.waarde)}</strong>${t.extra||''}<small>${esc(t.sub)}</small>${t.voet?`<span class="ov-kpi-voet">${esc(t.voet)}</span>`:''}</button>`).join('');
 }
@@ -88,13 +95,57 @@ export function kpiHtml(m){
 export function pijplijnHtml(m){
   const stap=(nr,titel,vraag,waarde,sub,fractie,route)=>`<button type="button" class="ov-step" data-ov-route="${route}"><span class="ov-step-nr">${nr}</span><span class="ov-step-titel">${esc(titel)}</span><span class="ov-step-vraag">${esc(vraag)}</span><strong>${esc(waarde)}</strong>${fractie==null?'<span class="ov-step-geen">Nog niet te bepalen</span>':meterSvg([{n:Math.round(fractie*1000),kleur:OVERZICHT_KLEUR.reeks}],1000,sub)}<small>${esc(sub)}</small></button>`;
   const koppel=m.open?m.gekoppeld/m.open:null;
-  const formatie=m.fte&&m.fte.nodig>0?Math.min(1,m.fte.actueel/m.fte.nodig):null;
+  const net=m.netwerk,geraaktFractie=net&&net.geraakt?1-net.onderNorm/net.geraakt:null;
+  const fo=formatieSamenvatting(m);
   return [
     stap('01','Uitval','Wat is uitgevallen?',m.heeftDvm?`${getal(m.open)} open`:'Onbekend',koppel==null?'Geen open storingen of geen bron':`${pct(koppel*100,0)} aan een asset gekoppeld`,koppel,'faults'),
-    stap('02','Gevolgen','Wat betekent het voor de dienstverlening?',m.diensten.length?`${getal(m.binnen)} van ${getal(m.meetbareDiensten)} binnen norm`:'Onbekend',m.dekking==null?'Brondekking onbekend':`Bekende brondekking ${pct(m.dekking*100,0)}`,m.dekking,'services'),
-    stap('03','Uitvoerbaarheid','Is er capaciteit en planning?',m.planning?`${getal(m.planning.regels)} activiteiten`:'Geen planning',formatie==null?'Formatie onbekend':`Formatie ${pct(formatie*100,0)} van de behoefte`,formatie,'planning'),
+    stap('02','Gevolgen','Waar raakt het de weg?',net?`${getal(net.geraakt)} ${net.soort} geraakt`:'Onbekend',net?(net.geraakt?`${getal(net.onderNorm)} onder norm ${pct(net.norm,1)} · balk = deel binnen norm`:'Geen geraakte '+net.soort):'Laad open storingen',geraaktFractie,'roads'),
+    stap('03','Uitvoerbaarheid','Is er capaciteit en planning?',fo.waarde,fo.sub,fo.fractie,'planning'),
     stap('04','Actie','Wat vraagt een besluit?',`${getal(m.signalen)} ${m.signalen===1?'signaal':'signalen'}`,m.signalen?'Gezamenlijke signalen uit storingen en formatie':'Geen open signalen',null,'signals')
   ].join('<span class="ov-step-pijl" aria-hidden="true">›</span>');
+}
+
+function dienstWaarde(x){return x.oordeel==='uitgesloten'?'Geen meetellende assetbron':x.besch!=null?pct(x.besch,2):`${getal(x.lo,1)}–${getal(x.hi,1)}%`;}
+function datumLabel(iso){if(!iso)return 'Onbekend';const [j,m,d]=String(iso).split('-').map(Number);return d&&m?`${d} ${['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][m-1]} ${j}`:String(iso);}
+function dagenTekst(n){return n===0?'Vandaag':n===1?'Morgen':`Over ${getal(n)} dagen`;}
+
+/* Formatie uit de planning: alleen een tekort tonen als beschikbare FTE zijn ingevuld. */
+export function formatieSamenvatting(m){
+  const f=m.planOverzicht?.formatie;
+  if(!f)return {waarde:m.planning?`${getal(m.planning.regels)} activiteiten`:'Geen planning',sub:m.fte?`BI-formatie ${getal(m.fte.actueel,1)} van ${getal(m.fte.nodig,1)} FTE`:'Formatie onbekend',fractie:m.fte&&m.fte.nodig>0?Math.min(1,m.fte.actueel/m.fte.nodig):null};
+  const vraagNu=f.perDienst.reduce((s,d)=>s+d.nu,0),cap=f.perDienst.reduce((s,d)=>s+(d.beschikbaar||0),0);
+  const tekort=f.perDienst.filter(d=>d.tekortWeken>0);
+  if(f.beschikbaarStandaard)return {waarde:`${getal(vraagNu,1)} FTE gevraagd`,sub:'Beschikbare FTE nog standaardwaarden; vul ze in om tekorten te zien',fractie:null};
+  return {waarde:tekort.length?`Tekort bij ${getal(tekort.length)} ${tekort.length===1?'dienst':'diensten'}`:'Geen tekort komend jaar',sub:`Nu ${getal(vraagNu,1)} van ${getal(cap,1)} FTE gevraagd`,fractie:cap>0?Math.min(1,vraagNu/cap):null};
+}
+
+export function netwerkHtml(m){
+  const n=m.netwerk;
+  if(!n)return `<div class="empty"><b>Nog geen netwerkbeeld</b>Laad open storingen; met een netwerkschakelmatrix ziet u de schakels.</div>`;
+  const kop=[[`${getal(n.geraakt)}`,`${n.soort} geraakt`],[`${getal(n.onderNorm)}`,`onder norm ${pct(n.norm,1)}`],n.actief?[`${pct(n.totaal?n.gekoppeld/n.totaal*100:0,0)}`,`gekoppeld aan een schakel (${getal(n.gekoppeld)} van ${getal(n.totaal)})`]:[`${getal(n.totaal)}`,'wegdelen in beeld · geen netwerkschakelmatrix']];
+  const stat=`<div class="ov-netstat">${kop.map(([w,l])=>`<div><strong>${esc(w)}</strong><span>${esc(l)}</span></div>`).join('')}</div>`;
+  if(!n.laagste.length)return stat+`<p class="muted">Geen geraakte ${esc(n.soort)}.</p>`;
+  const rij=r=>{const b=r.besch??0;return `<li class="ov-net-rij"><div class="ov-net-kop"><span class="ov-net-naam">${esc(r.key)}</span><b>${r.besch==null?'Onbekend':pct(r.besch,2)}</b></div><svg class="ov-dienstbalk" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="${esc(r.key)}: areaalbeschikbaarheid ${r.besch==null?'onbekend':pct(r.besch,2)}, norm ${pct(n.norm,1)}"><rect width="100" height="10" rx="2" class="ov-track"/><rect width="${Math.max(0,Math.min(100,b)).toFixed(2)}" height="10" rx="2" fill="${OVERZICHT_KLEUR.reeks}"/><line x1="${n.norm}" x2="${n.norm}" y1="0" y2="10" class="ov-norm" vector-effect="non-scaling-stroke"/></svg><small>VC ${esc(r.vc||'onbekend')} · ${getal(r.n)} open · ${getal(r.N)} assets${r.zwakste?` · zwakste dienst ${esc(r.zwakste.naam)} ${pct(r.zwakste.besch,1)}`:''}${r.gekoppeld===false?' · <span class="ov-chip">niet gekoppeld</span>':''}</small></li>`;};
+  return stat+`<p class="ov-subkop">Laagste areaalbeschikbaarheid</p><ul class="ov-netlijst">${n.laagste.map(rij).join('')}</ul>`;
+}
+
+export function mijlpalenHtml(m){
+  const po=m.planOverzicht;
+  if(!po)return `<div class="empty"><b>${m.planning?'Planning nog niet geopend':'Nog geen planning'}</b>${m.planning?'Open de planning eenmaal om mijlpalen te tonen.':'Laad je planning-XML.'}</div>`;
+  if(!po.mijlpalen.length)return `<div class="empty"><b>Geen komende mijlpalen</b>${getal(po.mijlpalenTotaal)} mijlpalen in de planning, alle vóór ${esc(datumLabel(po.vandaag))}.</div>`;
+  return `<ol class="ov-mijlpalen">${po.mijlpalen.map(x=>`<li><span class="ov-mp-dag"><strong>${esc(String(Number(x.datum.slice(8,10))))}</strong>${esc(['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][Number(x.datum.slice(5,7))-1]||'')}</span><span class="ov-mp-tekst"><b>${esc(x.naam||'Naamloze mijlpaal')}</b><small>${esc(dagenTekst(x.dagen))} · ${esc(datumLabel(x.datum))}${x.project?` · ${esc(x.project)}`:''}</small></span></li>`).join('')}</ol><p class="muted ov-voetnoot">${getal(po.mijlpalenKomend)} komende en ${getal(po.mijlpalenVoorbij)} verstreken mijlpalen · datums inclusief scenarioverschuiving</p>`;
+}
+
+export function formatieHtml(m){
+  const f=m.planOverzicht?.formatie,delen=[];
+  if(f){
+    const max=Math.max(1,...f.perDienst.map(d=>Math.max(d.piek,d.beschikbaar||0)));
+    delen.push(`<p class="ov-subkop">FTE-vraag uit de planning${f.binnenPlanning?'':' · vandaag valt buiten de planningsperiode'}</p>${f.beschikbaarStandaard?'<p class="ov-let">Beschikbare FTE staan nog op de standaardwaarden. Tekorten worden pas getoond als je ze invult bij Planning, Dashboardbeheer.</p>':''}<ul class="ov-meterlijst">${f.perDienst.map(d=>{
+      const tekort=!f.beschikbaarStandaard&&d.tekortWeken>0;
+      return `<li class="ov-meter-rij"><span class="ov-meter-naam">${esc(d.dienst)}</span><span class="ov-meter-waarde">${getal(d.nu,1)} nu · piek ${getal(d.piek,1)}${d.beschikbaar!=null?` <small>/ ${getal(d.beschikbaar,1)} beschikbaar</small>`:''}</span><svg class="ov-meter" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${esc(d.dienst)}: nu ${getal(d.nu,1)} FTE, piek ${getal(d.piek,1)}, beschikbaar ${d.beschikbaar==null?'onbekend':getal(d.beschikbaar,1)}"><rect width="100" height="8" rx="2" class="ov-track"/><rect width="${(d.piek/max*100).toFixed(2)}" height="8" rx="2" fill="${OVERZICHT_KLEUR.reeks}" fill-opacity=".28"/><rect width="${(d.nu/max*100).toFixed(2)}" height="8" rx="2" fill="${OVERZICHT_KLEUR.reeks}"/>${d.beschikbaar!=null?`<line x1="${(d.beschikbaar/max*100).toFixed(2)}" x2="${(d.beschikbaar/max*100).toFixed(2)}" y1="0" y2="8" class="ov-norm" vector-effect="non-scaling-stroke"/>`:''}</svg>${tekort?`<small class="ov-meter-meta ov-tekort">Tekort in ${getal(d.tekortWeken)} weken komend jaar, eerste vanaf ${esc(datumLabel(d.eersteTekort))}</small>`:d.piekDatum?`<small class="ov-meter-meta">Piek rond ${esc(datumLabel(d.piekDatum))}</small>`:''}</li>`;}).join('')}</ul><p class="ov-legenda"><span><svg viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2" fill="${OVERZICHT_KLEUR.reeks}"/></svg>Nu gevraagd</span><span><svg viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2" fill="${OVERZICHT_KLEUR.reeks}" fill-opacity=".28"/></svg>Piek vanaf nu</span><span><svg viewBox="0 0 10 10" aria-hidden="true"><line x1="5" x2="5" y1="0" y2="10" class="ov-norm"/></svg>Beschikbaar</span></p>`);
+  }
+  if(m.fte)delen.push(`<p class="ov-subkop">Bedrijfsfuncties (BI)</p><ul class="ov-meterlijst">${m.fte.lijst.map(x=>`<li class="ov-meter-rij"><span class="ov-meter-naam">${esc(x.naam)}</span><span class="ov-meter-waarde">${getal(Number(x.actueel),1)} <small>/ ${getal(Number(x.benodigd),1)} FTE</small></span></li>`).join('')}</ul>`);
+  return delen.length?delen.join(''):null;
 }
 
 /* Verloop: vlak + lijn, één reeks, recessieve gridlijnen, hover via de schil. */

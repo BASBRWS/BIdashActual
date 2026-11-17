@@ -48,6 +48,31 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await svg.focus();assert.match(await tip.innerText(),/tot peilmoment/,'focus toont de laatste, lopende dag');
   await page.keyboard.press('ArrowLeft');assert.doesNotMatch(await tip.innerText(),/tot peilmoment/);
   assert.equal(await page.locator('#ovTrend [data-ov-lopend]').count(),1);
+  // 3b. Planning: eerstvolgende mijlpalen (met scenarioverschuiving 0) en formatie.
+  const dag=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+  const taak=(uid,naam,start,eind,mijl)=>`<Task><UID>${uid}</UID><ID>${uid}</ID><Name>${naam}</Name><OutlineLevel>2</OutlineLevel><Start>${start}T08:00:00</Start><Finish>${eind}T17:00:00</Finish><Summary>0</Summary><Milestone>${mijl?1:0}</Milestone></Task>`;
+  const msp=`<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><Title>Synthetische planning</Title><Tasks><Task><UID>1</UID><ID>1</ID><Name>Testproject</Name><OutlineLevel>1</OutlineLevel><Summary>1</Summary></Task>${taak(2,'Lopende taak',dag(-10),dag(40),false)}${taak(3,'Oplevering verleden',dag(-20),dag(-20),true)}${taak(4,'Gunning',dag(12),dag(12),true)}${taak(5,'Start uitvoering',dag(45),dag(45),true)}${taak(6,'Ingebruikname',dag(200),dag(200),true)}</Tasks></Project>`;
+  await page.locator('[data-group="data"]').click();await page.locator('#importType').selectOption('planning');
+  await page.locator('#files').setInputFiles({name:'synthetische-planning.xml',mimeType:'text/xml',buffer:Buffer.from(msp)});await page.locator('#applyImport').click();
+  await page.waitForFunction(()=>/Import voltooid|Import gestopt/.test(document.getElementById('status').textContent),null,{timeout:90000});assert.match(await page.locator('#status').textContent(),/Import voltooid/);
+  await page.locator('#importType').selectOption('auto');await page.locator('[data-group="overview"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#ovMijlpalen li').length===3,null,{timeout:30000});
+  const mp=await page.locator('#ovMijlpalen li').allInnerTexts();
+  assert.match(mp[0],/Gunning[\s\S]*Over 12 dagen/);assert.match(mp[1],/Start uitvoering[\s\S]*Over 45 dagen/);assert.match(mp[2],/Ingebruikname/);
+  assert.doesNotMatch(mp.join(' '),/Oplevering verleden/);assert.match(await page.locator('#ovMijlpalen').innerText(),/3 komende en 1 verstreken mijlpalen/);
+  assert.match(await page.locator('#cards').innerText(),/Eerstvolgende mijlpaal\s*Over 12 dagen\s*Gunning/);
+  assert.match(await page.locator('#cards').innerText(),/1 activiteiten lopen nu/);
+  // Beschikbare FTE op standaardwaarden: geen tekort claimen.
+  assert.match(await page.locator('#capacity').innerText(),/Beschikbare FTE staan nog op de standaardwaarden/);
+  assert.doesNotMatch(await page.locator('#capacity').innerText(),/Tekort in/);
+  assert.match(await page.locator('#ovPipeline').innerText(),/standaardwaarden/);
+  // Netwerkkaart zonder matrix: wegdelen in beeld, zelfde telling als de DVM-samenvatting.
+  const net=await page.frames().find(f=>/engines\/dvm.html/.test(f.url())).evaluate(()=>HUB.summary().netwerk);
+  assert.match(await page.locator('#ovNetwerk').innerText(),new RegExp(net.geraakt+'\\s*wegdelen geraakt'));
+  assert.equal(await page.locator('#ovNetwerk .ov-net-rij').count(),Math.min(6,net.geraakt));
+  assert.match(await page.locator('#ovPipeline').innerText(),new RegExp(net.geraakt+' wegdelen geraakt'));
+  // Geen dubbele "x van y binnen norm": alleen in de kaart van de zwakste dienst.
+  assert.equal((await page.locator('#overview').innerText()).match(/aantoonbaar binnen norm/g)?.length,1);
   // 4. Doorklikken vanuit de pijplijn.
   await page.locator('#ovPipeline .ov-step').first().click();await page.waitForFunction(()=>location.hash==='#faults');
   // 5. Telefoon: geen horizontaal scrollen.

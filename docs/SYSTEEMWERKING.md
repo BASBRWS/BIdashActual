@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.88 en DVM 155, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.89 en DVM 156, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1214,3 +1214,18 @@ Controles: `tests/dienst-rekenkeuze.test.js` toetst de standaard tegen een expli
 - **Weergave.** HTML zonder inline stijl (CSP `style-src 'self'`); staafbreedtes zijn SVG-attributen. De grafiek heeft een crosshair-tooltip voor muis en toetsenbord (labels via `textContent`) en een tabelweergave. Kleuren: één reeks `#0f9d78`; voor bevestigd tegenover onzeker het paar `#0f9d78`/`#df5f26`, gecontroleerd op lichtheid, verzadiging, kleurenblindheid en contrast. De periodekeuze (14, 30 of 90 dagen) staat in `localStorage` (`bidash-overzicht-periode`).
 
 Controles: `tests/overview-dashboard.test.js` (model, dienstoordeel, Onbekend zonder bron, geen inline stijl, ontsnapping, lopende dag, tabel) en `tests/overview-dashboard-browser.cjs` (getallen tegen `HUB.faults()` en `verloop`, periode en opslag, tooltip met muis en toetsenbord, doorklikken, geen horizontaal scrollen op 390 px).
+
+## Overzicht: netwerkschakels, formatie en mijlpalen, versie 2.89 / DVM 156
+
+- **`summary().netwerk`** (DVM 156) komt van `overzichtNetwerk()` in `dvm-adapter-original.js`, op basis van `STATE.wegdelen`.
+  - Velden: aantal wegdelen, geraakt (`n>0`), onder `RULES.cfg.kpi_msi`, en de zes laagste areaalbeschikbaarheden met VC, open storingen, assets en zwakste dienst.
+  - Met een geladen netwerkschakelmatrix (`DVM_NETWERKSCHAKELS_STATE`) telt een wegdeel als gekoppeld bij `_netwerkSchakel` of een `netwerkschakel`-code. "Niet gekoppeld"-groepen tellen niet als gekoppeld.
+- **`summary().overzicht`** in `planning-adapter.js` komt van `planningOverzicht()`.
+  - **Mijlpalen:** regels met `kind:'mile'`, datum via `ipl_eff` en `ipl_yearToDate`, dus inclusief scenarioverschuiving. Het overzicht toont de eerste vijf vanaf vandaag, het aantal komende en verstreken mijlpalen, en het aantal nu lopende taken.
+  - **Formatie:** uit `ipl_computeDienstFteReeks()` (taak-FTE en VWM-formatiemodel) per dienst: de vraag nu, de piek vanaf nu met datum, de beschikbare FTE uit `IPL_DASHCONFIG.beschikbareFte`, en het aantal tekortweken plus het eerste tekort in het komende jaar.
+  - **Standaardwaarden:** zijn de beschikbare FTE gelijk aan de standaardwaarden (GPO 8, CIV 5, VWM 5, PPO 3, Regio 3), dan zet de samenvatting `beschikbaarStandaard`. Het dashboard toont dan geen tekort.
+  - **Vandaag:** de kalenderdag van de gebruiker.
+- **Schil:** leest de planningssamenvatting rechtstreeks (`sourceApi('planning').summary().overzicht`). Zonder geladen planning toont het dashboard een lege toestand.
+- **Dubbele weergave:** de tweede KPI-kaart toont de zwakste dienst (laagste ondergrens, bij gelijke stand de laagste bovengrens). Het aantal diensten aantoonbaar binnen de norm staat alleen daar; pijplijnstap 02 toont de netwerkimpact.
+
+Controles: `tests/overview-dashboard.test.js` dekt zwakste dienst, één weergave van het normaantal, netwerk, mijlpalen, en formatie met en zonder ingevulde FTE. `tests/overview-dashboard-browser.cjs` dekt planning-import, mijlpaalvolgorde vanaf vandaag, de melding over standaardwaarden en de netwerkkaart. `tests/netwerkschakels-browser.cjs` controleert de koppeltelling met een geladen matrix.

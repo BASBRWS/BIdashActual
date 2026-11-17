@@ -1,5 +1,5 @@
 import {actualStand} from './core/actual-state.js?v=20261105-1515';
-import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261117-1100';
+import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,netwerkHtml,mijlpalenHtml,formatieHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261117-1300';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261116-286';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
@@ -26,7 +26,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261117-1100';
+const APP_BUILD='20261117-1300';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -254,7 +254,8 @@ const OV_PERIODE_KEY='bidash-overzicht-periode';
 let ovPeriode=(()=>{try{const v=Number(localStorage.getItem(OV_PERIODE_KEY));return PERIODES.includes(v)?v:30;}catch{return 30;}})();
 function overzichtNu(){
  const d=summaries.dvm,b=summaries.bi;
- return overzichtModel({dvm:d,bi:b,stand:actualStand(state.dvm,d),signalen:combine(d,b,state.links),meldingen:d?allFaults():[],periode:ovPeriode});
+ let planning=null;try{planning=sourceApi('planning')?.summary?.()?.overzicht||null;}catch(_error){planning=null;}
+ return overzichtModel({dvm:d,bi:b,stand:actualStand(state.dvm,d),signalen:combine(d,b,state.links),meldingen:d?allFaults():[],periode:ovPeriode,planning});
 }
 function renderOverzicht(m=overzichtNu()){
  $('#cards').innerHTML=kpiHtml(m);
@@ -263,13 +264,15 @@ function renderOverzicht(m=overzichtNu()){
  $('#ovTypes').innerHTML=m.heeftDvm?meterlijstHtml(m.typen,{leeg:'Geen open storingen in de geladen bron'}):empty('Nog geen storingsbron','Laad een DVM-totaalbestand met de open storingen.');
  $('#ovVc').innerHTML=m.heeftDvm?meterlijstHtml(vcRijen(m),{leeg:'Geen verkeerscentrales in de bron'}):empty('Nog geen storingsbron','De dagstand per verkeerscentrale volgt na het laden.');
  $('#services').innerHTML=dienstenHtml(m)||empty('Dienstimpact wacht op brondata','Laad een DVM-totaalbestand met de open storingen.');
+ $('#ovNetwerk').innerHTML=netwerkHtml(m);
+ $('#ovMijlpalen').innerHTML=mijlpalenHtml(m);
+ $('#capacity').innerHTML=formatieHtml(m)||empty('Formatie nog niet ingevuld','Laad BI-gegevens, of een planning met FTE per taak of het VWM-formatiemodel.','businessData');
  document.querySelectorAll('[data-ov-periode]').forEach(x=>{const aan=Number(x.dataset.ovPeriode)===m.periode;x.classList.toggle('active',aan);x.setAttribute('aria-pressed',String(aan));});
 }
 function render(){
  renderPlanningExportInfo();
  renderActualStand();
  const d=summaries.dvm,b=summaries.bi,roads=d?.roads||[],known=roads.filter(r=>Number.isFinite(r.kosten)),total=known.reduce((s,r)=>s+r.kosten,0),fte=b?.functies||[];
- $('#capacity').innerHTML=fte.length?`<table><thead><tr><th>Bedrijfsfunctie</th><th>Benodigd FTE</th><th>Beschikbaar FTE</th></tr></thead><tbody>${fte.map(f=>`<tr><td>${esc(f.naam)}</td><td>${num(f.benodigd)}</td><td>${num(f.actueel)}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Laad je BI-gegevens of vul bedrijfsfuncties en formatie in bij BI Dash.</p>';
  const triggers=combine(d,b,state.links),filter=$('#signalFilter').value;$('#signalCount').textContent='('+triggers.length+')';
  $('#signalsList').innerHTML=triggers.filter(t=>!filter||t.eigenaar===filter).map(t=>`<article class="signal"><small>${esc(t.eigenaar)} · ${esc(t.sev||'signaal')} · ${esc(t.resp||'Verantwoordelijke nog vastleggen')}</small><strong>${esc(t.titel)}</strong><p>${esc(t.msg)}</p><small>Toegepaste regel: ${esc(t.regel)}</small></article>`).join('')||'<p class="muted">Geen signalen voor deze selectie. Controleer of alle benodigde bronnen zijn geladen.</p>';
  $('#linkService').innerHTML='<option value="">Kies dienst</option>'+(d?.diensten||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.naam)}</option>`).join('');
@@ -512,7 +515,6 @@ function renderNative(){
  const signals=combine(d,b,state.links);
  $('#prioritySignals').innerHTML=signals.length?signals.slice(0,3).map(t=>`<article class="signal"><small>${esc(t.eigenaar)} · ${esc(t.resp||'Verantwoordelijke vastleggen')}</small><strong>${esc(t.titel)}</strong><p>${esc(t.msg)}</p></article>`).join(''):empty('Nog geen gezamenlijke prioriteiten','Laad bronnen en verbind diensten aan bedrijfsfuncties.','rules');
  renderOverzicht();
- $('#capacity').innerHTML=b?.functies.length?b.functies.map(f=>`<div class="capacity-line"><span>${esc(f.naam)}</span><b>${num(f.actueel)} / ${num(f.benodigd)} FTE</b></div>`).join(''):empty('Formatie nog niet ingevuld','Laad BI-gegevens of vul bedrijfsfuncties in.','businessData');
  $('#planningStatus').innerHTML=b?.planning?`<b>${num(b.planning.regels,0)} planningsactiviteiten</b><span>${esc(b.planning.naam)}</span><br><button data-route="planning">Tijdlijn bekijken →</button>`:'<span>Planning-XML nog niet geladen.</span><br><button data-route="planning">Planning openen →</button>';
  $('#organisationTable').innerHTML=b?.functies.length?`<div class="table-scroll"><table><thead><tr><th>Bedrijfsfunctie</th><th>Benodigd FTE</th><th>Beschikbaar FTE</th><th>Verschil</th></tr></thead><tbody>${b.functies.map(f=>`<tr><td>${esc(f.naam)}</td><td>${num(f.benodigd)}</td><td>${num(f.actueel)}</td><td>${num(f.actueel-f.benodigd)}</td></tr>`).join('')}</tbody></table></div>`:empty('Nog geen bedrijfsfuncties','Vul de formatie in bij Bedrijfsgegevens.','businessData');
  if(view==='assets')renderAssets();

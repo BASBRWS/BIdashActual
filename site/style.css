@@ -370,3 +370,25 @@ dialog::backdrop{background:rgba(15,58,49,.45);backdrop-filter:blur(3px)}
 @media(max-width:1000px){.ov-grid{grid-template-columns:1fr}}
 @media(max-width:720px){.ov-kop{align-items:flex-start}.ov-kpi{min-height:0}}
 @media(max-width:430px){.ov-kpis,.ov-steps{grid-template-columns:1fr}}
+/* 2.89: netwerkschakels, mijlpalen en formatie op het overzicht. */
+.ov-netstat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.ov-netstat div{padding:12px 14px;border:1px solid var(--g-line);border-radius:var(--g-r-md);background:var(--g-mint-wash)}
+.ov-netstat strong{display:block;font-size:22px;font-weight:650;letter-spacing:-.5px;color:var(--g-ink)}
+.ov-netstat span{color:var(--g-ink-2);font-size:11.5px}
+.ov-subkop{margin:4px 0 10px;color:var(--g-ink-2);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}
+.ov-netlijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ov-net-kop{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.ov-net-naam{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:var(--g-ink)}
+.ov-net-rij small{color:var(--g-ink-3);font-size:11px}
+.ov-chip{display:inline-block;padding:1px 7px;border-radius:var(--g-r-pill);background:var(--g-peach-soft);color:#7a2e0e;font-weight:600}
+.ov-mijlpalen{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ov-mijlpalen li{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--g-line);border-radius:var(--g-r-md);background:#fff}
+.ov-mp-dag{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 48px;height:48px;border-radius:12px;background:var(--g-forest);color:#cfe6dd;font-size:10.5px;text-transform:uppercase;line-height:1.1}
+.ov-mp-dag strong{color:#fff;font-size:18px}
+.ov-mp-tekst{display:flex;flex-direction:column;min-width:0}
+.ov-mp-tekst b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--g-ink)}
+.ov-mp-tekst small{color:var(--g-ink-3);font-size:11px}
+.ov-voetnoot{margin:10px 0 0;font-size:11px}
+.ov-let{margin:0 0 12px;padding:8px 12px;border-left:4px solid var(--g-peach);border-radius:8px;background:#fff8f3;color:var(--g-ink-2);font-size:12px}
+.ov-tekort{color:#a3361a!important;font-weight:600}
+@media(max-width:720px){.ov-netstat{grid-template-columns:1fr}}
