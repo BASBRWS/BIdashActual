@@ -21,20 +21,23 @@ function wijzigActualDienstVc(vc){ACTUAL_DIENST_VC=normAssetVc(vc)||'';if(STATE)
 function actualBandDiagnoseHtml(model){
   const gebruikt=new Set(model.diensten.flatMap(d=>d.detail.flatMap(sp=>sp.bronnen.map(b=>b.tp))));
   const redenen=[];
+  const sc=v68ScopeLees();
   for(const tp of V68_TYPES){const b=model.typen[tp];if(!gebruikt.has(tp))continue;
+    if(b.teltMee===false){redenen.push(V68_LABEL[tp]+': telt bewust niet mee in de dienstberekening');continue;}
     if(!b.bevestigd)redenen.push(V68_LABEL[tp]+': volledigheid van de bron niet bevestigd');
     if(b.onplaatsbaar)redenen.push(V68_LABEL[tp]+': onbekende impact zonder bruikbare assetkoppeling');
     if(b.onbekendeAssets)redenen.push(V68_LABEL[tp]+': '+b.onbekendeAssets.toLocaleString('nl-NL')+' assets onzeker of zonder volledige VC-dekking');
     if(b.combiOnzeker)redenen.push(V68_LABEL[tp]+': mogelijke combinatie met een onzekere melding');
     if(!b.n)redenen.push(V68_LABEL[tp]+': geen actief areaal in deze selectie');
+    if(!sc.zonderKoppeling&&b.zonderKoppeling)redenen.push(V68_LABEL[tp]+': '+b.zonderKoppeling.toLocaleString('nl-NL')+' meldingen zonder assetkoppeling bewust niet meegerekend');
   }
   return `<details data-band-diagnose><summary>Waarom is de band breed?</summary><p>Een ondergrens van nul betekent dat gegevens ontbreken. Het is geen vastgestelde volledige uitval. De bovengrens houdt de bevestigde uitval wel vast.</p>${redenen.length?'<ul>'+redenen.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul>':'<p>De benodigde bronnen en assettoestanden zijn volledig bevestigd.</p>'}</details>`;
 }
 function actualDienstTabelHtml(model){
-  return `<div class="tbl-scroll" style="max-height:none"><table class="tbl" data-dienst-banden><thead><tr><th>Dienstverlening</th><th>Beschikbaarheid</th><th>Prestatie</th><th>Norm</th><th>Bekende dekking</th></tr></thead><tbody>${model.diensten.map(r=>`<tr data-dienst="${esc(r.d.id)}"><td><b>${esc(r.d.naam.replace(/&amp;/g,'&'))}</b></td><td>${v68Bereik(r)}</td><td>${r.exact?v68Pct(r.prestatie):fmt(r.loP,2)+' tot '+fmt(r.hiP,2)+'%'}</td><td>${fmt(r.d.norm,1)}%</td><td>${fmt(r.dekking*100,1)}%</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="tbl-scroll" style="max-height:none"><table class="tbl" data-dienst-banden><thead><tr><th>Dienstverlening</th><th>Beschikbaarheid</th><th>Prestatie</th><th>Norm</th><th>Bekende dekking</th></tr></thead><tbody>${model.diensten.map(r=>`<tr data-dienst="${esc(r.d.id)}"><td><b>${esc(r.d.naam.replace(/&amp;/g,'&'))}</b></td><td>${v68Bereik(r)}</td><td>${v68PrestatieBereik(r)}</td><td>${fmt(r.d.norm,1)}%</td><td>${fmt(r.dekking*100,1)}%</td></tr>`).join('')}</tbody></table></div>`;
 }
 function actualSubprocessenHtml(model){
-  return model.diensten.map(r=>`<details data-dienst-subprocessen="${esc(r.d.id)}"><summary>${esc(r.d.naam.replace(/&amp;/g,'&'))}, subprocessen en afhankelijkheden</summary><div class="tbl-scroll"><table class="tbl"><thead><tr><th>Subproces</th><th>Aandeel dienst</th><th>Beschikbaarheid</th><th>Prestatie</th><th>Assetafhankelijkheden</th></tr></thead><tbody>${r.detail.map(sp=>`<tr><td>${esc(sp.naam)}</td><td>${fmt(sp.w*100,1)}%</td><td>${fmt(sp.loB,2)} tot ${fmt(sp.hiB,2)}%</td><td>${fmt(sp.loP,2)} tot ${fmt(sp.hiP,2)}%</td><td>${sp.bronnen.map(b=>esc(V68_LABEL[b.tp]||b.obj)+' '+fmt(b.w*100,1)+'%').join(', ')}</td></tr>`).join('')}</tbody></table></div></details>`).join('');
+  return model.diensten.map(r=>`<details data-dienst-subprocessen="${esc(r.d.id)}"><summary>${esc(r.d.naam.replace(/&amp;/g,'&'))}, subprocessen en afhankelijkheden</summary><div class="tbl-scroll"><table class="tbl"><thead><tr><th>Subproces</th><th>Aandeel dienst</th><th>Beschikbaarheid</th><th>Prestatie</th><th>Assetafhankelijkheden</th></tr></thead><tbody>${r.detail.map(sp=>sp.uitgesloten?`<tr style="opacity:.6"><td>${esc(sp.naam)}</td><td>telt niet mee</td><td colspan="2">Geen meetellende assetbron</td><td>${sp.uitgeslotenBronnen.map(b=>esc(V68_LABEL[b.tp]||b.obj)).join(', ')} uitgezet</td></tr>`:`<tr><td>${esc(sp.naam)}</td><td>${fmt(sp.w*100,1)}%</td><td>${fmt(sp.loB,2)} tot ${fmt(sp.hiB,2)}%</td><td>${fmt(sp.loP,2)} tot ${fmt(sp.hiP,2)}%</td><td>${sp.bronnen.map(b=>esc(V68_LABEL[b.tp]||b.obj)+' '+fmt(b.w*100,1)+'%').join(', ')}${sp.uitgeslotenBronnen?.length?'<br><small>Niet meegeteld: '+sp.uitgeslotenBronnen.map(b=>esc(V68_LABEL[b.tp]||b.obj)).join(', ')+'</small>':''}</td></tr>`).join('')}</tbody></table></div></details>`).join('');
 }
 function actualDienstOverzichtHtml(){
   const s=actualDienstScherm(),m=s.model,geladen=actualBronVCs(),vcs=[...new Set(v68Assets().map(a=>normAssetVc(a.vc)).filter(Boolean).concat(geladen))].sort();
@@ -43,6 +46,7 @@ function actualDienstOverzichtHtml(){
     <label>Verkeerscentrale voor dienstimpact <select id="actualDienstVc" onchange="wijzigActualDienstVc(this.value)"><option value="">Landelijk, volledig register</option>${vcs.map(v=>`<option value="${esc(v)}"${v===s.vc?' selected':''}>${esc(v)}${geladen.includes(v)?' · bron aanwezig':' · geen bron voor deze VC'}</option>`).join('')}</select></label>
     <p><b>Berekening uitgevoerd.</b> ${s.meldingen.length.toLocaleString('nl-NL')} meldingen doorgerekend, ${s.niet.length.toLocaleString('nl-NL')} niet doorgerekend. ${m.assets.toLocaleString('nl-NL')} actieve assets in ${s.vc?'VC '+esc(s.vc):'het volledige landelijke register'}. ${gekoppeld.toLocaleString('nl-NL')} doorgerekende meldingen hebben een assetkoppeling.</p>
     <p>Bronmoment: ${actualBronMomentHtml(s.vc?[s.vc]:null)}. ${!s.vc&&geladen.length?'Bronnen aangetroffen voor '+esc(geladen.join(', '))+'. Kies een VC om haar eigen areaal en dienstband te bekijken.':''}</p>
+    ${v68ScopeSamenvattingHtml(m)}
     <div class="grid4">${m.diensten.map(r=>`<div class="kpi"><div class="k-val" style="font-size:${r.exact?'25px':'17px'}">${v68Bereik(r)}</div><div class="k-lab">${esc(r.d.naam.replace(/&amp;/g,'&'))}<br>brondekking ${fmt(r.dekking*100,1)}%</div></div>`).join('')}</div>
     ${actualBandDiagnoseHtml(m)}
     <details><summary>Brondekking bekijken en bevestigen</summary><p>Deze bevestigingen gelden voor de bronnen voor het volledige geladen register. De VC-keuze hierboven verandert alleen de getoonde selectie. Een ontbrekende MTM-centrale blijft onbekend.</p>${v68BronnenHtml(v68LandelijkModel())}</details>

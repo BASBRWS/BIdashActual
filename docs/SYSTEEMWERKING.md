@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.87 en DVM 153, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.87 en DVM 154, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1189,3 +1189,18 @@ De knoppen voor koppelen, bulkkoppelen en locatie opslaan lopen via `assetCfgBez
 Controles: `tests/assetconfig-koppeling-snelheid.test.js` vergelijkt koppeling, suggesties, redenen en kandidaatdetails met de volledige scan bij drie toleranties. Het register bevat assets zonder of met niet-eindige HM, een DVKA en een locatiecorrectie. De test controleert ook de volgorde van het venster, `normRij` bij dubbele kolomnamen en de caches. `tests/assetconfig-koppeling-browser.cjs` importeert 12.000 assets en 9.000 meldingen. Daarna vergelijkt hij het volledige matchbeeld en de inspectie met en zonder venster, en koppelt hij en wijzigt hij een locatie via de echte knoppen, met bezig-melding en een tijdsbudget van 25 s per actie.
 
 De resterende rekentijd per actie zit vooral in `renderAlles`, dat alle DVM-tabbladen opnieuw tekent, en bij locatiewijziging in `verwerkDvmLeeftijd`. Die stappen zijn ongewijzigd.
+
+## Rekenkeuze voor de dienstband, DVM 154
+
+Dit is een bewust gewijzigde producteis. De gebruiker kan de landelijke en regionale dienstband beperken tot wat zij laat meetellen. De standaard is ongewijzigd: alles telt mee. Bestaande tests bevestigen dat de uitkomst bij de standaard exact gelijk blijft.
+
+`RULES.cfg.dienstScope` bevat `zonderKoppeling` (standaard `true`) en `uitgesloten[type]` (standaard leeg). De keuze gaat mee in parameter- en totaalexport en wordt bij import samengevoegd zoals de rest van `RULES.cfg`. `v68ScopeLees()` leest de keuze zonder `RULES.cfg` te wijzigen.
+
+- **`zonderKoppeling:false`.** `v68TypeBand` laat open meldingen zonder geldige assetkoppeling de band niet meer openhouden: `onplaatsbaar` blijft dan uit. Het gaat om bronrijen zonder doorgerekende of bewaarde melding, onzekere doorgerekende meldingen zonder registerasset en niet-doorgerekende meldingen zonder registerasset. Hun aantal staat in `zonderKoppeling` en blijft zichtbaar. Niet-doorgerekende of onzekere meldingen mét registerasset houden hun asset onzeker. Ontbrekende VC-dekking en bekende verliezen blijven ongewijzigd meetellen.
+- **`uitgesloten[type]:true`.** `v68Subproces` laat de afhankelijkheden van dat type weg en normaliseert de overige gewichten. Zonder meetellende afhankelijkheid krijgt het subproces `uitgesloten:true`. `v68Dienst` weegt alleen niet-uitgesloten subprocessen. Een dienst zonder meetellend subproces krijgt `uitgesloten:true`, `besch:null` en de tekst Geen meetellende assetbron. De band per assettype blijft voor informatie in Tabel 1 staan, met de vermelding dat de bron niet meetelt.
+
+Elke afwijking van de standaard toont `v68ScopeSamenvattingHtml` boven de dienstbanden, in de landelijke DVM-weergave en in het memokader. Ook `Waarom is de band breed?` en de hubcontext voor Vraag dashboard (`rekenkeuze`, `teltMee`, `zonderKoppeling`, `uitgesloten`) noemen haar. Een uitgezette bron of melding is niet gezond verklaard; het percentage beschrijft alleen het meetellende deel.
+
+Niet geraakt: de wegdeelberekening, verkeerskosten en de detailtabellen van geraakte wegdelen. Die gebruiken de doorgerekende meldingen zoals voorheen.
+
+Controles: `tests/dienst-rekenkeuze.test.js` toetst de standaard tegen een expliciete standaard, het sluiten van de band op bekend verlies, een niet-doorgerekende melding met registerasset die de band open houdt, herverdeling van gewicht gelijk aan een subproces met alleen de overige bron, het uitvallen en herwegen van een subproces, en een dienst zonder meetellende bron. `tests/dienst-rekenkeuze-browser.cjs` loopt via de echte schermen: vinkje, Telt mee voor Camera, samenvatting, zichtbare banden, opslag, export, herladen en terugzetten naar exact de oorspronkelijke banden.

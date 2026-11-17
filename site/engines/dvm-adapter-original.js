@@ -26,13 +26,14 @@
   const model=v68LandelijkModel();
   return {
    assets:model.assets,
+   rekenkeuze:typeof v68ScopeLees==='function'?v68ScopeLees():null,
    types:Object.fromEntries(Object.entries(model.typen||{}).map(([tp,b])=>[tp,{
     tp,n:b.n,events:b.events,inBron:b.inBron,nietDoorgerekend:b.nietDoorgerekend,
-    compleet:b.compleet===true,aangeleverd:b.aangeleverd===true,besch:b.besch,prestatie:b.prestatie,status:b.status||''
+    compleet:b.compleet===true,aangeleverd:b.aangeleverd===true,besch:b.besch,prestatie:b.prestatie,status:b.status||'',teltMee:b.teltMee!==false,zonderKoppeling:b.zonderKoppeling||0
    }])),
    services:model.diensten.map(r=>({
     id:r.d.id,naam:String(r.d.naam||r.d.label||r.d.id).replace(/&amp;/g,'&'),norm:r.d.norm,
-    besch:r.besch,prestatie:r.prestatie,lo:r.loB,hi:r.hiB,dekking:r.dekking,exact:r.exact===true,
+    besch:r.besch,prestatie:r.prestatie,lo:r.loB,hi:r.hiB,dekking:r.dekking,exact:r.exact===true,uitgesloten:r.uitgesloten===true,
     subprocessen:(r.detail||[]).map(sp=>({
      naam:sp.naam,aandeelDienst:sp.w,gewicht:sp.gewicht,exact:sp.exact===true,
      loB:sp.loB,hiB:sp.hiB,loP:sp.loP,hiP:sp.hiP,bekend:sp.bekend,
