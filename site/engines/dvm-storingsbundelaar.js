@@ -145,9 +145,21 @@
     let bron;
     try{bron=file&&file._handle?await file._handle.getFile():file;}
     catch(err){throw Object.assign(new Error('bestand openen mislukt'+(err?.name?' ('+err.name+')':'')+': '+(err?.message||err)),{cause:err,browserFout:err?.name||''});}
-    if(typeof leesBlobAlsArrayBuffer==='function')return sbDecode(await leesBlobAlsArrayBuffer(bron,20000,'een storingsbestand kon niet op tijd worden gelezen'));
+    /* DVM 160: Blob.arrayBuffer() met dezelfde time-out van 20 seconden is lichter
+       dan FileReader en behoudt de foutnaam van de browser. FileReader blijft de
+       terugval voor omgevingen zonder arrayBuffer(). */
+    if(typeof bron?.arrayBuffer==='function'){
+      let timer;
+      const tijdslimiet=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('een storingsbestand kon niet op tijd worden gelezen')),SB_LEES_TIMEOUT_MS);});
+      try{return sbDecode(await Promise.race([bron.arrayBuffer().catch(err=>{throw Object.assign(new Error('het bestand kon niet worden gelezen'+(err?.name?' ('+err.name+')':'')),{cause:err,browserFout:err?.name||''});}),tijdslimiet]));}
+      finally{clearTimeout(timer);}
+    }
+    if(typeof leesBlobAlsArrayBuffer==='function')return sbDecode(await leesBlobAlsArrayBuffer(bron,SB_LEES_TIMEOUT_MS,'een storingsbestand kon niet op tijd worden gelezen'));
     return sbDecode(await bron.arrayBuffer());
   }
+  /* Een netwerkschijf is latentiegebonden: meer gelijktijdige leesacties verkorten de
+     wachttijd. Wat in de parallelle ronde faalt, wordt daarna één voor één opnieuw gelezen. */
+  const SB_LEES_TIMEOUT_MS=20000,SB_LEES_PARALLEL=16,SB_MAP_PARALLEL=12;
   function sbDuurTekst(ms){
     const sec=Math.max(0,Math.round((Number(ms)||0)/1000));
     if(sec<60)return sec+' sec';
@@ -760,7 +772,7 @@
     };
     while(niveau.length){
       const volgendNiveau=[];
-      await sbMetWerkers(niveau,6,async ({h,ctx})=>{
+      await sbMetWerkers(niveau,SB_MAP_PARALLEL,async ({h,ctx})=>{
         mappen++;
         for await(const [naam,kind] of h.entries()){
           if(kind.kind==='directory'){
@@ -796,6 +808,7 @@
         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px">
           <label>Vanaf<br><input type="date" id="dgVanaf" style="padding:6px;border:1px solid #9ca8b4;border-radius:5px"></label>
           <label>Tot en met<br><input type="date" id="dgTot" style="padding:6px;border:1px solid #9ca8b4;border-radius:5px"></label>
+          <button type="button" id="dgVanafLaatst" class="tb-btn" style="align-self:flex-end;background:#e5e9ed;color:#1f2933;border-color:#cfd6dd" title="Lees alleen de dagen vanaf de laatst geladen datum van de gekozen regio's">Vanaf laatst geladen datum</button>
         </div>
         <label style="display:block;margin-bottom:6px">Optioneel basisbestand voor <b>Download bijgewerkte JSON</b> (heeft geen invloed op het incrementeel bijschrijven in de huidige werkruimte)<br><input type="file" id="dgBasis" accept=".json"></label>
         <p id="dgBasisInfo" style="margin:0 0 10px;font-size:12px;color:#107c10;min-height:15px"></p>
@@ -806,6 +819,19 @@
         </div></form>`;
       document.body.appendChild(dlg);
       dlg.querySelector('#dgMapAnnuleer').addEventListener('click',()=>dlg.close());
+      /* DVM 160: alleen nieuwe dagen lezen. De laatst geladen dag zelf wordt opnieuw
+         gelezen; exacte overlap telt niet dubbel en open storingen uit de eerdere
+         import worden met latere herstelmeldingen afgesloten (herbouwDripHistorie). */
+      dlg.querySelector('#dgVanafLaatst').addEventListener('click',()=>{
+        const melding=dlg.querySelector('#dgMapMelding'),gekozen=[...dlg.querySelectorAll('.dgVc:checked')].map(x=>x.value);
+        const per=window.__BIDASH_DRIP_TOTAAL__?.laatstePerVc||{};
+        if(!gekozen.length){melding.textContent='Kies eerst de verkeerscentrales.';return;}
+        const zonder=gekozen.filter(v=>!per[v]);
+        if(zonder.length){dlg.querySelector('#dgVanaf').value='';melding.textContent='Voor '+zonder.map(v=>v.toUpperCase()).join(', ')+' is nog niets geladen; die worden vanaf het begin gelezen.';return;}
+        const d=new Date(Math.min(...gekozen.map(v=>per[v]))),z=n=>String(n).padStart(2,'0');
+        dlg.querySelector('#dgVanaf').value=d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
+        melding.textContent='';
+      });
       dlg.querySelector('#dgBasis').addEventListener('change',async e=>{
         const info=dlg.querySelector('#dgBasisInfo'),f=e.target.files[0];
         if(!f){info.textContent='';return;}
@@ -935,7 +961,7 @@
     if(typeof uiPauze==='function')await uiPauze();
     const events=[];let nietLeesbaar=0,laatsteMelding=0;const leesStart=Date.now(),mislukt=[];
     const verwerk=(f,text)=>{const info=sbPadInfoDrip(sbPad(f));const eigen=sbDripEventsUitTekst(text,info.vc,info.datum,sbPad(f));for(const e of eigen)events.push(e);};
-    await sbMetWerkers(bestanden,6,async f=>{
+    await sbMetWerkers(bestanden,SB_LEES_PARALLEL,async f=>{
       let text;
       try{text=await sbLeesTekst(f);}catch(err){nietLeesbaar++;mislukt.push({f,err});return;}
       verwerk(f,text);

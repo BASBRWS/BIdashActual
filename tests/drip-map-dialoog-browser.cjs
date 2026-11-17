@@ -64,6 +64,16 @@ const LOGS={
    assert.match(r.fase,/2 bestanden/);assert.ok(r.bronnen.some(n=>/DRIP uit map \(MN · 2025-01-01 t\/m 2025-04-01\)/.test(n)),JSON.stringify([r.bronnen,r.bronVelden]));
    assert.match(r.fase,/→ 2 unieke incidenten uit deze mapbron; totaal 2 incidenten uit 1 bronnen \(2 gekoppeld\)/,'bron en totaal tellen gelijk: '+r.fase);
    assert.doesNotMatch(r.fase,/geen enkel incident kon aan een DRIP-asset worden gekoppeld/,'incidenten koppelen aan All Assets: '+r.fase);
+   // DVM 160: 'Vanaf laatst geladen datum' vult de laatste DRIP-dag van de gekozen regio's in.
+   await page.locator('#dgPSluit').click();
+   await page.evaluate(()=>HUB.open('datasets'));
+   await page.locator('button:has-text("DRIP uit map lezen (CDMS)")').first().click();
+   const dlg2=page.locator('#dgMapDialog');await dlg2.waitFor({state:'visible'});
+   await dlg2.locator('#dgVanaf').fill('');await dlg2.locator('#dgVanafLaatst').click();
+   assert.equal(await dlg2.locator('#dgVanaf').inputValue(),'2025-02-03');
+   await dlg2.locator('.dgVc[value="non"]').check();await dlg2.locator('#dgVanafLaatst').click();
+   assert.equal(await dlg2.locator('#dgVanaf').inputValue(),'');assert.match(await dlg2.locator('#dgMapMelding').innerText(),/Voor NON is nog niets geladen/);
+   await dlg2.locator('#dgMapAnnuleer').click();
    assert.deepEqual(errors,[]);await page.close();}
 
   // 2b. DVM 159: bestanden die eerst falen worden opnieuw gelezen; blijvende fouten krijgen een reden.

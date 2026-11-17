@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.89 en DVM 159, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.89 en DVM 160, bijgewerkt op 17 november 2026 met een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1255,8 +1255,17 @@ Controles: `tests/ndw-confirmation.test.js` dekt automatisch passend apart van b
 
 - **Foutnaam bewaren.** `sbLeesTekst` en `leesBlobAlsArrayBuffer` geven de foutnaam van de browser door (`browserFout`).
 - **Indeling naar reden.** `sbLeesReden` deelt een fout in als `niet-lokaal` (NotReadableError), `niet-gevonden`, `geen-toestemming`, `te-traag` of `overig`.
-- **Tweede poging.** `leesDripMapKern` leest de bestanden die in de parallelle ronde (6 tegelijk) mislukten daarna één voor één opnieuw.
+- **Tweede poging.** `leesDripMapKern` leest de bestanden die in de parallelle ronde (sinds DVM 160 16 tegelijk) mislukten daarna één voor één opnieuw.
 - **Blijvende fouten.** Wat dan nog faalt, levert met `sbLeesDiagnose` een melding op met per reden het aantal, het datumbereik en drie voorbeeldpaden. Tot 500 regels gaan via `console.warn` naar het storingslog.
 - **Ongewijzigde regel.** Elke blijvend onleesbare bron blokkeert de import en behoudt de vorige stand.
 
 Controle: `tests/drip-map-dialoog-browser.cjs` dekt een tijdelijke NotReadableError (wordt bij de tweede poging gelezen) en een blijvende (melding met reden, datum, pad en tip, zonder afgeleide incidenten).
+
+## Snellere DRIP-mapimport, DVM 160
+
+- **Meer gelijktijdige leesacties.** `leesDripMapKern` leest met `SB_LEES_PARALLEL` (16) bestanden tegelijk; de maptraversal in `sgVerzamelViaHandleDrip` opent `SB_MAP_PARALLEL` (12) mappen tegelijk. Een netwerkschijf heeft per bestand vooral wachttijd, dus meer gelijktijdigheid helpt.
+- **Lichter leespad.** `sbLeesTekst` gebruikt `Blob.arrayBuffer()` met dezelfde time-out van 20 seconden (`Promise.race`) in plaats van een FileReader per bestand. De foutnaam (`browserFout`) en de tweede poging één voor één uit DVM 159 blijven gelijk.
+- **Vanaf laatst geladen datum.** De knop in de DRIP-dialoog zet `#dgVanaf` op de vroegste laatst geladen dag van de gekozen regio's (`window.__BIDASH_DRIP_TOTAAL__.laatstePerVc`). Die dag zelf wordt opnieuw gelezen; exacte overlap wordt ontdubbeld en `herbouwDripHistorie` sluit open storingen uit een eerdere bron af met herstelmeldingen uit de nieuwe bron. Is voor een gekozen regio nog niets geladen, dan blijft het veld leeg en volgt een melding.
+- **Ongewijzigd.** Rekenregels, filters op regio en periode en de veiligheidsregel bij onleesbare bestanden.
+
+Meting met een nagebootste vertraging van 100 ms per bestand en 4.380 bestanden: 89,8 s (DVM 159) tegenover 36,6 s (DVM 160), met identieke incidenten. Op de echte netwerkschijf is dit niet gemeten. Controle: `tests/drip-map-dialoog-browser.cjs` dekt ook de knop Vanaf laatst geladen datum.
