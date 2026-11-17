@@ -1010,7 +1010,8 @@ function leesBlobAlsArrayBuffer(file,ms,fouttekst){
     const rondAf=(f,waarde)=>{if(klaar)return;klaar=true;clearTimeout(timer);f(waarde);};
     const timer=setTimeout(()=>{if(klaar)return;klaar=true;try{rd.abort();}catch(e){}reject(new Error(tekst));},timeout);
     rd.onload=e=>rondAf(resolve,e.target.result);
-    rd.onerror=()=>rondAf(reject,new Error('het bestand kon niet worden gelezen'));
+    // De foutnaam van de browser (bv. NotReadableError) blijft bewaard voor de diagnose.
+    rd.onerror=()=>{const fout=rd.error;rondAf(reject,Object.assign(new Error('het bestand kon niet worden gelezen'+(fout?.name?' ('+fout.name+')':'')),{cause:fout,browserFout:fout?.name||''}));};
     rd.onabort=()=>{if(!klaar)rondAf(reject,new Error(tekst));};
     try{rd.readAsArrayBuffer(file);}catch(err){rondAf(reject,err);}
   });

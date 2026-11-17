@@ -124,8 +124,27 @@
     try{return new TextDecoder('utf-8',{fatal:true}).decode(buffer);}
     catch(err){try{return new TextDecoder('windows-1252').decode(buffer);}catch(e){return new TextDecoder('utf-8').decode(buffer);}}
   }
+  /* Leesfouten krijgen een herkenbare reden mee (DVM 159), zodat een maplezing kan
+     zeggen wáárom bestanden niet te lezen zijn in plaats van alleen hoeveel. */
+  const SB_LEES_REDEN={
+    'niet-lokaal':'Bestand niet lokaal beschikbaar of vergrendeld (NotReadableError). Vaak een OneDrive/SharePoint-bestand dat alleen online staat, of een bestand dat CDMS nog schrijft.',
+    'niet-gevonden':'Bestand verdwenen of verplaatst tijdens het lezen (NotFoundError).',
+    'geen-toestemming':'Geen leestoestemming meer voor de map (NotAllowedError/SecurityError). Kies de map opnieuw.',
+    'te-traag':'Bestand niet binnen 20 seconden gelezen; de netwerkschijf reageert traag.',
+    'overig':'Onbekende leesfout.'
+  };
+  function sbLeesReden(err){
+    const naam=String(err?.browserFout||err?.cause?.name||err?.name||''),tekst=String(err?.message||'');
+    if(/NotReadable/i.test(naam+tekst))return 'niet-lokaal';
+    if(/NotFound/i.test(naam+tekst))return 'niet-gevonden';
+    if(/NotAllowed|Security/i.test(naam+tekst))return 'geen-toestemming';
+    if(/op tijd|time.?out/i.test(tekst))return 'te-traag';
+    return 'overig';
+  }
   async function sbLeesTekst(file){
-    const bron=file&&file._handle?await file._handle.getFile():file;
+    let bron;
+    try{bron=file&&file._handle?await file._handle.getFile():file;}
+    catch(err){throw Object.assign(new Error('bestand openen mislukt'+(err?.name?' ('+err.name+')':'')+': '+(err?.message||err)),{cause:err,browserFout:err?.name||''});}
     if(typeof leesBlobAlsArrayBuffer==='function')return sbDecode(await leesBlobAlsArrayBuffer(bron,20000,'een storingsbestand kon niet op tijd worden gelezen'));
     return sbDecode(await bron.arrayBuffer());
   }
@@ -886,6 +905,17 @@
       setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},3000);
     }catch(err){alert('Downloaden mislukt: '+(err&&err.message||err));}
   }
+  /* Diagnose van onleesbare bestanden: per reden het aantal, drie voorbeeldpaden en
+     het datumbereik. De volledige lijst gaat via console.warn naar het storingslog. */
+  function sbLeesDiagnose(mislukt,totaal,soort){
+    const groepen=new Map();
+    for(const {f,err} of mislukt){const r=sbLeesReden(err);const g=groepen.get(r)||{n:0,voorbeelden:[],data:[]};g.n++;if(g.voorbeelden.length<3)g.voorbeelden.push(sbPad(f));const info=sbPadInfoDrip(sbPad(f))||sbPadInfoMtm(sbPad(f));if(info?.datum)g.data.push(info.datum.getTime());groepen.set(r,g);}
+    const dag=t=>new Date(t).toLocaleDateString('nl-NL');
+    const regels=[...groepen].sort((a,b)=>b[1].n-a[1].n).map(([r,g])=>`${g.n.toLocaleString('nl-NL')}× ${SB_LEES_REDEN[r]}${g.data.length?` Datums ${dag(Math.min(...g.data.slice(0,50000)))} t/m ${dag(Math.max(...g.data.slice(0,50000)))}.`:''} Bijvoorbeeld: ${g.voorbeelden.join(' · ')}`);
+    try{console.warn(`${soort}-maplezing: ${mislukt.length} van ${totaal} bestanden niet leesbaar`,mislukt.slice(0,500).map(({f,err})=>({pad:sbPad(f),reden:sbLeesReden(err),fout:String(err?.message||err)})));}catch(e){}
+    const tip=groepen.has('niet-lokaal')?' Staat de map in OneDrive of SharePoint, zet de map dan op "Altijd op dit apparaat bewaren" of kopieer hem naar een lokale schijf, en probeer opnieuw.':'';
+    return `${mislukt.length.toLocaleString('nl-NL')} van ${totaal.toLocaleString('nl-NL')} ${soort}-bestanden niet leesbaar, ook niet bij een tweede poging. Vorige stand behouden; geen herstel afgeleid uit ongelezen bronnen. Oorzaak: ${regels.join(' | ')}.${tip} De volledige lijst staat in het storingslog.`;
+  }
   async function leesDripMap(fileList,config){
     try{return await leesDripMapKern(fileList,config);}
     catch(err){dgMapVoltooid('Mislukt: '+(err&&err.message||err),true);throw err;}
@@ -903,13 +933,12 @@
     dgMapVoortgang(5,startFase);
     if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,5,startFase,{direct:true});
     if(typeof uiPauze==='function')await uiPauze();
-    const events=[];let nietLeesbaar=0,laatsteMelding=0;const leesStart=Date.now();
+    const events=[];let nietLeesbaar=0,laatsteMelding=0;const leesStart=Date.now(),mislukt=[];
+    const verwerk=(f,text)=>{const info=sbPadInfoDrip(sbPad(f));const eigen=sbDripEventsUitTekst(text,info.vc,info.datum,sbPad(f));for(const e of eigen)events.push(e);};
     await sbMetWerkers(bestanden,6,async f=>{
-      const info=sbPadInfoDrip(sbPad(f));
       let text;
-      try{text=await sbLeesTekst(f);}catch(err){nietLeesbaar++;return;}
-      const eigen=sbDripEventsUitTekst(text,info.vc,info.datum,sbPad(f));
-      for(const e of eigen)events.push(e);
+      try{text=await sbLeesTekst(f);}catch(err){nietLeesbaar++;mislukt.push({f,err});return;}
+      verwerk(f,text);
     },(klaar,totaal)=>{
       const nu=Date.now();
       if(klaar<totaal&&klaar%10!==0&&nu-laatsteMelding<300)return;
@@ -921,7 +950,20 @@
       if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,pct,fase,{direct:true});
     });
     if(typeof uiPauze==='function')await uiPauze();
-    if(nietLeesbaar)throw new Error(nietLeesbaar+' DRIP-bestanden niet leesbaar. Vorige stand behouden; geen herstel afgeleid uit ongelezen bronnen.');
+    /* Tweede poging: een netwerkschijf weigert soms parallelle leesacties. De mislukte
+       bestanden worden één voor één opnieuw gelezen. Wat dan nog faalt, blokkeert de
+       import zoals voorheen: uit ongelezen bestanden wordt geen herstel afgeleid. */
+    let tweedePoging=0;
+    if(mislukt.length){
+      const opnieuw=mislukt.splice(0);
+      for(let i=0;i<opnieuw.length;i++){
+        const {f}=opnieuw[i];
+        try{verwerk(f,await sbLeesTekst(f));tweedePoging++;nietLeesbaar--;}
+        catch(err){mislukt.push({f,err});}
+        if(i%20===0||i===opnieuw.length-1){const fase=`Tweede poging, één voor één: ${(i+1).toLocaleString('nl-NL')} / ${opnieuw.length.toLocaleString('nl-NL')} · ${tweedePoging.toLocaleString('nl-NL')} alsnog gelezen`;dgMapVoortgang(72,fase);if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,72,fase,{direct:true});if(typeof uiPauze==='function')await uiPauze();}
+      }
+    }
+    if(nietLeesbaar)throw new Error(sbLeesDiagnose(mislukt,bestanden.length,'DRIP'));
     if(!events.length)throw new Error('de gevonden bestanden bevatten geen herkenbare DRIP-gebeurtenissen (tab-gescheiden statusregels). Controleer of dit CDMS-logbestanden zijn.');
     dgMapVoortgang(74,'DRIP-episodes en storingen reconstrueren…');
     if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,74,'DRIP-episodes en storingen reconstrueren',{direct:true});
@@ -949,7 +991,7 @@
     const {incidenten,totaalIncidenten,bronnen,gekoppeldeIncidenten,laatsteEntry}=await pasDripBundelToe(naam,mapDrip,'maplezen','toevoegen');
     window.__BIDASH_DG_MAP_CONFIG__=null;
     const laatste=laatsteEntry?new Date(laatsteEntry).toLocaleDateString('nl-NL'):'onbekend';
-    const klaarTekst=`Klaar (${regios}): ${bestanden.length.toLocaleString('nl-NL')} bestanden${nietLeesbaar?` (${nietLeesbaar.toLocaleString('nl-NL')} niet leesbaar)`:''} → ${Number(incidenten).toLocaleString('nl-NL')} unieke incidenten uit deze mapbron; totaal ${Number(totaalIncidenten).toLocaleString('nl-NL')} incidenten uit ${Number(bronnen).toLocaleString('nl-NL')} bronnen (${Number(gekoppeldeIncidenten).toLocaleString('nl-NL')} gekoppeld). Laatste entry ${laatste}.`;
+    const klaarTekst=`Klaar (${regios}): ${bestanden.length.toLocaleString('nl-NL')} bestanden${tweedePoging?` (${tweedePoging.toLocaleString('nl-NL')} pas bij een tweede poging gelezen)`:''}${nietLeesbaar?` (${nietLeesbaar.toLocaleString('nl-NL')} niet leesbaar)`:''} → ${Number(incidenten).toLocaleString('nl-NL')} unieke incidenten uit deze mapbron; totaal ${Number(totaalIncidenten).toLocaleString('nl-NL')} incidenten uit ${Number(bronnen).toLocaleString('nl-NL')} bronnen (${Number(gekoppeldeIncidenten).toLocaleString('nl-NL')} gekoppeld). Laatste entry ${laatste}.`;
     dgMapVoltooid(totaalIncidenten&&!gekoppeldeIncidenten?klaarTekst+' Let op: geen enkel incident kon aan een DRIP-asset worden gekoppeld.':klaarTekst,totaalIncidenten&&!gekoppeldeIncidenten);
     if(typeof importKlaar==='function')importKlaar(label,'DRIP uit map incrementeel toegevoegd aan DRIP totaal. '+klaarTekst);
     try{if(typeof renderDatasetBeheer==='function')renderDatasetBeheer();}catch(err){}
@@ -963,6 +1005,6 @@
   window.leesDripMap=leesDripMap;
   window.openDripMapDialog=openDripMapDialog;
   window.__BIDASH_STORINGSBUNDELAAR__={sbVcAlias,sbParseDT,sbLocatie,sbMtmCategorie,sbSnapshotDatum,sbMtmRijenUitTekst,sbClassificeer,sbBouwBundel,sbPadInfoMtm,sbBestandGeschikt,sbFilterBestanden,sbCombineerMetBasis,sbDuurTekst,sbMetWerkers,
-    sbLeesTekst,sgVerzamelViaHandle,sbSignaalgeverSleutel,sbSignaalgeverVoegSamen,sbSignaalgeverStand,sbSignaalgeverBasis,sbSignaalgeverCombineerStand,sbSignaalgeverSnapshot,sbSignaalgeverSynchroniseer,
+    sbLeesTekst,sbLeesReden,sbLeesDiagnose,sgVerzamelViaHandle,sbSignaalgeverSleutel,sbSignaalgeverVoegSamen,sbSignaalgeverStand,sbSignaalgeverBasis,sbSignaalgeverCombineerStand,sbSignaalgeverSnapshot,sbSignaalgeverSynchroniseer,
     sbPadInfoDrip,sbDripBestandGeschikt,sbDripEventsUitTekst,sbBouwDripBundel,sbFilterDripBestanden,sbCombineerMetDripBasis,sbDripWatermerken,sgVolgendeCtxDrip};
 })();
