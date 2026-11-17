@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.88 en DVM 154, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.88 en DVM 155, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1205,7 +1205,7 @@ Niet geraakt: de wegdeelberekening, verkeerskosten en de detailtabellen van gera
 
 Controles: `tests/dienst-rekenkeuze.test.js` toetst de standaard tegen een expliciete standaard, het sluiten van de band op bekend verlies, een niet-doorgerekende melding met registerasset die de band open houdt, herverdeling van gewicht gelijk aan een subproces met alleen de overige bron, het uitvallen en herwegen van een subproces, en een dienst zonder meetellende bron. `tests/dienst-rekenkeuze-browser.cjs` loopt via de echte schermen: vinkje, Telt mee voor Camera, samenvatting, zichtbare banden, opslag, export, herladen en terugzetten naar exact de oorspronkelijke banden.
 
-## Overzichtsdashboard, versie 2.88
+## Overzichtsdashboard, versie 2.88 / DVM 155
 
 `site/core/overview-dashboard.js` bouwt het Overzicht uit bestaande gegevens: de DVM-samenvatting (`diensten`, `roads`, `verloop`), de BI-samenvatting (`functies`, `planning`), `HUB.faults()`, `actualStand()` en `combine()`. `overzichtModel()` levert één model voor kaarten, pijplijn, verloop en lijsten, zodat de getallen onderling kloppen. De module voegt geen rekenregels toe. Ontbrekende bronnen geven Onbekend of een lege toestand, nooit nul.
 
