@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.89 en DVM 160, bijgewerkt op 17 november 2026 met een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.89 en DVM 161, bijgewerkt op 17 november 2026 met NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1270,3 +1270,28 @@ Controle: `tests/drip-map-dialoog-browser.cjs` dekt een tijdelijke NotReadableEr
 - **Ongewijzigd.** Rekenregels, filters op regio en periode en de veiligheidsregel bij onleesbare bestanden.
 
 Meting met een nagebootste vertraging van 100 ms per bestand en 4.380 bestanden: 89,8 s (DVM 159) tegenover 36,6 s (DVM 160), met identieke incidenten. Op de echte netwerkschijf is dit niet gemeten. Controle: `tests/drip-map-dialoog-browser.cjs` dekt ook de knop Vanaf laatst geladen datum.
+
+## NDW-werkzaamheden uit de planningsfeed, DVM 161
+
+Bron: `planningsfeed_wegwerkzaamheden_en_evenementen.xml.gz` van NDW Open Data (DATEX II v3, `SituationPublication`). Het bestand is ongeveer 15 MB ingepakt en 200 MB XML, met ruim 14.000 situaties.
+
+- **Openbare kopie.** opendata.ndw.nu staat geen CORS toe. `scripts/fetch-ndw-werk.py` haalt de feed in de Pages-workflow op, elke vier uur samen met de NDW-verkeersdata. Het script zet de feed als `site/ndw/werk/werk-<sha256>.xml.gz` met `latest.json` naast de site. Het controleert gzip, geen documenttype, `SituationPublication`, minstens één situatie en een publicatietijd van hooguit 6 uur oud. Mislukt de download, dan blijft een vorige geldige kopie tot 26 uur oud staan (`retained:true`), na dezelfde inhoud- en vingerafdrukcontrole. Geen gebruikersdata en geen Git-write.
+- **Knop.** Haal NDW werkzaamheden op, op de kaart Werkzaamheden (`bidashHaalNdwWerkzaamheden` in `dvm-ndw-werkzaamheden.js`). De knop controleert manifest, bron, bestandsnaam, grootte (hooguit 40 MB), leeftijd (hooguit 26 uur) en sha256. Bij een fout blijven de geladen werkzaamheden staan.
+- **Eigen bestand.** De gewone knop Werkzaamheden laden accepteert ook `.xml` en `.gz`. `leesWerkBestand` is omhuld: een gzip- of XML-bestand gaat naar de NDW-lezer, Excel en CSV naar de bestaande lezer.
+- **Lezen als stroom.** `ndwWerkRijenUitBestand` pakt uit met `DecompressionStream` en `TextDecoderStream` en verwerkt elke `<situation>` los. Het hele document staat nooit in het geheugen.
+- **Selectie.**
+  - Een situatie telt als werk bij een record `MaintenanceWorks` of `ConstructionWorks`, of bij oorzaak `roadMaintenance` of `constructionWork`. Evenementen zonder werk vallen weg.
+  - Daarnaast moet de situatie op het hoofdwegennet liggen: een bron met `RWS` of Rijkswaterstaat, of een weg die in All Assets voorkomt.
+  - In een echte feed van 17 november 2026 bleven zo 1.469 van de 14.387 situaties over.
+- **Werkregel.**
+  - Elke situatie wordt een gewone werkregel (`werk_id`, `weg`, `traject` met de bron, `start`, `einde`, `hinder`, `afsluiting`, `omleiding`, `werkzaamheden`, `status`, `bron_url`, `peildatum`, `wkt`, `rd_x`/`rd_y`). Export en herstel werken daardoor ongewijzigd.
+  - **Geometrie.** De geometrie komt uit `locationReference` (WGS84 naar RD) als `MULTILINESTRING` in RD-meters, met punten die minstens 25 m uit elkaar liggen. De omleidingsroute (`alternativeRoute`, `ReroutingManagement`) telt niet als werkvak. Dezelfde lijn uit meerdere records telt één keer.
+  - **Status.** `roadworkStatus` is de planningsstatus: `final` wordt definitief, `running` in uitvoering, `published` gepubliceerd, `initial` voorlopig.
+- **Weg en hectometers.** Veel RWS-situaties noemen geen wegnummer. `ndwWerkLocatieUitAssets` kiest dan de weg met de meeste assets binnen 150 m van de punten van het werkvak. De hectometers worden het bereik van die assets. Een wegnummer uit `roadOrJunctionNumber` of de tekst gaat voor. De rijrichting blijft leeg.
+- **Koppeling.** `verrijkWerkGeometrie` leest RD-WKT via `werkWktSegmenten`. De assetkoppeling binnen ±2 km en de U-routekoppeling zijn ongewijzigd.
+
+Meting op de echte feed: de browser leest en selecteert in ongeveer 4,5 seconden. De Python-controle duurt ongeveer 5 seconden.
+
+Controles:
+- `tests/ndw-werkzaamheden-browser.cjs` met synthetische DATEX-situaties: selectie, afgeleide weg en hectometers, omleiding apart, assetkoppeling, herstel uit de werkregels, en de knop met een geldige, te oude en beschadigde kopie.
+- `tests/ndw_werk_fetch_cases.py`, via `tests/ndw-public-cache.test.js`: validatie, terugval tot 26 uur, geweigerd extern manifest en de XML-limiet.
