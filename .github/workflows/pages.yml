@@ -34,6 +34,10 @@ jobs:
         env:
           NDW_PREVIOUS_BASE: ${{ steps.pages.outputs.base_url }}
         run: python3 scripts/fetch-ndw.py --output site/ndw --previous-base "$NDW_PREVIOUS_BASE"
+      - name: Openbare NDW-planningsfeed werkzaamheden ophalen
+        env:
+          NDW_PREVIOUS_BASE: ${{ steps.pages.outputs.base_url }}
+        run: python3 scripts/fetch-ndw-werk.py --output site/ndw/werk --previous-base "$NDW_PREVIOUS_BASE"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

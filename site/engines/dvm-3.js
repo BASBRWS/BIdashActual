@@ -1323,13 +1323,20 @@ function normWerkRij(r){
 function afstandPuntSegment(x,y,x1,y1,x2,y2){
   const dx=x2-x1,dy=y2-y1;if(dx===0&&dy===0)return Math.hypot(x-x1,y-y1);const t=Math.max(0,Math.min(1,((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-(x1+t*dx),y-(y1+t*dy));
 }
+/* DVM 161: werkvakgeometrie als RD-WKT (LINESTRING of MULTILINESTRING), zoals de
+   NDW-planningsfeed die in werkregels zet. Andere coördinaten worden genegeerd. */
+function werkWktSegmenten(wkt){
+  const s=String(wkt||'').trim();if(!/^(MULTI)?LINESTRING\s*\(/i.test(s))return [];
+  return (s.match(/\(([^()]+)\)/g)||[]).map(deel=>deel.slice(1,-1).split(',').map(p=>{const [x,y]=p.trim().split(/\s+/).map(Number);return {x,y};}).filter(p=>geldigeRdCoord(p.x,p.y))).filter(l=>l.length>=2);
+}
 function verrijkWerkGeometrie(w){
   const bron=typeof WERK_GEOMETRIE_INDEX!=='undefined'&&WERK_GEOMETRIE_INDEX.werken?WERK_GEOMETRIE_INDEX.werken[w.id]:null;
   const geldig=!!(bron&&bron.w===w.weg&&w.startMs!=null&&Math.abs(w.startMs-bron.b)<=4*3600e3&&w.eindMs!=null&&Math.abs(w.eindMs-bron.e)<=4*3600e3);
   const startGeldig=geldigeRdCoord(w.rdX,w.rdY),eindeGeldig=geldigeRdCoord(w.rdXE,w.rdYE),start=startGeldig?{x:w.rdX,y:w.rdY}:null,einde=eindeGeldig?{x:w.rdXE,y:w.rdYE}:start;
   const bestandSegmenten=start?[[start,einde]]:[],bestandPunten=[start,eindeGeldig?einde:null].filter(Boolean);
-  w.rdSegmenten=geldig?contextSegmenten(bron.s):bestandSegmenten;w.rdPunten=geldig?(bron.p||[]).map(p=>({x:+p[0],y:+p[1]})).filter(p=>geldigeRdCoord(p.x,p.y)):bestandPunten;
-  w.alternatieveRdSegmenten=geldig?contextSegmenten(bron.a):[];w.datexId=geldig?bron.d:'';w.geometrieBron=geldig?'NDW DATEX II':start?'bestand RD-coördinaten':w.exactKoppelbaar?'bestand':'geen exacte geometrie';
+  const wktSegmenten=geldig?[]:werkWktSegmenten(w.geometrie);
+  w.rdSegmenten=geldig?contextSegmenten(bron.s):wktSegmenten.length?wktSegmenten:bestandSegmenten;w.rdPunten=geldig?(bron.p||[]).map(p=>({x:+p[0],y:+p[1]})).filter(p=>geldigeRdCoord(p.x,p.y)):bestandPunten;
+  w.alternatieveRdSegmenten=geldig?contextSegmenten(bron.a):[];w.datexId=geldig?bron.d:'';w.geometrieBron=geldig?'NDW DATEX II':wktSegmenten.length?'NDW planningsfeed (WKT)':start?'bestand RD-coördinaten':w.exactKoppelbaar?'bestand':'geen exacte geometrie';
   if(geldig)w.uRoutes=uniekeWaarden([...(w.uRoutes||[]),...(bron.u||[])]);w.bbox=segmentenBegrenzing(w.rdSegmenten);
   w.exactKoppelbaar=!!(w.exactKoppelbaar||w.rdSegmenten.length||w.rdPunten.length);return w;
 }
