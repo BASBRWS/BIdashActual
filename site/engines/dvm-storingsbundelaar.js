@@ -864,7 +864,9 @@
             dlg.close();
             try{
               dgMapVoortgang(null,'Map doorzoeken (alleen cdms en de gekozen regio/periode). Het totale aantal is tijdens deze stap nog niet bekend…');
+              const zoekStart=Date.now();
               const files=await sgVerzamelViaHandleDrip(dir,config,(m,f,duur)=>dgMapVoortgang(null,`Map doorzoeken: ${m.toLocaleString('nl-NL')} mappen bekeken · ${f.toLocaleString('nl-NL')} bestanden gevonden · ${sbDuurTekst(duur)} verstreken. Het totaal is nog niet bekend.`));
+              config.zoekMs=Date.now()-zoekStart;
               await leesDripMap(files,config);
             }catch(err){if(!document.getElementById('dgMapProgress'))alert('Mislukt: '+(err&&err.message||err));}
             return;
@@ -946,6 +948,14 @@
     try{return await leesDripMapKern(fileList,config);}
     catch(err){dgMapVoltooid('Mislukt: '+(err&&err.message||err),true);throw err;}
   }
+  function sbDripTijdTekst({zoekMs,leesMs,verwerkMs,bestanden}){
+    const d=ms=>typeof sbDuurTekst==='function'?sbDuurTekst(ms):Math.round(ms/1000)+' sec';
+    const delen=[];
+    if(Number.isFinite(zoekMs))delen.push('map doorzoeken '+d(zoekMs));
+    delen.push('lezen '+d(leesMs)+(bestanden?' ('+Math.round(leesMs/bestanden).toLocaleString('nl-NL')+' ms per bestand bij '+SB_LEES_PARALLEL+' tegelijk)':''));
+    delen.push('verwerken '+d(verwerkMs));
+    return 'Tijd: '+delen.join(' · ')+'.';
+  }
   async function leesDripMapKern(fileList,config){
     config=config||window.__BIDASH_DG_MAP_CONFIG__||{};
     if(typeof ASSET_REGISTER_STATE==='undefined'||!ASSET_REGISTER_STATE){alert('Laad eerst All Assets. De DRIP-map wordt rechtstreeks aan dat stamregister gekoppeld.');if(typeof renderDataGereedheid==='function')renderDataGereedheid();return;}
@@ -989,6 +999,7 @@
         if(i%20===0||i===opnieuw.length-1){const fase=`Tweede poging, één voor één: ${(i+1).toLocaleString('nl-NL')} / ${opnieuw.length.toLocaleString('nl-NL')} · ${tweedePoging.toLocaleString('nl-NL')} alsnog gelezen`;dgMapVoortgang(72,fase);if(typeof zetImportVoortgang==='function')zetImportVoortgang(label,72,fase,{direct:true});if(typeof uiPauze==='function')await uiPauze();}
       }
     }
+    const leesMs=Date.now()-leesStart,verwerkStart=Date.now();
     if(nietLeesbaar)throw new Error(sbLeesDiagnose(mislukt,bestanden.length,'DRIP'));
     if(!events.length)throw new Error('de gevonden bestanden bevatten geen herkenbare DRIP-gebeurtenissen (tab-gescheiden statusregels). Controleer of dit CDMS-logbestanden zijn.');
     dgMapVoortgang(74,'DRIP-episodes en storingen reconstrueren…');
@@ -1017,7 +1028,9 @@
     const {incidenten,totaalIncidenten,bronnen,gekoppeldeIncidenten,laatsteEntry}=await pasDripBundelToe(naam,mapDrip,'maplezen','toevoegen');
     window.__BIDASH_DG_MAP_CONFIG__=null;
     const laatste=laatsteEntry?new Date(laatsteEntry).toLocaleDateString('nl-NL'):'onbekend';
-    const klaarTekst=`Klaar (${regios}): ${bestanden.length.toLocaleString('nl-NL')} bestanden${tweedePoging?` (${tweedePoging.toLocaleString('nl-NL')} pas bij een tweede poging gelezen)`:''}${nietLeesbaar?` (${nietLeesbaar.toLocaleString('nl-NL')} niet leesbaar)`:''} → ${Number(incidenten).toLocaleString('nl-NL')} unieke incidenten uit deze mapbron; totaal ${Number(totaalIncidenten).toLocaleString('nl-NL')} incidenten uit ${Number(bronnen).toLocaleString('nl-NL')} bronnen (${Number(gekoppeldeIncidenten).toLocaleString('nl-NL')} gekoppeld). Laatste entry ${laatste}.`;
+    let klaarTekst=`Klaar (${regios}): ${bestanden.length.toLocaleString('nl-NL')} bestanden${tweedePoging?` (${tweedePoging.toLocaleString('nl-NL')} pas bij een tweede poging gelezen)`:''}${nietLeesbaar?` (${nietLeesbaar.toLocaleString('nl-NL')} niet leesbaar)`:''} → ${Number(incidenten).toLocaleString('nl-NL')} unieke incidenten uit deze mapbron; totaal ${Number(totaalIncidenten).toLocaleString('nl-NL')} incidenten uit ${Number(bronnen).toLocaleString('nl-NL')} bronnen (${Number(gekoppeldeIncidenten).toLocaleString('nl-NL')} gekoppeld). Laatste entry ${laatste}.`;
+    /* DVM 160: tijdsverdeling, zodat zichtbaar is of de map, het lezen of de verwerking de tijd kost. */
+    klaarTekst+=' '+sbDripTijdTekst({zoekMs:config.zoekMs,leesMs,verwerkMs:Date.now()-verwerkStart,bestanden:bestanden.length});
     dgMapVoltooid(totaalIncidenten&&!gekoppeldeIncidenten?klaarTekst+' Let op: geen enkel incident kon aan een DRIP-asset worden gekoppeld.':klaarTekst,totaalIncidenten&&!gekoppeldeIncidenten);
     if(typeof importKlaar==='function')importKlaar(label,'DRIP uit map incrementeel toegevoegd aan DRIP totaal. '+klaarTekst);
     try{if(typeof renderDatasetBeheer==='function')renderDatasetBeheer();}catch(err){}

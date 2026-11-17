@@ -65,6 +65,7 @@ const LOGS={
    assert.match(r.fase,/→ 2 unieke incidenten uit deze mapbron; totaal 2 incidenten uit 1 bronnen \(2 gekoppeld\)/,'bron en totaal tellen gelijk: '+r.fase);
    assert.doesNotMatch(r.fase,/geen enkel incident kon aan een DRIP-asset worden gekoppeld/,'incidenten koppelen aan All Assets: '+r.fase);
    // DVM 160: 'Vanaf laatst geladen datum' vult de laatste DRIP-dag van de gekozen regio's in.
+   assert.match(r.fase,/Tijd: map doorzoeken .+ · lezen .+ ms per bestand bij 16 tegelijk\) · verwerken /,'tijdsverdeling: '+r.fase);
    await page.locator('#dgPSluit').click();
    await page.evaluate(()=>HUB.open('datasets'));
    await page.locator('button:has-text("DRIP uit map lezen (CDMS)")').first().click();
