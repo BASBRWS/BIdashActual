@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.89 en DVM 156, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.89 en DVM 157, bijgewerkt op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1229,3 +1229,13 @@ Controles: `tests/overview-dashboard.test.js` (model, dienstoordeel, Onbekend zo
 - **Dubbele weergave:** de tweede KPI-kaart toont de zwakste dienst (laagste ondergrens, bij gelijke stand de laagste bovengrens). Het aantal diensten aantoonbaar binnen de norm staat alleen daar; pijplijnstap 02 toont de netwerkimpact.
 
 Controles: `tests/overview-dashboard.test.js` dekt zwakste dienst, één weergave van het normaantal, netwerk, mijlpalen, en formatie met en zonder ingevulde FTE. `tests/overview-dashboard-browser.cjs` dekt planning-import, mijlpaalvolgorde vanaf vandaag, de melding over standaardwaarden en de netwerkkaart. `tests/netwerkschakels-browser.cjs` controleert de koppeltelling met een geladen matrix.
+
+## DRIP uit map lezen, DVM 157
+
+De dialoog `openDripMapDialog` in `dvm-storingsbundelaar.js` geeft `{vcs,vanaf,tot}` door. Een importmethode (`formaat`) hoort alleen bij de MTM-dialoog. De knophandler vangt fouten op en toont ze in `#dgMapMelding`. `dripDatasetNaarBron` ontdubbelt episodes tegen storingen op `dripIncidentSleutel` zonder classificatie, zodat een maplezing een storing en haar episode niet dubbel telt in de eigen bron.
+
+Controle: `tests/drip-map-dialoog-browser.cjs` drukt op de echte knop. De test controleert:
+- de melding als er geen verkeerscentrale is gekozen;
+- de moderne mapkiezer met een nagebootste mapboom, inclusief een bestand buiten de periode en een niet-gekozen VC;
+- de terugvalroute met een echte map;
+- de episodes, het toevoegen aan de DRIP-historie, de koppeling aan All Assets op CDMS-code en de eindtelling.

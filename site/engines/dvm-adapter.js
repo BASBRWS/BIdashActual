@@ -142,12 +142,12 @@
   // Classificatielijsten zijn aparte lichte bronnen en worden vóór bronbeheer geladen.
   document.write('<script src="dvm-special-drip-lists.js?v=20261103-1400"></script>');
   // De signaalgeverbundelaar (maplezen) definieert leesSignaalgeverMap vóór bronbeheer.
-  document.write('<script src="dvm-storingsbundelaar.js?v=20261103-1400"></script>');
+  document.write('<script src="dvm-storingsbundelaar.js?v=20261117-1500"></script>');
   document.write('<script src="dvm-mtm-open-dumps.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-mtm-bss.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-netwerkschakels.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261103-1400"></script>');
-  document.write('<script src="dvm-source-manager.js?v=20261117-1300"></script>');
+  document.write('<script src="dvm-source-manager.js?v=20261117-1500"></script>');
   document.write('<script src="../core/signaalgever-import.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-source-export-completeness.js?v=20261103-1400"></script>');
 })();

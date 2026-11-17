@@ -794,13 +794,17 @@
         try{const j=JSON.parse(await f.text());const wm=sbDripWatermerken((j&&j.datasets&&j.datasets.drip)||{});info.style.color='#107c10';info.textContent='Basis geladen. Laatste datum per regio: '+sbWatermerkTekst(wm)+'.';}
         catch(err){info.style.color='#a4262c';info.textContent='Het basisbestand is geen geldige JSON.';}
       });
-      dlg.querySelector('#dgMapVerder').addEventListener('click',async()=>{
+      /* DVM 157: de knop las #sgFormaat, een veld dat alleen in de MTM-dialoog bestaat.
+         Dat gaf een stille fout in deze asynchrone handler, waardoor de knop dood leek.
+         Een importmethode is voor DRIP niet van toepassing. Onverwachte fouten komen nu
+         zichtbaar in de melding van de dialoog. */
+      dlg.querySelector('#dgMapVerder').addEventListener('click',async()=>{try{
         const vcs=new Set([...dlg.querySelectorAll('.dgVc:checked')].map(x=>x.value));
         const melding=dlg.querySelector('#dgMapMelding');
         if(!vcs.size){melding.textContent='Kies minstens één verkeerscentrale.';return;}
         const vanaf=dlg.querySelector('#dgVanaf').value||null,tot=dlg.querySelector('#dgTot').value||null;
         if(vanaf&&tot&&vanaf>tot){melding.textContent='De begindatum ligt na de einddatum.';return;}
-        const config={vcs,vanaf,tot,formaat:dlg.querySelector('#sgFormaat').value};
+        const config={vcs,vanaf,tot};
         const basisFile=dlg.querySelector('#dgBasis').files[0];
         if(basisFile){
           try{const j=JSON.parse(await basisFile.text());config.basisDrip=(j&&j.datasets&&j.datasets.drip)||{};}
@@ -824,7 +828,11 @@
         dlg.close();
         const input=document.getElementById('dripMapInput');
         if(input)input.click();else alert('De mapkeuze is niet beschikbaar.');
-      });
+      }catch(err){
+        const melding=dlg.querySelector('#dgMapMelding');
+        if(melding)melding.textContent='Map kiezen mislukt: '+(err&&err.message||err);
+        console.error(err);
+      }});
     }else{dlg.querySelector('#dgMapMelding').textContent='';dlg.querySelector('#dgBasisInfo').textContent='';}
     const huidig=dlg.querySelector('#dgHuidig');
     const s=window.__BIDASH_DRIP_TOTAAL__;

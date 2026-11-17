@@ -851,10 +851,15 @@ function dripDatasetNaarBron(drip,sourceKey,sourceName){
   const episodes=Array.isArray(drip.episodes)?drip.episodes:[];
   const incidenten=[];
   storingen.forEach(r=>{const x=dripTotaalIncidentUitRij(r,sourceKey,sourceName,false);if(x)incidenten.push(x);});
-  const episodeKeys=new Set(incidenten.map(dripIncidentSleutel));
+  /* Een episode die dezelfde storing beschrijft (zelfde code, centrale, locatie, start,
+     einde en conditie) telt niet opnieuw, ook als de classificatie verschilt: de
+     maplezer classificeert de storing (bv. LANGDURIG) en levert de episode als STORING.
+     Zonder deze regel telde de maplezing één incident dubbel in haar eigen bron (DVM 157). */
+  const kern=x=>dripIncidentSleutel({...x,classificatie:''});
+  const episodeKeys=new Set(incidenten.map(kern));
   episodes.forEach(r=>{
     const open=String(r.kwaliteitsstatus||'').toLowerCase()==='open'||(r.einde_bewezen==null&&!(num(r.duur_min_uur)>0));
-    const x=dripTotaalIncidentUitRij(r,sourceKey,sourceName,open);if(x){const key=dripIncidentSleutel(x);if(!episodeKeys.has(key)){episodeKeys.add(key);incidenten.push(x);}}
+    const x=dripTotaalIncidentUitRij(r,sourceKey,sourceName,open);if(x){const key=kern(x);if(!episodeKeys.has(key)){episodeKeys.add(key);incidenten.push(x);}}
   });
   const dekking=new Set();
   (Array.isArray(drip.datadekking)?drip.datadekking:[]).forEach(r=>{
