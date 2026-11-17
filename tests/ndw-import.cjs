@@ -125,14 +125,15 @@ const file=(name,xml,gzip=true)=>({name,mimeType:gzip?'application/gzip':'text/x
   assert.equal(await page.locator('#kostenDialog input[data-sc67="uren"]').inputValue(),'12','bevestigen bewaart nog niet opgeslagen hinderuren');
   await page.locator('#kostenDialog input[data-sc67="uren"]').fill(originalHours);
   let coverage=await page.evaluate(()=>ndw69Coverage(allRoads));
-  assert.equal(coverage.confirmed,1);assert.equal(coverage.pending,49);assert.equal(coverage.extendedPending,48);
+  // DVM 158: het ene lokale wegdeel (≤ 1 km) is automatisch passend; de 49 ruimere koppelingen vragen controle.
+  assert.equal(coverage.confirmed,1);assert.equal(coverage.automatisch,1);assert.equal(coverage.pending,48);assert.equal(coverage.extendedPending,48);
   card=await page.evaluate(()=>datasetItems().find(x=>x.type==='ndwVerkeer'));
-  assert(card.meta.includes('NDW locaties bevestigd: 1'));
+  assert(card.meta.includes('NDW locaties bevestigd: 1'));assert(card.meta.includes('Automatisch passend (binnen 1 km): 1'));
   assert(card.meta.includes('49 ruimere koppelingen, waarvan 48 nog te controleren'));
   assert.equal(await page.evaluate(()=>allRoads.filter(w=>kostenDagResultaat(w).kosten!=null).length),50);
   await page.locator('#kostenDialog input[onchange="ndw69Confirm(this)"]').uncheck();
   coverage=await page.evaluate(()=>ndw69Coverage(allRoads));
-  assert.equal(coverage.confirmed,0);assert.equal(coverage.pending,50);
+  assert.equal(coverage.confirmed,0);assert.equal(coverage.automatisch,1);assert.equal(coverage.pending,49);
   await page.evaluate(()=>document.getElementById('kostenDialog').close());
   // De bronkaart volgt een gewijzigde wegdeelselectie zonder opnieuw uploaden.
   await page.evaluate(()=>{

@@ -4,7 +4,7 @@
 (() => {
   /* De versie van de schil hoort bij de schil; die staat in site/core/versie.js.
      Deze module kent alleen haar eigen engineversie en meldt die aan de schil. */
-  const DVM_VERSION='156';
+  const DVM_VERSION='158';
   const SPECIAL_ACCEPT='.xlsx,.xls,.xlsm,.xlsb,.ods,.csv,.tsv,.txt';
   const SOURCE_CONFIG = Object.freeze({
     netwerkschakels:{input:'netwerkschakelInput',label:'Netwerkschakelmatrix laden',multiple:false,requiresAsset:false,handler:'leesNetwerkschakels',accept:'.xlsx,.xls'},
@@ -154,7 +154,7 @@
         sites:d.sites.length,validSites:Number(d.stats?.validSites)||0,speedSites:Number(d.stats?.speedSites)||d.sites.filter(s=>s.speed!=null).length,
         lanes:d.sites.reduce((n,s)=>n+(Array.isArray(s.lanes)?s.lanes.length:0),0),locationSites:Number(d.stats?.locationSites)||0,
         gekoppeldeWegdelen:coverage.available,totaalWegdelen:coverage.total,ruimereWegdelen:coverage.extended,nietGekoppeldeWegdelen:coverage.unmatched,
-        bevestigdeWegdelen:coverage.confirmed,teControlerenWegdelen:coverage.pending,ruimerTeControleren:coverage.extendedPending,ndwUitgezet:coverage.disabled,
+        bevestigdeWegdelen:coverage.confirmed,automatischWegdelen:coverage.automatisch||0,teControlerenWegdelen:coverage.pending,ruimerTeControleren:coverage.extendedPending,ndwUitgezet:coverage.disabled,
         publication:d.publication||null,geladenOp:last?.tijd||null,online:d.online||null};
     }catch(error){return null;}
   }
@@ -186,7 +186,7 @@
       '<div>'+Number(s.locationSites||0).toLocaleString('nl-NL')+' meetlocaties met weg/richting/hectometer</div>'+
       (s.totaalWegdelen?'<div>'+Number(s.gekoppeldeWegdelen||0).toLocaleString('nl-NL')+' van '+Number(s.totaalWegdelen).toLocaleString('nl-NL')+' actuele wegdelen gekoppeld</div>':'')+
       (s.totaalWegdelen?'<div>'+Number(s.ruimereWegdelen||0).toLocaleString('nl-NL')+' ruimere koppelingen, waarvan '+Number(s.ruimerTeControleren||0).toLocaleString('nl-NL')+' nog te controleren</div><div>'+Number(s.nietGekoppeldeWegdelen||0).toLocaleString('nl-NL')+' zonder passende meting, blijven in het overzicht</div>':'')+
-      (s.totaalWegdelen?'<div>NDW locaties bevestigd: '+Number(s.bevestigdeWegdelen||0).toLocaleString('nl-NL')+'</div><div>Nog te controleren: '+Number(s.teControlerenWegdelen||0).toLocaleString('nl-NL')+'</div>':'')+
+      (s.totaalWegdelen?'<div>NDW locaties bevestigd: '+Number(s.bevestigdeWegdelen||0).toLocaleString('nl-NL')+'</div><div>Automatisch passend (binnen 1 km): '+Number(s.automatischWegdelen||0).toLocaleString('nl-NL')+'</div><div>Nog te controleren: '+Number(s.teControlerenWegdelen||0).toLocaleString('nl-NL')+'</div>':'')+
       (s.ndwUitgezet?'<div>'+Number(s.ndwUitgezet).toLocaleString('nl-NL')+' NDW-gebruik uitgezet</div>':'')+
       (pub?'<div>Publicatie '+pub+'</div>':'')+
       (s.online?'<div>Openbare NDW-kopie opgehaald '+esc(ndw69Date(s.online.downloadedAt))+'</div><div>Meetpublicatie '+Math.max(0,Math.round((Date.now()-Date.parse(s.publication))/60000))+' minuten oud</div>'+(s.online.retained?'<div>De verversing mislukte; de vorige geldige openbare kopie is gebruikt.</div>':''):'')+

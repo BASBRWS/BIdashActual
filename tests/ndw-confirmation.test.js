@@ -26,17 +26,31 @@ const confirm=(r,key,checked=true)=>r.ndw69Confirm({dataset:{weg:key},checked});
 
 test('bevestigen verhoogt bevestigd en verlaagt controle, zonder dezelfde kosten tweemaal te tellen',()=>{
  const r=runtime(),before=r.rows.map(w=>r.kostenDagResultaat(w).kosten);
- assert.deepEqual(JSON.parse(JSON.stringify(r.ndw69Coverage(r.rows))),{total:3,available:2,confirmed:0,pending:2,disabled:0,extended:1,extendedPending:1,unmatched:1});
+ // DVM 158: LOCAL ligt op 0 km van het meetpunt en is automatisch passend; EXTENDED (5 km) vraagt controle.
+ assert.deepEqual(JSON.parse(JSON.stringify(r.ndw69Coverage(r.rows))),{total:3,available:2,confirmed:0,automatisch:1,inOrde:1,pending:1,disabled:0,extended:1,extendedPending:1,unmatched:1});
  confirm(r,'EXTENDED');
  const c=r.ndw69Coverage(r.rows);
- assert.equal(c.confirmed,1);assert.equal(c.pending,1);assert.equal(c.extendedPending,0);
+ assert.equal(c.confirmed,1);assert.equal(c.automatisch,1);assert.equal(c.pending,0);assert.equal(c.extendedPending,0);
  assert.deepEqual(r.rows.map(w=>r.kostenDagResultaat(w).kosten),before);
  assert.equal(r.refreshes,1);assert.equal(r.messages.filter(m=>m.type==='hub:changed').length,1);
- assert.match(r.ndw69Summary(r.rows),/NDW locaties bevestigd: 1 van 2/);
- assert.match(r.ndw69Summary(r.rows),/Nog te controleren: 1/);
+ assert.match(r.ndw69Summary(r.rows),/NDW locaties in orde: 2 van 2<\/b> \(bevestigd 1, automatisch passend binnen 1 km 1\)/);
+ assert.match(r.ndw69Summary(r.rows),/Nog te controleren: 0/);
  assert.match(r.ndw69Summary(r.rows),/Ruimere koppelingen: 1, waarvan 0 nog te controleren/);
  confirm(r,'EXTENDED');assert.equal(r.ndw69Coverage(r.rows).confirmed,1);
- confirm(r,'EXTENDED',false);assert.equal(r.ndw69Coverage(r.rows).confirmed,0);
+ confirm(r,'EXTENDED',false);assert.equal(r.ndw69Coverage(r.rows).confirmed,0);assert.equal(r.ndw69Coverage(r.rows).pending,1,'een ruimere koppeling wordt nooit automatisch passend');
+ // Uitvinken van een lokale koppeling is een bewuste afwijzing: niet langer automatisch passend.
+ confirm(r,'LOCAL');assert.equal(r.ndw69Coverage(r.rows).confirmed,1);assert.equal(r.ndw69Coverage(r.rows).automatisch,0);
+ confirm(r,'LOCAL',false);const na=r.ndw69Coverage(r.rows);assert.equal(na.automatisch,0);assert.equal(na.confirmed,0);assert.equal(na.pending,2);
+ assert.match(r.ndw69LinkStatus(r.rows[1]),/controle nodig/);
+});
+
+test('een lokale koppeling is automatisch passend en dat staat apart van bevestigd',()=>{
+ const r=runtime(),l=r.ndw69Link(r.rows[0]);
+ assert.equal(l.automatisch,true);assert.equal(l.confirmed,false);
+ assert.match(r.ndw69LinkStatus(r.rows[0]),/Lokale koppeling, 0 km, automatisch passend \(binnen 1 km\)/);
+ assert.equal(r.sc67Config(r.rows[0]).ndwUsed.automatisch,true);assert.equal(r.sc67Config(r.rows[0]).ndwUsed.confirmed,false);
+ assert.equal(r.ndw69Link(r.rows[1]).automatisch,false,'5 km is een ruimere koppeling');
+ r.ndw69Use({dataset:{weg:'LOCAL'},checked:false});assert.equal(r.ndw69Link(r.rows[0]).automatisch,false,'uitgezet NDW-gebruik is niet automatisch passend');
 });
 
 test('opslaan behoudt bevestiging en een ander meetpunt maakt opnieuw controle nodig',()=>{
@@ -46,7 +60,7 @@ test('opslaan behoudt bevestiging en een ander meetpunt maakt opnieuw controle n
  r.sc67Bewaar({closest:()=>({dataset:{sc67Key:w.key},querySelectorAll:()=>fields})});
  assert.equal(r.ndw69Coverage(r.rows).confirmed,1);
  r.ndw69Choose({dataset:{weg:w.key},value:'NEAR'});
- assert.equal(r.ndw69Coverage(r.rows).confirmed,0);assert.equal(r.ndw69Coverage(r.rows).pending,2);
+ assert.equal(r.ndw69Coverage(r.rows).confirmed,0);assert.equal(r.ndw69Coverage(r.rows).pending,1);assert.equal(r.ndw69Coverage(r.rows).automatisch,1);
 });
 
 test('bevestigen laat nog niet opgeslagen verkeersvelden staan, daarna opslaan herberekent',()=>{
@@ -91,8 +105,12 @@ test('export van kostenparameters bewaart de bevestiging en zijn controlesleutel
  vm.runInContext('RULES.kosten=saved',r);
  assert.equal(r.ndw69Coverage(r.rows).confirmed,1);
  assert.equal(r.ndw69Link(r.rows[1]).confirmed,true);
- // Een andere verkeersbron mag een eerdere bevestiging niet stil overnemen.
- r.saved.ndw69Snapshot.sha256=['new-synthetic'];
+ // DVM 158: een nieuwe NDW-ophaalronde met hetzelfde meetpunt houdt de bevestiging.
+ // Een nieuwe ronde is in de praktijk altijd een nieuw snapshot-object.
+ r.saved.ndw69Snapshot={...r.saved.ndw69Snapshot,sha256:['new-synthetic'],publication:'2026-01-05T11:01:00Z',sites:r.saved.ndw69Snapshot.sites.map(s=>({...s,q:s.q+50}))};
+ assert.equal(r.ndw69Coverage(r.rows).confirmed,1);
+ // Een gewijzigde meetpuntconfiguratie vraagt wel opnieuw om controle.
+ r.saved.ndw69Snapshot={...r.saved.ndw69Snapshot,sites:r.saved.ndw69Snapshot.sites.map(s=>({...s,version:'2'}))};
  assert.equal(r.ndw69Coverage(r.rows).confirmed,0);
 });
 
@@ -100,9 +118,9 @@ test('bronkaart telt bevestigingen en te controleren ruimere koppelingen opnieuw
  const r=runtime();r.document.readyState='loading';r.document.title='Test';r.datasetItems=()=>[];
  vm.runInContext(read('site/engines/dvm-source-manager.js'),r);
  const card=()=>r.datasetItems().find(x=>x.type==='ndwVerkeer').meta;
- assert.match(card(),/NDW locaties bevestigd: 0/);assert.match(card(),/Nog te controleren: 2/);
+ assert.match(card(),/NDW locaties bevestigd: 0/);assert.match(card(),/Automatisch passend \(binnen 1 km\): 1/);assert.match(card(),/Nog te controleren: 1/);
  confirm(r,'EXTENDED');
- assert.match(card(),/NDW locaties bevestigd: 1/);assert.match(card(),/Nog te controleren: 1/);
+ assert.match(card(),/NDW locaties bevestigd: 1/);assert.match(card(),/Nog te controleren: 0/);
  assert.match(card(),/1 ruimere koppelingen, waarvan 0 nog te controleren/);
  assert.match(card(),/1 zonder passende meting/);
 });
@@ -118,7 +136,7 @@ test('adapter en Verkeerskosten tonen dezelfde actuele bevestiging naast bereken
  r.$=selector=>elements[selector.slice(1)];r.money=v=>String(v);r.num=v=>String(v);r.date=()=>'';r.empty=()=>'';
  vm.runInContext(render,r);
  const refresh=()=>{r.summaries={dvm:r.testSummary()};r.renderCosts();};
- refresh();assert.match(elements.costKpis.innerHTML,/NDW locaties bevestigd<strong>0 \/ 2/);
+ refresh();assert.match(elements.costKpis.innerHTML,/NDW locaties in orde<strong>1 \/ 2 · 0 bevestigd, 1 automatisch binnen 1 km/);
  // Gebruik de echte berichtenhandler: een bevestiging moet de zichtbare teller
  // verversen voordat de bestaande opslag-debounce afloopt.
  const frame={HUB:{summary:()=>r.testSummary()}};
@@ -128,10 +146,10 @@ test('adapter en Verkeerskosten tonen dezelfde actuele bevestiging naast bereken
  vm.runInContext(app.match(/^window.addEventListener\('message'.*$/m)[0],r);
  confirm(r,'EXTENDED');
  r.onMessage({origin:r.location.origin,source:frame,data:r.messages.at(-1)});
- assert.match(elements.costKpis.innerHTML,/NDW locaties bevestigd<strong>1 \/ 2/);
- assert.match(elements.costKpis.innerHTML,/NDW locaties te controleren<strong>1/);
+ assert.match(elements.costKpis.innerHTML,/NDW locaties in orde<strong>2 \/ 2 · 1 bevestigd, 1 automatisch binnen 1 km/);
+ assert.match(elements.costKpis.innerHTML,/NDW locaties te controleren<strong>0/);
  assert.match(elements.costKpis.innerHTML,/Berekenbare wegdelen<strong>2 \/ 3/);
- assert.match(elements.costTable.innerHTML,/Bevestigd/);
+ assert.match(elements.costTable.innerHTML,/Bevestigd/);assert.match(elements.costTable.innerHTML,/Automatisch passend/);
  assert.equal(r.queues,1);assert.equal(r.invalidations,1);
  r.onMessage({origin:'https://untrusted.example',source:frame,data:r.messages.at(-1)});
  assert.equal(r.queues,1,'berichten van een andere herkomst worden geweigerd');
