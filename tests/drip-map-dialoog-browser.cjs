@@ -74,6 +74,10 @@ const LOGS={
    assert.equal(await dlg2.locator('#dgVanaf').inputValue(),'2025-02-03');
    await dlg2.locator('.dgVc[value="non"]').check();await dlg2.locator('#dgVanafLaatst').click();
    assert.equal(await dlg2.locator('#dgVanaf').inputValue(),'');assert.match(await dlg2.locator('#dgMapMelding').innerText(),/Voor NON is nog niets geladen/);
+   // DVM 164: link naar het robocopy-kopieerscript, met CRLF en zonder verwijderende opties.
+   assert.equal(await dlg2.locator('#dgKopieScript').getAttribute('href'),'../tools/bidash-cdms-kopie.cmd');
+   const script=await page.evaluate(async()=>{const r=await fetch(document.getElementById('dgKopieScript').href);return {ok:r.ok,tekst:await r.text()};});
+   assert.ok(script.ok);assert.match(script.tekst,/\r\n/);assert.match(script.tekst,/robocopy "%~1\\log" "%DOEL%\\%~2\\log" \/E \/XO/);assert.doesNotMatch(script.tekst,/\/MIR|\/PURGE|\/MOVE|\bdel\b|\brmdir\b/i);
    await dlg2.locator('#dgMapAnnuleer').click();
    assert.deepEqual(errors,[]);await page.close();}
 

@@ -811,6 +811,7 @@
           <button type="button" id="dgVanafLaatst" class="tb-btn" style="align-self:flex-end;background:#e5e9ed;color:#1f2933;border-color:#cfd6dd" title="Lees alleen de dagen vanaf de laatst geladen datum van de gekozen regio's">Vanaf laatst geladen datum</button>
         </div>
         <label style="display:block;margin-bottom:6px">Optioneel basisbestand voor <b>Download bijgewerkte JSON</b> (heeft geen invloed op het incrementeel bijschrijven in de huidige werkruimte)<br><input type="file" id="dgBasis" accept=".json"></label>
+        <p id="dgKopieTip" style="margin:0 0 10px;padding:8px 10px;border-left:4px solid #f4874f;background:#fff8f3;font-size:12px;color:#33414e">Duurt het lezen van de X-schijf lang? <a id="dgKopieScript" href="../tools/bidash-cdms-kopie.cmd" download="bidash-cdms-kopie.cmd">Download het kopieerscript</a> en dubbelklik het. Het houdt met robocopy een kopie van de CDMS-logmappen bij in C:\BiDash, de volgende keren alleen de nieuwe bestanden. Kies daarna hier die lokale map.</p>
         <p id="dgBasisInfo" style="margin:0 0 10px;font-size:12px;color:#107c10;min-height:15px"></p>
         <p id="dgMapMelding" style="color:#a4262c;min-height:16px;margin:0 0 10px"></p>
         <div style="display:flex;gap:8px;justify-content:flex-end">
