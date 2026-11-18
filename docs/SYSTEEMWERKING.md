@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.93 en DVM 166, bijgewerkt op 18 november 2026 met de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.94 en DVM 167, bijgewerkt op 18 november 2026 met de dienstnaam Reis- en netwerksturing (2.94 / DVM 167), de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1408,3 +1408,11 @@ Bron: het aangeleverde dashboard "A12 · Regio ↔ VWM Impact", impact sliders A
 Controles:
 - `tests/ingenieursmodel.test.js` reproduceert de uitkomsten van `compute()` met de A12-voorbeelddata (reductie 0, neutraal) op vier decimalen. Daarnaast controleert hij de afritweging, de instelbaarheid, de formatiekoppeling en het normaliseren.
 - `tests/overview-dashboard-browser.cjs` controleert in de echte schil het areaal per VC uit het register, de gevolgenkaart en het wisselen van rekenmethode.
+
+## Dienstnaam Reis- en netwerksturing, 2.94 / DVM 167
+
+De dienst `rri` heette Reis- en route-informatie en heet nu Reis- en netwerksturing.
+
+- **Waar.** De naam is aangepast in de diensten van de DVM-module (`dvm-1.js`), de standaarddiensten van de schil (`app.js`), de bedienketen `bk_info` van de BI-module (`bi-1.js`), de teksten in DVM en de documentatie (`architectuur.md`, het rekenvoorbeeld en de grafieken).
+- **Oude namen.** `migreerDB` in `bi-1.js` zet opgeslagen ketens en functies met de oude naam om.
+- **Ongewijzigd.** Het id `rri`, de norm, de afhankelijkheden en de subprocessen. De DRIP-functie "route-informatie tonen" beschrijft wat een DRIP doet en is daarom blijven staan.

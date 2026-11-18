@@ -5,7 +5,7 @@ import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUi
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
-import {toonVersies} from './core/versie.js?v=20261118-1600';
+import {toonVersies} from './core/versie.js?v=20261118-1700';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
 import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
@@ -27,7 +27,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261118-1600';
+const APP_BUILD='20261118-1700';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -52,7 +52,7 @@ const FAULT_QUERY_FIELDS=[
 ];
 const queries={assets:{rules:[]},faults:{rules:[]}};
 document.__bidashQueries=queries;
-const DEFAULT_SERVICES=[{id:'im',naam:'Incidentmanagement'},{id:'vm',naam:'Verkeersmanagement'},{id:'rri',naam:'Reis- en route-informatie'},{id:'wiu',naam:'Werk in uitvoering'}];
+const DEFAULT_SERVICES=[{id:'im',naam:'Incidentmanagement'},{id:'vm',naam:'Verkeersmanagement'},{id:'rri',naam:'Reis- en netwerksturing'},{id:'wiu',naam:'Werk in uitvoering'}];
 let expertServiceId='',expertDraft=null,expertMessage='';const expertDrafts=new Map();
 const EXPERT_DEPENDENCIES=[['signalering','Signalering'],['camera','Camera'],['detectie','Detectie'],['drip','DRIP'],['communicatie','Communicatie'],['dynamische_strook','Dynamische strook'],['wisselbord','Wisselbord']];
 async function ensurePlanning(){const p=await engine('planning'),b=await engine('bi');b.attachPlanning(frames.planning);return p;}

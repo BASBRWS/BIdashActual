@@ -135,7 +135,7 @@ const RULES = {
    Elke dienst is een keten van objecttypen (schakelTypes). De weging
    'sig' bepaalt hoe sterk de dienst leunt op signalering/MSI — afgeleid
    uit de beslisladders (IM & sturen leunen zwaar op verkeerssignalering
-   en camerabeeld; reis-/route-info vooral op detectie+DRIP; WIU op
+   en camerabeeld; reis- en netwerksturing vooral op detectie+DRIP; WIU op
    signalering+camera voor het veilig plaatsen van maatregelen). */
 const DIENSTEN = [
   { id:'im',  naam:'Incidentmanagement',            doel:'Vlot en veilig verkeer', norm:99.0, kleur:'#c0121f',
@@ -146,10 +146,10 @@ const DIENSTEN = [
     schakels:['detectie','signalering','dynamische_strook','drip'],
     afh:{ signalering:0.50, detectie:0.28, dynamische_strook:0.12, drip:0.10 },
     tekst:'Sturen en geleiden van verkeer: openen/sluiten stroken, snelheids­beelden, doseren. Direct afhankelijk van de matrixsignaal­gevers; DRIP draagt bij aan het sturen en geleiden (route-advies).' },
-  { id:'rri', naam:'Reis- &amp; route-informatie',        doel:'Betrouwbare reistijd', norm:98.0, kleur:'#1a8a4a',
+  { id:'rri', naam:'Reis- en netwerksturing',        doel:'Betrouwbare reistijd', norm:98.0, kleur:'#1a8a4a',
     schakels:['detectie','drip'],
     afh:{ detectie:0.55, drip:0.30, signalering:0.15 },
-    tekst:'Beschikbaar stellen van reis- en route-informatie via DRIP\u2019s op basis van detectie. Signalering draagt beperkt bij (bevestiging maatregelbeeld).' },
+    tekst:'Reis- en netwerksturing: reis- en route-informatie via DRIP\u2019s op basis van detectie. Signalering draagt beperkt bij (bevestiging maatregelbeeld).' },
   { id:'wiu', naam:'Werk in Uitvoering',              doel:'Veilig werken', norm:98.0, kleur:'#e06b00',
     schakels:['camera','signalering','drip'],
     afh:{ signalering:0.45, camera:0.35, drip:0.20 },

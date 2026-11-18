@@ -4987,7 +4987,7 @@ function tekenDripMcResult(){
   h+=`<div class="card"><h3>Dienstverlies per jaar door DRIP-stilstand ${tip('De mediaan van de jaarlijkse dienstbeschikbaarheid, uitgedrukt als verlies ten opzichte van 100%. Alle diensten gebruiken per run exact dezelfde DRIP-stilstand. De hoogte verschilt alleen door het effectieve DRIP-aandeel in de dienstketen.')}</h3>
     <div class="chart-wrap">${chartLijn(cum.jaren,verliesSeries,{markX:R.vervangJaar,yFmt:v=>fmt(v,2)})}</div>
     <div class="chart-legend">${dienstenMetDrip.map(dn=>`<span><i style="background:${dn.kleur}"></i>${dn.naam.replace(/&amp;/g,'&')}</span>`).join('')}${R.vervangJaar?'<span><i style="background:var(--rood)"></i>vervangingsjaar</span>':''}</div>
-    <p class="muted" style="font-size:11.5px;margin-top:8px"><b>Een hogere lijn is slechter.</b> De y-as toont basispunten verlies; 1 basispunt is 0,01 procentpunt. Voor Reis- &amp; route-informatie is de grootste mediane jaarimpact <b>${fmt(rriPiek,3)} basispunt</b>. De percentages blijven dicht bij 100% doordat iedere storing alleen gedurende de gesimuleerde hersteltijd uitval veroorzaakt, maar de richting is nu altijd logisch: meer gewogen stilstand geeft meer dienstverlies.</p>
+    <p class="muted" style="font-size:11.5px;margin-top:8px"><b>Een hogere lijn is slechter.</b> De y-as toont basispunten verlies; 1 basispunt is 0,01 procentpunt. Voor Reis- en netwerksturing is de grootste mediane jaarimpact <b>${fmt(rriPiek,3)} basispunt</b>. De percentages blijven dicht bij 100% doordat iedere storing alleen gedurende de gesimuleerde hersteltijd uitval veroorzaakt, maar de richting is nu altijd logisch: meer gewogen stilstand geeft meer dienstverlies.</p>
   </div>`;
 
   // ── Lijngrafiek 4: verwachte hersteltinzet ──

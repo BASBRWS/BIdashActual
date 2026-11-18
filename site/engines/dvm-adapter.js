@@ -149,7 +149,7 @@
   document.write('<script src="dvm-mtm-bss.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-netwerkschakels.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-netwerkschakels-beheer.js?v=20261103-1400"></script>');
-  document.write('<script src="dvm-source-manager.js?v=20261118-1600"></script>');
+  document.write('<script src="dvm-source-manager.js?v=20261118-1700"></script>');
   document.write('<script src="../core/signaalgever-import.js?v=20261103-1400"></script>');
   document.write('<script src="dvm-source-export-completeness.js?v=20261103-1400"></script>');
 })();

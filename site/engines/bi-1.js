@@ -35,7 +35,7 @@ const DEFAULT_DB={
      {id, naam, bedrijfsfunctie, doel, norm, locatie, schakelTypes[]} */
   ketens:[
     {id:'bk_sturen',naam:'Sturen en geleiden van verkeer',bedrijfsfunctie:'Sturen en geleiden van verkeer',doel:'Zorgen voor vlot en veilig verkeer',norm:99.0,locatie:'',schakelTypes:['detectie','bediensysteem','signalering','dynamische_strook']},
-    {id:'bk_info',naam:'Beschikbaar stellen van reis- en route-informatie',bedrijfsfunctie:'Beschikbaar stellen van reis- en route-informatie',doel:'Betrouwbare reistijd',norm:98.0,locatie:'',schakelTypes:['detectie','bediensysteem','drip']},
+    {id:'bk_info',naam:'Reis- en netwerksturing',bedrijfsfunctie:'Reis- en netwerksturing',doel:'Betrouwbare reistijd',norm:98.0,locatie:'',schakelTypes:['detectie','bediensysteem','drip']},
     {id:'bk_wiu',naam:'Ondersteunen bij werk in uitvoering',bedrijfsfunctie:'Ondersteunen bij werk in uitvoering',doel:'Veilig',norm:98.0,locatie:'',schakelTypes:['camera','signalering','drip','tekstwagen']},
     {id:'bk_im',naam:'Incidentmanagement',bedrijfsfunctie:'Incidentmanagement',doel:'Zorgen voor vlot en veilig verkeer',norm:99.0,locatie:'',schakelTypes:['camera','detectie','bediensysteem','signalering','drip','communicatie']},
     {id:'bk_objecten',naam:'Bewaken en bedienen van objecten',bedrijfsfunctie:'Bewaken en bedienen van objecten',doel:'Veilig',norm:99.5,locatie:'',schakelTypes:['camera','bediensysteem','tunnelbuis','slagboom','communicatie','calamiteitenknop']},
@@ -112,6 +112,10 @@ function migreerDB(d){
   const am=d.amRegels||{};
   d.amRegels={...DEFAULT_DB.amRegels,...am,maxUitstel:{...DEFAULT_DB.amRegels.maxUitstel,...(am.maxUitstel||{})}};
   if(!Array.isArray(d.ketens)||!d.ketens.length)d.ketens=JSON.parse(JSON.stringify(DEFAULT_DB.ketens));
+  /* 2.94: de dienst heet Reis- en netwerksturing; oude opgeslagen namen omzetten. */
+  const OUDE_RRI=/^Beschikbaar stellen van reis- en route-informatie$|^Reis- (?:en|&amp;|&) route-informatie$/i;
+  d.ketens.forEach(k=>{if(OUDE_RRI.test(k.naam||''))k.naam='Reis- en netwerksturing';if(OUDE_RRI.test(k.bedrijfsfunctie||''))k.bedrijfsfunctie='Reis- en netwerksturing';});
+  (d.functies||[]).forEach(f=>{if(OUDE_RRI.test(f.naam||''))f.naam='Reis- en netwerksturing';});
   if(!d.storingsRegels)d.storingsRegels=JSON.parse(JSON.stringify(DEFAULT_DB.storingsRegels));
   (d.assets||[]).forEach(a=>{const def=DEFAULT_DB.assets.find(x=>x.id===a.id)||{};
     if(a.type===undefined)a.type=def.type!==undefined?def.type:'overig';

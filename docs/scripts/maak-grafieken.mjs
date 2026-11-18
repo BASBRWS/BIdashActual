@@ -83,7 +83,7 @@ function kader(w,h,titel,onder){
   const x=i=>L+(R-L)*i/(rows.length-1);
   const y=v=>B-(B-T)*(v-YMIN)/(100-YMIN);
   const k=kader(W,H,'Wat de uitval doet met de vier dienstverleningen',
-    'Lijndiagram: verkeersmanagement zakt van 100 naar 64,6 procent en duikt als eerste onder zijn norm van 99 procent; incidentmanagement, werk in uitvoering en reis- en route-informatie volgen met kleinere dalingen.');
+    'Lijndiagram: verkeersmanagement zakt van 100 naar 64,6 procent en duikt als eerste onder zijn norm van 99 procent; incidentmanagement, werk in uitvoering en reis- en netwerksturing volgen met kleinere dalingen.');
   let s=k.open;
   s+=t(24,48,'beschikbaarheid van de dienst, in procenten — de verticale as begint bij 60%',{size:11.5});
   for(let v=YMIN;v<=100;v+=10){
@@ -101,7 +101,7 @@ function kader(w,h,titel,onder){
   s+=t(R-126,T+26,'norm 99% · IM en VM',{size:10,fill:INK,font:M});
   s+=`<line x1="${R-150}" y1="${T+40}" x2="${R-132}" y2="${T+40}" stroke="${INK}" stroke-width="1.25" stroke-dasharray="6 4"/>`;
   s+=t(R-126,T+44,'norm 98% · RRI en WIU',{size:10,fill:INK,font:M});
-  const NAAM={vm:'Verkeersmanagement',im:'Incidentmanagement',wiu:'Werk in Uitvoering',rri:'Reis- & route-info'};
+  const NAAM={vm:'Verkeersmanagement',im:'Incidentmanagement',wiu:'Werk in Uitvoering',rri:'Reis- en netwerksturing'};
   const volgorde=['vm','im','wiu','rri'];
   for(const d of volgorde){
     const p=rows.map((r,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(r.diensten[d]).toFixed(1)}`).join(' ');
@@ -189,7 +189,7 @@ console.log('Figuren geschreven naar',UIT);
   s+=t(24,50,`momentopname ${r32.jaar}, met het eindbeeld ${r36.jaar} ernaast`,{size:11.5});
   s+=`<defs><marker id="pijl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${LIJN}"/></marker></defs>`;
 
-  const NAAM={vm:'Verkeersmanagement',wiu:'Werk in Uitvoering',im:'Incidentmanagement',rri:'Reis- & route-info'};
+  const NAAM={vm:'Verkeersmanagement',wiu:'Werk in Uitvoering',im:'Incidentmanagement',rri:'Reis- en netwerksturing'};
   const blok=(i,titel,regels,accent)=>{
     const x=kol[i%3], y=rij[Math.floor(i/3)];
     let o=`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="4" fill="${i===5?'#f6f8fc':VLAK}" stroke="${accent||LIJN}" stroke-width="${accent?1.6:1.2}"/>`;

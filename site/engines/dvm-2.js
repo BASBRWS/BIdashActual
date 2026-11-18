@@ -1782,7 +1782,7 @@ function memoSecties(bron, niveau, koppelBW){
     if (zwakst.id==='vm' || zwakst.id==='im'){
       s.risico += `Concreet betekent dit dat op deze wegvakken rijstroken niet altijd tijdig en geverifieerd kunnen worden afgekruist, wat incidentafhandeling en stuurbaarheid vertraagt. `;
     } else if (zwakst.id==='rri'){
-      s.risico += `Concreet betekent dit dat reis- en route-informatie op deze trajecten minder betrouwbaar wordt aangeboden. `;
+      s.risico += `Concreet betekent dit dat reis- en netwerksturing op deze trajecten minder betrouwbaar is. `;
     } else {
       s.risico += `Concreet betekent dit dat de afscherming en monitoring rond werkvakken op deze trajecten onder druk staat. `;
     }

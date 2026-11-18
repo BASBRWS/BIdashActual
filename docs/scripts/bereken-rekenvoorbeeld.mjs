@@ -52,7 +52,7 @@ const SIGNAALAANDEEL={
   wiu:[0.7,0.2,0,0.5]         // 4 subprocessen
 };
 const NORM={im:99.0,vm:99.0,rri:98.0,wiu:98.0};
-const NAAM={im:'Incidentmanagement',vm:'Verkeersmanagement',rri:'Reis- & route-informatie',wiu:'Werk in Uitvoering'};
+const NAAM={im:'Incidentmanagement',vm:'Verkeersmanagement',rri:'Reis- en netwerksturing',wiu:'Werk in Uitvoering'};
 const wMSI=Object.fromEntries(Object.entries(SIGNAALAANDEEL)
   .map(([k,v])=>[k, v.reduce((a,b)=>a+b,0)/v.length]));
 
