@@ -1,11 +1,11 @@
 import {actualStand} from './core/actual-state.js?v=20261105-1515';
 import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,netwerkHtml,mijlpalenHtml,formatieHtml,werkImpactHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261118-1500';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting} from './core/operationele-formatie.js?v=20261118-1500';
+import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting,opGevolgenHtml} from './core/operationele-formatie.js?v=20261118-1600';
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
-import {toonVersies} from './core/versie.js?v=20261118-1500';
+import {toonVersies} from './core/versie.js?v=20261118-1600';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
 import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
@@ -27,7 +27,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261118-1500';
+const APP_BUILD='20261118-1600';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -260,10 +260,10 @@ let opWhatIf={};
    wint de nieuwste van de twee. */
 const OP_FORMATIE_KEY='bidash-operationele-formatie';
 function nieuwsteOpFormatie(a,b){if(!b)return a||null;if(!a)return b;return String(b.bijgewerkt||'')>String(a.bijgewerkt||'')?b:a;}
-function opFormatieNu(){return berekenOpFormatie(state.opFormatie,summaries.dvm?.formatieBasis,{whatIf:opWhatIf});}
+function opFormatieNu(){return berekenOpFormatie(state.opFormatie,summaries.dvm?.formatieBasis,{whatIf:opWhatIf,gevolgen:summaries.dvm?.gevolgenBasis});}
 function renderOpFormatie(volledig=false){
  const uit=$('#opFormatieUitkomst'),inst=$('#opFormatieInstellingen');if(!uit||!inst)return;
- const u=opFormatieNu();uit.innerHTML=opFormatieUitkomstHtml(u);
+ const u=opFormatieNu();uit.innerHTML=opFormatieUitkomstHtml(u);const gev=$('#opGevolgen');if(gev)gev.innerHTML=opGevolgenHtml(u);
  if(volledig||!inst.dataset.klaar||!inst.contains(document.activeElement)){
   const schakels=(summaries.dvm?.formatieBasis?.rijen||[]).slice().sort((a,b)=>a.besch-b.besch||String(a.key).localeCompare(String(b.key),'nl'));
   const open=inst.querySelector('details')?inst.querySelector('details').open:true;
@@ -281,7 +281,11 @@ function koppelOpFormatie(){
  const host=$('#opFormatie');if(!host||host.dataset.gekoppeld)return;host.dataset.gekoppeld='1';
  host.addEventListener('change',event=>{
   const el=event.target,waarde=el.value;
-  if(el.dataset.opAlg)return bewaarOpFormatie(s=>{s[el.dataset.opAlg]=el.dataset.opAlg==='verdeling'?waarde:(waarde===''?null:Number(waarde));});
+  if(el.dataset.opAlg)return bewaarOpFormatie(s=>{s[el.dataset.opAlg]=['verdeling','methode'].includes(el.dataset.opAlg)?waarde:(waarde===''?null:Number(waarde));});
+  if(el.dataset.opRolkop)return bewaarOpFormatie(s=>{const r=s.rollen.find(x=>x.id===el.dataset.opRolkop);if(r)r.koppeling=waarde;});
+  if(el.dataset.ingMsi)return bewaarOpFormatie(s=>{const c=s.ingenieur.msi.find(x=>x.id===el.dataset.ingMsi);if(c&&waarde!=='')c[el.dataset.ingVeld]=Number(waarde);});
+  if(el.dataset.ingType)return bewaarOpFormatie(s=>{if(waarde!=='')s.ingenieur.typeGewicht[el.dataset.ingType]=Number(waarde);});
+  if(el.dataset.ingKosten)return bewaarOpFormatie(s=>{if(waarde!=='')s.ingenieur.kosten[el.dataset.ingKosten]=Number(waarde);});
   if(el.dataset.opRol)return bewaarOpFormatie(s=>{const r=s.rollen.find(x=>x.id===el.dataset.opRol);if(r)r.gevoeligheid=waarde===''?0:Number(waarde);});
   if(el.dataset.opVc)return bewaarOpFormatie(s=>{const v=s.vcs[el.dataset.opVc]?.[el.dataset.opRolid];if(v)v[el.dataset.opVeld]=waarde===''?null:Number(waarde);});
  });
@@ -289,7 +293,7 @@ function koppelOpFormatie(){
   const b=event.target.closest('button');if(!b)return;
   if(b.hasAttribute('data-op-watals-test')){const k=host.querySelector('[data-op-watals-schakel]').value,w=Number(host.querySelector('[data-op-watals-waarde]').value);if(!k||!Number.isFinite(w)||host.querySelector('[data-op-watals-waarde]').value===''){status('Kies een schakel en een beschikbaarheid voor de wat-als-test.',true);return;}opWhatIf={[k]:Math.max(0,Math.min(100,w))};renderOpFormatie(true);renderOverzicht();return;}
   if(b.hasAttribute('data-op-watals-wis')){opWhatIf={};renderOpFormatie(true);renderOverzicht();return;}
-  if(b.hasAttribute('data-op-standaard')){const d=standaardOpFormatie();bewaarOpFormatie(s=>{s.norm=d.norm;s.verdeling=d.verdeling;s.ftePerPositie=d.ftePerPositie;s.maxExtraPct=d.maxExtraPct;s.rollen=d.rollen;}).then(()=>renderOpFormatie(true));}
+  if(b.hasAttribute('data-op-standaard')){const d=standaardOpFormatie();bewaarOpFormatie(s=>{s.norm=d.norm;s.verdeling=d.verdeling;s.ftePerPositie=d.ftePerPositie;s.maxExtraPct=d.maxExtraPct;s.rollen=d.rollen;s.ingenieur=d.ingenieur;}).then(()=>renderOpFormatie(true));}
  });
 }
 /* Overzichtsdashboard (2.88): één model voor kaarten, pijplijn, verloop en lijsten. */

@@ -143,6 +143,36 @@
   const rijen=[...groepen.values()].map(g=>{const w=zoek(g);return {key:w?String(w.key):(matrix?g.key:`${g.weg} ${g.richting} · VC ${g.vc}`),vc:g.vc,N:g.N,besch:w&&Number.isFinite(Number(w.besch))?Number(w.besch):100,n:w?Number(w.n)||0:0};});
   return {soort:matrix?'netwerkschakels':'wegdelen',norm:Number(RULES?.cfg?.kpi_msi)||99.5,peildatum:STATE?.peildatum||null,rijen};
  }
+ /* 2.93 / DVM 166: basis voor de rekenmethode van het ingenieursbureau (operationele
+    gevolgen), op de huidige storingsstand. Per VC en assettype (MSI, CAM, LUS, DRIP):
+    het actieve areaal uit het assetregister, de uitval (som per asset van de zwaarste
+    open storing, ernst van de foutcode zonder de DVM-locatiefactor, max 1), de perf-
+    uitval en het aantal kritieke storingen (ernst 100%). Voor MSI ook per locatie-
+    context (rijbaanbreed, weefvak, opvolgend, laatste portaal voor splitsing, voor
+    afrit, voor toerit). De weging per context gebeurt in de schil
+    (core/ingenieursmodel.js), zodat de gewichten instelbaar blijven. */
+ function overzichtGevolgenBasis(){
+  const TYPEN=['MSI','CAM','LUS','DRIP'],assets=(ASSET_REGISTER_STATE?.assets||[]).filter(a=>a.prognoseActief&&TYPEN.includes(a.tp));
+  if(!assets.length)return null;
+  const perVc={},gezien=new Set(),vcVan=x=>normAssetVc(x?.netwerkVc||x?.vc)||'onbekend';
+  const vcRij=vc=>perVc[vc]||(perVc[vc]=Object.fromEntries(TYPEN.map(t=>[t,{totaal:0,uitvalA:0,uitvalP:0,kritiek:0,storingen:0,ctx:{}}])));
+  for(const a of assets){if(gezien.has(a.key))continue;gezien.add(a.key);vcRij(vcVan(a))[a.tp].totaal++;}
+  const zwaarste=new Map();
+  for(const m of (STATE?.meldingen||[])){
+   const tp=String(m.typeId||'').toUpperCase();if(!TYPEN.includes(tp))continue;
+   const a=m.assetKey&&typeof assetUitKey==='function'?assetUitKey(m.assetKey):null;
+   const key=m.assetKey||[tp,m.weg,m.richting,m.hm,m.strook].join('|');
+   const pa=Math.max(0,Math.min(100,Number(m.trace?.availPct??m.fout?.availPct??m.avail)||0)),pp=Math.max(0,Math.min(100,Number(m.trace?.perfPct??m.fout?.perfPct??m.perf)||0));
+   const oud=zwaarste.get(key);
+   if(!oud)zwaarste.set(key,{tp,vc:vcVan(a||m),a:pa,p:pp,ctx:tp==='MSI'?(m.locCtxCode||'rijbaanbreed'):''});
+   else{oud.a=Math.max(oud.a,pa);oud.p=Math.max(oud.p,pp);}
+  }
+  for(const x of zwaarste.values()){
+   const t=vcRij(x.vc)[x.tp];t.storingen++;t.uitvalA+=x.a/100;t.uitvalP+=x.p/100;if(x.a>=100)t.kritiek++;
+   if(x.tp==='MSI'){const c=t.ctx[x.ctx]||(t.ctx[x.ctx]={n:0,uitvalA:0,uitvalP:0});c.n++;c.uitvalA+=x.a/100;c.uitvalP+=x.p/100;}
+  }
+  return {norm:Number(RULES?.cfg?.kpi_msi)||99.5,peildatum:STATE?.peildatum||null,perVc};
+ }
  function hubDienstContext(){
   const model=v68LandelijkModel();
   return {
@@ -223,7 +253,7 @@
  window.HUB={
   async import(bundle){if(globalThis.DVM_COMPACT)bundle=DVM_COMPACT.unpackDvm(bundle);const b=structuredClone(bundle);if(b.formaat!=='DVM-dienstimpact-totaal')throw Error('Geen DVM-totaalbestand.');if(!b.assetregister?.rijen?.length)throw Error('Een DVM-berekening vereist een assetregister. Importeer een volledige dataset of combineer de selectie met het bestaande register.');STATE=null; HISTORIE_STATE=null; STORINGSBRONNEN=[]; LIVE_STORINGSBRONNEN=[]; DRIP_HIST_STATE=null; U_ROUTE_STATE=null; WERK_STATE=null;resetForecast();await totaalImportJson(new File([JSON.stringify(b)],'dvm-lokaal.json',{type:'application/json'}),'vervang');if(!ASSET_REGISTER_STATE)throw Error('Het assetregister is niet verwerkt.');revealForecastTab();return this.summary();},
   export(options={}){return totaalExportBundle(Object.fromEntries(totaalExportOpties().map(o=>[o.id,true])),{autosaveLean:options.fullSources!==true});},
-  summary(){const dienst=hubDienstContext();const roads=kostenDagRows().map(w=>{const c=kostenDagResultaat(w),link=ndw69Link(w);return {netwerkschakel:w.netwerkschakel||'',netwerkStatus:w.netwerkStatus||'',ndw:{available:link.s?.q!=null,confirmed:link.s?.q!=null&&link.confirmed,automatisch:link.s?.q!=null&&!!link.automatisch,disabled:link.disabled},id:w.key,naam:w.naam||w.wegdeel||w.key,vc:w.vc||'',kosten:c.kosten,vvu:c.vvu,status:c.status,bron:c.bron};});return {netwerkschakelmatrix:!!window.DVM_NETWERKSCHAKELS_STATE,peildatum:STATE?.peildatum||null,assets:dienst.assets,roads,diensten:dienst.services,types:dienst.types,liveBronnen:LIVE_STORINGSBRONNEN.length,verloop:typeof overzichtVerloop==='function'?overzichtVerloop():null,netwerk:typeof overzichtNetwerk==='function'?overzichtNetwerk():null,werkImpact:typeof overzichtWerkImpact==='function'?overzichtWerkImpact():null,formatieBasis:typeof overzichtFormatieBasis==='function'?overzichtFormatieBasis():null,stats:STATE?.stats||null,nietDoorgerekend:(STATE?.nietDoorgerekend||[]).length,forecast:globalThis.BIDASH_ACTUAL?null:FORECAST_SUMMARY,triggers:globalThis.BIDASH_ACTUAL?[]:FORECAST_TRIGGERS};},
+  summary(){const dienst=hubDienstContext();const roads=kostenDagRows().map(w=>{const c=kostenDagResultaat(w),link=ndw69Link(w);return {netwerkschakel:w.netwerkschakel||'',netwerkStatus:w.netwerkStatus||'',ndw:{available:link.s?.q!=null,confirmed:link.s?.q!=null&&link.confirmed,automatisch:link.s?.q!=null&&!!link.automatisch,disabled:link.disabled},id:w.key,naam:w.naam||w.wegdeel||w.key,vc:w.vc||'',kosten:c.kosten,vvu:c.vvu,status:c.status,bron:c.bron};});return {netwerkschakelmatrix:!!window.DVM_NETWERKSCHAKELS_STATE,peildatum:STATE?.peildatum||null,assets:dienst.assets,roads,diensten:dienst.services,types:dienst.types,liveBronnen:LIVE_STORINGSBRONNEN.length,verloop:typeof overzichtVerloop==='function'?overzichtVerloop():null,netwerk:typeof overzichtNetwerk==='function'?overzichtNetwerk():null,werkImpact:typeof overzichtWerkImpact==='function'?overzichtWerkImpact():null,formatieBasis:typeof overzichtFormatieBasis==='function'?overzichtFormatieBasis():null,gevolgenBasis:typeof overzichtGevolgenBasis==='function'?overzichtGevolgenBasis():null,stats:STATE?.stats||null,nietDoorgerekend:(STATE?.nietDoorgerekend||[]).length,forecast:globalThis.BIDASH_ACTUAL?null:FORECAST_SUMMARY,triggers:globalThis.BIDASH_ACTUAL?[]:FORECAST_TRIGGERS};},
   assets(){return ASSET_REGISTER_STATE?.assets||[];},
   faults(){return [...(STATE?.meldingen||[]),...(STATE?.nietDoorgerekend||[])].map((m,i)=>({
     ...Object.fromEntries(['incident_id','incident_fingerprint','eerste_gezien','laatste_gezien','bron_peildatum','hersteld_op','levenscyclus_status','herstel_venster_van','herstel_venster_tot','technische_categorie','identiteit_volledig','bevestigd_tot','veroudering_na_uren'].filter(k=>m[k]!==undefined).map(k=>[k,m[k]])),

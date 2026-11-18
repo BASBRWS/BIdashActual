@@ -116,14 +116,14 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    const b=HUB.summary().formatieBasis,eigen=b.rijen.filter(r=>r.vc==='ZWN'),som=eigen.reduce((t,r)=>t+r.N,0);
    return {extra:eigen.reduce((t,r)=>t+70*(r.N/som)*Math.min(100,Math.max(0,b.norm-r.besch)*5)/100,0),onder:eigen.filter(r=>r.besch<b.norm).length,schakels:eigen.length};
   });
-  const zwnTekst=await page.locator('.op-vc').filter({hasText:'VC ZWN'}).innerText();
+  const zwnTekst=await page.locator('#opFormatieUitkomst .op-vc').filter({hasText:'VC ZWN'}).innerText();
   assert.match(zwnTekst,new RegExp(`${verwacht.schakels} schakels in beeld · ${verwacht.onder} onder de norm`));
   const benodigd=(70+verwacht.extra).toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1});
   assert.match(zwnTekst,new RegExp('Wegverkeersleider\\s+70,0\\s+70,0 \\(=uitgangspunt\\)\\s+\\+?[\\d,]+\\s+'+benodigd.replace(',','\\,'),'i'),zwnTekst);
   assert.ok(verwacht.extra>0,'synthetische storingen geven extra werklast');assert.match(zwnTekst,/Tekort bij 1 rol/,'beschikbaar = uitgangspunt, dus extra werk is tekort');
   // Beschikbaar 120 (meer dan 70 + extra) geeft Past en blijft na herladen bewaard.
   const besch=page.locator('input[data-op-vc="ZWN"][data-op-veld="beschikbaar"][data-op-rolid="wvl"]');await besch.fill('120');await besch.press('Tab');
-  await page.waitForFunction(()=>/Past/.test(document.querySelector('.op-vc')?.innerText||''));
+  await page.waitForFunction(()=>/Past/.test(document.querySelector('#opFormatieUitkomst .op-vc')?.innerText||''));
   // De instelling staat direct apart in de opslag; de grote werkruimte volgt later.
   await page.waitForFunction(()=>/Operationele formatie lokaal opgeslagen/.test(document.getElementById('status').textContent)&&import('/core/storage.js').then(m=>m.readValue('bidash-operationele-formatie')).then(s=>s?.vcs?.ZWN?.wvl?.beschikbaar===120),null,{timeout:30000,polling:300});
   await page.reload();await gereed();await page.locator('[data-group="organisation"]').click();
@@ -133,6 +133,16 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.locator('[data-op-watals-schakel]').selectOption(opt);await page.locator('[data-op-watals-waarde]').fill('0');await page.locator('[data-op-watals-test]').click();
   await page.waitForFunction(()=>/wat-als-test actief/.test(document.getElementById('opFormatieUitkomst').innerText));
   await page.locator('[data-op-watals-wis]').click();await page.waitForFunction(()=>!/wat-als-test actief/.test(document.getElementById('opFormatieUitkomst').innerText));
+  // 2.93 / DVM 166: operationele gevolgen volgens het ingenieursbureau, op de huidige stand.
+  const gb=await page.frames().find(f=>/engines\/dvm.html/.test(f.url())).evaluate(()=>{const g=HUB.summary().gevolgenBasis,msi=(ASSET_REGISTER_STATE.assets||[]).filter(a=>a.tp==='MSI'&&a.prognoseActief&&normAssetVc(a.netwerkVc||a.vc)==='ZWN').length;return {msiZwn:g.perVc.ZWN.MSI.totaal,msi,storingen:g.perVc.ZWN.MSI.storingen,ctx:Object.keys(g.perVc.ZWN.MSI.ctx)};});
+  assert.equal(gb.msiZwn,gb.msi,'areaal per VC uit het assetregister');assert.ok(gb.storingen>0&&gb.ctx.length>0,JSON.stringify(gb));
+  assert.match(await page.locator('#opGevolgen').innerText(),/VC ZWN[\s\S]*Gewogen beschikbaarheid signaalgevers[\s\S]*Extra inzet bediening/);
+  await page.locator('[data-op-alg="methode"]').selectOption('ingenieursbureau');
+  await page.waitForFunction(()=>/Methode: ingenieursbureau/.test(document.getElementById('opFormatieUitkomst').innerText));
+  assert.match(await page.locator('#opFormatieUitkomst .op-vc').first().innerText(),/Bediening × \d,\d\d/);
+  assert.equal(await page.locator('input[data-ing-msi="voor_afrit"]').inputValue(),'1.25');
+  await page.locator('[data-op-alg="methode"]').selectOption('gevoeligheid');
+  await page.waitForFunction(()=>/Methode: gevoeligheid per rol/.test(document.getElementById('opFormatieUitkomst').innerText));
   // Pijplijn stap 3 gebruikt de operationele formatie.
   await page.locator('[data-group="overview"]').click();
   await page.waitForFunction(()=>/Is er formatie voor de storingen\?/.test(document.getElementById('ovPipeline').innerText));
