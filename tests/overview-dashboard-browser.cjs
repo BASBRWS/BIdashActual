@@ -105,6 +105,38 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   const ovw=await page.locator('#ovWerk').innerText();
   assert.match(ovw,/3\s*werkzaamheden nu of binnen 14 dagen/);assert.match(ovw,/signaalgevers? in storing in de aanloop/);assert.match(ovw,/\d+(,\d)? km ervoor/);
   assert.match(await page.locator('.brand').innerText(),/Business Intelligence Dashboard/);assert.equal(await page.title(),'Business Intelligence Dashboard WVM');
+  // 3d. 2.92 / DVM 165: operationele formatie per VC. ZWN wegverkeersleider 70 FTE;
+  // extra werklast volgt uit de schakelbasis van de DVM-module.
+  await page.locator('[data-group="organisation"]').click();await page.waitForFunction(()=>location.hash==='#organisation');
+  assert.match(await page.locator('#opFormatieUitkomst').innerText(),/Nog geen uitgangspunt ingevuld/);
+  const veld=page.locator('input[data-op-vc="ZWN"][data-op-veld="uitgangspunt"][data-op-rolid="wvl"]');
+  await veld.fill('70');await veld.press('Tab');
+  await page.waitForFunction(()=>/VC ZWN/.test(document.getElementById('opFormatieUitkomst').innerText));
+  const verwacht=await page.frames().find(f=>/engines\/dvm.html/.test(f.url())).evaluate(()=>{
+   const b=HUB.summary().formatieBasis,eigen=b.rijen.filter(r=>r.vc==='ZWN'),som=eigen.reduce((t,r)=>t+r.N,0);
+   return {extra:eigen.reduce((t,r)=>t+70*(r.N/som)*Math.min(100,Math.max(0,b.norm-r.besch)*5)/100,0),onder:eigen.filter(r=>r.besch<b.norm).length,schakels:eigen.length};
+  });
+  const zwnTekst=await page.locator('.op-vc').filter({hasText:'VC ZWN'}).innerText();
+  assert.match(zwnTekst,new RegExp(`${verwacht.schakels} schakels in beeld · ${verwacht.onder} onder de norm`));
+  const benodigd=(70+verwacht.extra).toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1});
+  assert.match(zwnTekst,new RegExp('Wegverkeersleider\\s+70,0\\s+70,0 \\(=uitgangspunt\\)\\s+\\+?[\\d,]+\\s+'+benodigd.replace(',','\\,'),'i'),zwnTekst);
+  assert.ok(verwacht.extra>0,'synthetische storingen geven extra werklast');assert.match(zwnTekst,/Tekort bij 1 rol/,'beschikbaar = uitgangspunt, dus extra werk is tekort');
+  // Beschikbaar 120 (meer dan 70 + extra) geeft Past en blijft na herladen bewaard.
+  const besch=page.locator('input[data-op-vc="ZWN"][data-op-veld="beschikbaar"][data-op-rolid="wvl"]');await besch.fill('120');await besch.press('Tab');
+  await page.waitForFunction(()=>/Past/.test(document.querySelector('.op-vc')?.innerText||''));
+  // De instelling staat direct apart in de opslag; de grote werkruimte volgt later.
+  await page.waitForFunction(()=>/Operationele formatie lokaal opgeslagen/.test(document.getElementById('status').textContent)&&import('/core/storage.js').then(m=>m.readValue('bidash-operationele-formatie')).then(s=>s?.vcs?.ZWN?.wvl?.beschikbaar===120),null,{timeout:30000,polling:300});
+  await page.reload();await gereed();await page.locator('[data-group="organisation"]').click();
+  await page.waitForFunction(()=>document.querySelector('input[data-op-vc="ZWN"][data-op-veld="beschikbaar"][data-op-rolid="wvl"]')?.value==='120',null,{timeout:30000,polling:200});
+  // Wat-als: de laagste schakel naar 0% maakt het tekort zichtbaar, zonder op te slaan.
+  const opt=await page.locator('[data-op-watals-schakel] option').nth(1).getAttribute('value');
+  await page.locator('[data-op-watals-schakel]').selectOption(opt);await page.locator('[data-op-watals-waarde]').fill('0');await page.locator('[data-op-watals-test]').click();
+  await page.waitForFunction(()=>/wat-als-test actief/.test(document.getElementById('opFormatieUitkomst').innerText));
+  await page.locator('[data-op-watals-wis]').click();await page.waitForFunction(()=>!/wat-als-test actief/.test(document.getElementById('opFormatieUitkomst').innerText));
+  // Pijplijn stap 3 gebruikt de operationele formatie.
+  await page.locator('[data-group="overview"]').click();
+  await page.waitForFunction(()=>/Is er formatie voor de storingen\?/.test(document.getElementById('ovPipeline').innerText));
+  assert.match(await page.locator('#ovPipeline').innerText(),/Formatie past|Tekort bij \d VC/);
   // 4. Doorklikken vanuit de pijplijn.
   await page.locator('#ovPipeline .ov-step').first().click();await page.waitForFunction(()=>location.hash==='#faults');
   // 5. Telefoon: geen horizontaal scrollen.

@@ -1,10 +1,11 @@
 import {actualStand} from './core/actual-state.js?v=20261105-1515';
-import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,netwerkHtml,mijlpalenHtml,formatieHtml,werkImpactHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261118-1100';
+import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,netwerkHtml,mijlpalenHtml,formatieHtml,werkImpactHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261118-1500';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261116-286';
+import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting} from './core/operationele-formatie.js?v=20261118-1500';
+import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
-import {toonVersies} from './core/versie.js?v=20261118-1100';
+import {toonVersies} from './core/versie.js?v=20261118-1500';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
 import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
@@ -26,7 +27,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261118-1100';
+const APP_BUILD='20261118-1500';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -249,13 +250,55 @@ function renderPlanningExportInfo(){
  $('#exportPrimavera').textContent=info?.buttonLabel||'Exporteer XML voor Primavera';
  $('#planningExportInfo').textContent=info?.uitleg||'Laad een planning om de exportmogelijkheden te zien.';
 }
+/* Operationele formatie per VC (2.92): instellingen in state.opFormatie, rekenen in
+   core/operationele-formatie.js op de schakelbasis uit de DVM-samenvatting. Een wat-als-
+   test leeft alleen in het geheugen. Invoer wordt bij 'change' opgeslagen; de velden
+   worden niet opnieuw getekend zolang de focus erin staat. */
+let opWhatIf={};
+/* Instellingen worden direct apart en klein bewaard (OP_FORMATIE_KEY, met tijdstempel);
+   de volledige werkruimte volgt via de gewone automatische opslag. Bij het starten
+   wint de nieuwste van de twee. */
+const OP_FORMATIE_KEY='bidash-operationele-formatie';
+function nieuwsteOpFormatie(a,b){if(!b)return a||null;if(!a)return b;return String(b.bijgewerkt||'')>String(a.bijgewerkt||'')?b:a;}
+function opFormatieNu(){return berekenOpFormatie(state.opFormatie,summaries.dvm?.formatieBasis,{whatIf:opWhatIf});}
+function renderOpFormatie(volledig=false){
+ const uit=$('#opFormatieUitkomst'),inst=$('#opFormatieInstellingen');if(!uit||!inst)return;
+ const u=opFormatieNu();uit.innerHTML=opFormatieUitkomstHtml(u);
+ if(volledig||!inst.dataset.klaar||!inst.contains(document.activeElement)){
+  const schakels=(summaries.dvm?.formatieBasis?.rijen||[]).slice().sort((a,b)=>a.besch-b.besch||String(a.key).localeCompare(String(b.key),'nl'));
+  const open=inst.querySelector('details')?inst.querySelector('details').open:true;
+  inst.innerHTML=opFormatieInstellingenHtml(u,{schakels,whatIf:Object.keys(opWhatIf).length?opWhatIf:null});inst.dataset.klaar='1';
+  const d=inst.querySelector('details');if(d)d.open=open;
+ }
+}
+async function bewaarOpFormatie(wijzig){
+ const s=normaliseerOpFormatie(state.opFormatie);wijzig(s);s.bijgewerkt=new Date().toISOString();state.opFormatie=normaliseerOpFormatie(s);
+ renderOpFormatie();renderOverzicht();
+ try{await writeValue(OP_FORMATIE_KEY,state.opFormatie);queue();status('Operationele formatie lokaal opgeslagen · '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}));}
+ catch(error){status('Opslaan van de operationele formatie mislukt: '+(error.message||error),true);}
+}
+function koppelOpFormatie(){
+ const host=$('#opFormatie');if(!host||host.dataset.gekoppeld)return;host.dataset.gekoppeld='1';
+ host.addEventListener('change',event=>{
+  const el=event.target,waarde=el.value;
+  if(el.dataset.opAlg)return bewaarOpFormatie(s=>{s[el.dataset.opAlg]=el.dataset.opAlg==='verdeling'?waarde:(waarde===''?null:Number(waarde));});
+  if(el.dataset.opRol)return bewaarOpFormatie(s=>{const r=s.rollen.find(x=>x.id===el.dataset.opRol);if(r)r.gevoeligheid=waarde===''?0:Number(waarde);});
+  if(el.dataset.opVc)return bewaarOpFormatie(s=>{const v=s.vcs[el.dataset.opVc]?.[el.dataset.opRolid];if(v)v[el.dataset.opVeld]=waarde===''?null:Number(waarde);});
+ });
+ host.addEventListener('click',event=>{
+  const b=event.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-op-watals-test')){const k=host.querySelector('[data-op-watals-schakel]').value,w=Number(host.querySelector('[data-op-watals-waarde]').value);if(!k||!Number.isFinite(w)||host.querySelector('[data-op-watals-waarde]').value===''){status('Kies een schakel en een beschikbaarheid voor de wat-als-test.',true);return;}opWhatIf={[k]:Math.max(0,Math.min(100,w))};renderOpFormatie(true);renderOverzicht();return;}
+  if(b.hasAttribute('data-op-watals-wis')){opWhatIf={};renderOpFormatie(true);renderOverzicht();return;}
+  if(b.hasAttribute('data-op-standaard')){const d=standaardOpFormatie();bewaarOpFormatie(s=>{s.norm=d.norm;s.verdeling=d.verdeling;s.ftePerPositie=d.ftePerPositie;s.maxExtraPct=d.maxExtraPct;s.rollen=d.rollen;}).then(()=>renderOpFormatie(true));}
+ });
+}
 /* Overzichtsdashboard (2.88): één model voor kaarten, pijplijn, verloop en lijsten. */
 const OV_PERIODE_KEY='bidash-overzicht-periode';
 let ovPeriode=(()=>{try{const v=Number(localStorage.getItem(OV_PERIODE_KEY));return PERIODES.includes(v)?v:30;}catch{return 30;}})();
 function overzichtNu(){
  const d=summaries.dvm,b=summaries.bi;
  let planning=null;try{planning=sourceApi('planning')?.summary?.()?.overzicht||null;}catch(_error){planning=null;}
- return overzichtModel({dvm:d,bi:b,stand:actualStand(state.dvm,d),signalen:combine(d,b,state.links),meldingen:d?allFaults():[],periode:ovPeriode,planning});
+ return overzichtModel({dvm:d,bi:b,stand:actualStand(state.dvm,d),signalen:combine(d,b,state.links),meldingen:d?allFaults():[],periode:ovPeriode,planning,opFormatie:opFormatieSamenvatting(opFormatieNu())});
 }
 function renderOverzicht(m=overzichtNu()){
  $('#cards').innerHTML=kpiHtml(m);
@@ -410,13 +453,13 @@ async function preview(files,{importType}={}){
  }
  const host=$('#preview');host.innerHTML='<h3>Deze onderdelen worden vervangen</h3><ul>'+labels.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul><p>Niet meegeleverde onderdelen blijven behouden. Maak bij twijfel eerst een export.</p><button id="applyImport" class="primary">Import uitvoeren</button><button id="cancelImport">Annuleren</button>';
  $('#cancelImport').onclick=()=>host.replaceChildren();
- $('#applyImport').onclick=async()=>{if(busy)return;busy=true;clearTimeout(timer);$('#applyImport').disabled=true;status('Bronnen lokaal verwerken; een groot DVM-register kan even duren…');const previous=state;try{await restore(proposed,{volledigHerstellen:true});state=proposed;expertDrafts.clear();expertDraft=null;expertServiceId='';$('#expertInputHost').replaceChildren();await importStap('Geïmporteerde werkruimte uitlezen',capture);await importStap('Werkruimte lokaal opslaan',()=>write(state));render();host.replaceChildren();status('Import voltooid en lokaal opgeslagen.');}catch(e){state=previous;failedImport=true;const stap=e?.importStap||'Onbekende importstap';const detail=e?.message||String(e),root=e?.cause?.message&&e.cause.message!==detail?` Oorzaak: ${e.cause.message}.`:'';fail(Error(`Import gestopt bij ${stap}. Technische fout: ${detail}.${root} Er is niets als nieuwe werkruimte opgeslagen. Herlaad de pagina om de vorige opgeslagen werkruimte terug te zetten.`));}finally{busy=false;}};
+ $('#applyImport').onclick=async()=>{if(busy)return;busy=true;clearTimeout(timer);$('#applyImport').disabled=true;status('Bronnen lokaal verwerken; een groot DVM-register kan even duren…');const previous=state;try{await restore(proposed,{volledigHerstellen:true});state=proposed;expertDrafts.clear();expertDraft=null;expertServiceId='';$('#expertInputHost').replaceChildren();await importStap('Geïmporteerde werkruimte uitlezen',capture);await importStap('Werkruimte lokaal opslaan',()=>write(state));if(state.opFormatie)await writeValue(OP_FORMATIE_KEY,state.opFormatie).catch(()=>{});render();host.replaceChildren();status('Import voltooid en lokaal opgeslagen.');}catch(e){state=previous;failedImport=true;const stap=e?.importStap||'Onbekende importstap';const detail=e?.message||String(e),root=e?.cause?.message&&e.cause.message!==detail?` Oorzaak: ${e.cause.message}.`:'';fail(Error(`Import gestopt bij ${stap}. Technische fout: ${detail}.${root} Er is niets als nieuwe werkruimte opgeslagen. Herlaad de pagina om de vorige opgeslagen werkruimte terug te zetten.`));}finally{busy=false;}};
 }
 $('#files').onchange=e=>{preview([...e.target.files]).catch(fail);e.target.value='';};
 $('#loadLatestSnapshot').onclick=()=>loadLatestSnapshot().catch(error=>{latestSnapshotStatus(error.message||String(error),'error');fail(error);});
 $('#chooseLatestSnapshotFolder').onclick=async()=>{try{await chooseLatestSnapshotDirectory();}catch(error){latestSnapshotStatus(error.message||String(error),'error');fail(error);}};
 $('#latestSnapshotFolderFallback').onchange=async event=>{const files=[...event.target.files];event.target.value='';if(!files.length)return;try{latestSnapshotBusy=true;latestSnapshotStatus('Gekozen map controleren op de nieuwste stand…');await prepareLatestSnapshot(await nieuwsteMomentopnameUitBestanden(files),'de gekozen map');}catch(error){latestSnapshotStatus(error.message||String(error),'error');fail(error);}finally{latestSnapshotBusy=false;}};
-$('#exportOptions').innerHTML=[...DVM_PARTS,'biData','biRules','planning','links','expertReviews','quality'].map(k=>`<label><input type="checkbox" data-part="${k}" checked>${LABELS[k]}</label>`).join('');
+$('#exportOptions').innerHTML=[...DVM_PARTS,'biData','biRules','planning','links','expertReviews','opFormatie','quality'].map(k=>`<label><input type="checkbox" data-part="${k}" checked>${LABELS[k]}</label>`).join('');
 $('#exportOptions').onchange=()=>{$('#dependencies').textContent=makeExport(state,selection()).afhankelijkheden.join(' ');};
 $('#all').onclick=()=>document.querySelectorAll('[data-part]').forEach(x=>x.checked=true);$('#none').onclick=()=>document.querySelectorAll('[data-part]').forEach(x=>x.checked=false);
 $('#export').onclick=async()=>{try{if(busy)throw Error('Wacht tot import of opslag gereed is.');const snapshot=await exportSnapshot();const sel=selection();if(!sel.size)throw Error('Kies minstens één onderdeel.');const data=globalThis.BIDASH_ACTUAL?await DVM_COMPACT.packAnyAsync(makeExport(snapshot,sel)):makeExport(snapshot,sel),name='bidash-integraal_'+new Date().toISOString().slice(0,10)+'.json';await exportJson(data,name);}catch(e){fail(e);}};
@@ -467,7 +510,7 @@ $('#primaryNav').innerHTML=GROUPS.map(g=>`<button data-route="${g.items[0][0]}" 
 toonVersies(document,engineVersies);
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 
-try{busy=true;[state,latestSnapshotDirectory]=await Promise.all([importStap('Werkruimte lezen',()=>read()),readValue(LATEST_SNAPSHOT_DIRECTORY_KEY).catch(()=>null)]);state=state||DEFAULT_STATE();if(!Array.isArray(state.expertReviews))state.expertReviews=[];renderLatestSnapshotSource();await restore(state);await capture();render();status('Werkruimte gereed. Kies Laden & exporteren voor jouw bestanden.');}catch(e){fail(e);}finally{busy=false;}
+try{busy=true;[state,latestSnapshotDirectory]=await Promise.all([importStap('Werkruimte lezen',()=>read()),readValue(LATEST_SNAPSHOT_DIRECTORY_KEY).catch(()=>null)]);state=state||DEFAULT_STATE();if(!Array.isArray(state.expertReviews))state.expertReviews=[];state.opFormatie=nieuwsteOpFormatie(state.opFormatie,await readValue(OP_FORMATIE_KEY).catch(()=>null));renderLatestSnapshotSource();await restore(state);await capture();render();status('Werkruimte gereed. Kies Laden & exporteren voor jouw bestanden.');}catch(e){fail(e);}finally{busy=false;}
 
 show(location.hash.slice(1)||'overview');
 
@@ -516,6 +559,7 @@ function renderNative(){
  const signals=combine(d,b,state.links);
  $('#prioritySignals').innerHTML=signals.length?signals.slice(0,3).map(t=>`<article class="signal"><small>${esc(t.eigenaar)} · ${esc(t.resp||'Verantwoordelijke vastleggen')}</small><strong>${esc(t.titel)}</strong><p>${esc(t.msg)}</p></article>`).join(''):empty('Nog geen gezamenlijke prioriteiten','Laad bronnen en verbind diensten aan bedrijfsfuncties.','rules');
  renderOverzicht();
+ koppelOpFormatie();renderOpFormatie();
  $('#planningStatus').innerHTML=b?.planning?`<b>${num(b.planning.regels,0)} planningsactiviteiten</b><span>${esc(b.planning.naam)}</span><br><button data-route="planning">Tijdlijn bekijken →</button>`:'<span>Planning-XML nog niet geladen.</span><br><button data-route="planning">Planning openen →</button>';
  $('#organisationTable').innerHTML=b?.functies.length?`<div class="table-scroll"><table><thead><tr><th>Bedrijfsfunctie</th><th>Benodigd FTE</th><th>Beschikbaar FTE</th><th>Verschil</th></tr></thead><tbody>${b.functies.map(f=>`<tr><td>${esc(f.naam)}</td><td>${num(f.benodigd)}</td><td>${num(f.actueel)}</td><td>${num(f.actueel-f.benodigd)}</td></tr>`).join('')}</tbody></table></div>`:empty('Nog geen bedrijfsfuncties','Vul de formatie in bij Bedrijfsgegevens.','businessData');
  if(view==='assets')renderAssets();

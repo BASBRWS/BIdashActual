@@ -128,6 +128,21 @@
    metInleidend:lijst.filter(r=>r.inleidend.length).length,metBinnen:lijst.filter(r=>r.binnen.length).length,hoog:lijst.filter(r=>r.ernst==='hoog').length,
    msiInleidend:uniek('inleidend'),lijst:lijst.slice(0,8)};
  }
+ /* 2.92 / DVM 165: basis voor de operationele formatie. Elke schakel (met netwerk-
+    schakelmatrix) of elk wegdeel weg|richting|VC (zonder matrix) met actieve MSI's uit
+    het assetregister, met het aantal signaalgevers N en de MSI-beschikbaarheid uit
+    STATE.wegdelen. Een schakel zonder open storing telt als 100% beschikbaar. De schil
+    verdeelt hiermee de formatie per VC over de schakels (core/operationele-formatie.js). */
+ function overzichtFormatieBasis(){
+  const assets=(ASSET_REGISTER_STATE?.assets||[]).filter(a=>a.tp==='MSI'&&a.prognoseActief);if(!assets.length)return null;
+  const matrix=!!window.netwerkschakelsActief?.(),groepen=new Map(),uniek=new Set();
+  const sleutel=a=>typeof f71GroupKey==='function'?f71GroupKey(a):[a.weg,normAssetRichting(a.richting),normAssetVc(a.vc)].join('|');
+  for(const a of assets){if(uniek.has(a.key))continue;uniek.add(a.key);const k=sleutel(a);let g=groepen.get(k);if(!g){g={key:k,weg:a.weg,richting:normAssetRichting(a.richting),vc:normAssetVc(a.netwerkVc||a.vc),N:0};groepen.set(k,g);}g.N++;}
+  const W=STATE?.wegdelen||[];
+  const zoek=g=>W.find(w=>matrix?w.bestuurKey===g.key:w.weg===g.weg&&normAssetRichting(w.richting)===g.richting&&normAssetVc(w.vc)===g.vc);
+  const rijen=[...groepen.values()].map(g=>{const w=zoek(g);return {key:w?String(w.key):(matrix?g.key:`${g.weg} ${g.richting} · VC ${g.vc}`),vc:g.vc,N:g.N,besch:w&&Number.isFinite(Number(w.besch))?Number(w.besch):100,n:w?Number(w.n)||0:0};});
+  return {soort:matrix?'netwerkschakels':'wegdelen',norm:Number(RULES?.cfg?.kpi_msi)||99.5,peildatum:STATE?.peildatum||null,rijen};
+ }
  function hubDienstContext(){
   const model=v68LandelijkModel();
   return {
@@ -208,7 +223,7 @@
  window.HUB={
   async import(bundle){if(globalThis.DVM_COMPACT)bundle=DVM_COMPACT.unpackDvm(bundle);const b=structuredClone(bundle);if(b.formaat!=='DVM-dienstimpact-totaal')throw Error('Geen DVM-totaalbestand.');if(!b.assetregister?.rijen?.length)throw Error('Een DVM-berekening vereist een assetregister. Importeer een volledige dataset of combineer de selectie met het bestaande register.');STATE=null; HISTORIE_STATE=null; STORINGSBRONNEN=[]; LIVE_STORINGSBRONNEN=[]; DRIP_HIST_STATE=null; U_ROUTE_STATE=null; WERK_STATE=null;resetForecast();await totaalImportJson(new File([JSON.stringify(b)],'dvm-lokaal.json',{type:'application/json'}),'vervang');if(!ASSET_REGISTER_STATE)throw Error('Het assetregister is niet verwerkt.');revealForecastTab();return this.summary();},
   export(options={}){return totaalExportBundle(Object.fromEntries(totaalExportOpties().map(o=>[o.id,true])),{autosaveLean:options.fullSources!==true});},
-  summary(){const dienst=hubDienstContext();const roads=kostenDagRows().map(w=>{const c=kostenDagResultaat(w),link=ndw69Link(w);return {netwerkschakel:w.netwerkschakel||'',netwerkStatus:w.netwerkStatus||'',ndw:{available:link.s?.q!=null,confirmed:link.s?.q!=null&&link.confirmed,automatisch:link.s?.q!=null&&!!link.automatisch,disabled:link.disabled},id:w.key,naam:w.naam||w.wegdeel||w.key,vc:w.vc||'',kosten:c.kosten,vvu:c.vvu,status:c.status,bron:c.bron};});return {netwerkschakelmatrix:!!window.DVM_NETWERKSCHAKELS_STATE,peildatum:STATE?.peildatum||null,assets:dienst.assets,roads,diensten:dienst.services,types:dienst.types,liveBronnen:LIVE_STORINGSBRONNEN.length,verloop:typeof overzichtVerloop==='function'?overzichtVerloop():null,netwerk:typeof overzichtNetwerk==='function'?overzichtNetwerk():null,werkImpact:typeof overzichtWerkImpact==='function'?overzichtWerkImpact():null,stats:STATE?.stats||null,nietDoorgerekend:(STATE?.nietDoorgerekend||[]).length,forecast:globalThis.BIDASH_ACTUAL?null:FORECAST_SUMMARY,triggers:globalThis.BIDASH_ACTUAL?[]:FORECAST_TRIGGERS};},
+  summary(){const dienst=hubDienstContext();const roads=kostenDagRows().map(w=>{const c=kostenDagResultaat(w),link=ndw69Link(w);return {netwerkschakel:w.netwerkschakel||'',netwerkStatus:w.netwerkStatus||'',ndw:{available:link.s?.q!=null,confirmed:link.s?.q!=null&&link.confirmed,automatisch:link.s?.q!=null&&!!link.automatisch,disabled:link.disabled},id:w.key,naam:w.naam||w.wegdeel||w.key,vc:w.vc||'',kosten:c.kosten,vvu:c.vvu,status:c.status,bron:c.bron};});return {netwerkschakelmatrix:!!window.DVM_NETWERKSCHAKELS_STATE,peildatum:STATE?.peildatum||null,assets:dienst.assets,roads,diensten:dienst.services,types:dienst.types,liveBronnen:LIVE_STORINGSBRONNEN.length,verloop:typeof overzichtVerloop==='function'?overzichtVerloop():null,netwerk:typeof overzichtNetwerk==='function'?overzichtNetwerk():null,werkImpact:typeof overzichtWerkImpact==='function'?overzichtWerkImpact():null,formatieBasis:typeof overzichtFormatieBasis==='function'?overzichtFormatieBasis():null,stats:STATE?.stats||null,nietDoorgerekend:(STATE?.nietDoorgerekend||[]).length,forecast:globalThis.BIDASH_ACTUAL?null:FORECAST_SUMMARY,triggers:globalThis.BIDASH_ACTUAL?[]:FORECAST_TRIGGERS};},
   assets(){return ASSET_REGISTER_STATE?.assets||[];},
   faults(){return [...(STATE?.meldingen||[]),...(STATE?.nietDoorgerekend||[])].map((m,i)=>({
     ...Object.fromEntries(['incident_id','incident_fingerprint','eerste_gezien','laatste_gezien','bron_peildatum','hersteld_op','levenscyclus_status','herstel_venster_van','herstel_venster_tot','technische_categorie','identiteit_volledig','bevestigd_tot','veroudering_na_uren'].filter(k=>m[k]!==undefined).map(k=>[k,m[k]])),

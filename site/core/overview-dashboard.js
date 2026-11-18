@@ -23,7 +23,7 @@ const isOnzeker=f=>!!f.levenscyclus_status&&f.levenscyclus_status!=='OPEN_BEVEST
 
 /* Kern: één samengesteld beeld waar alle onderdelen uit putten, zodat de getallen
    onderling kloppen. */
-export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30,planning=null}={}){
+export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30,planning=null,opFormatie=null}={}){
   const p=PERIODES.includes(Number(periode))?Number(periode):30;
   const verloop=dvm?.verloop?.dagen?.length?dvm.verloop.dagen.slice(-p):[];
   const open=meldingen.length,doorgerekend=meldingen.filter(f=>(f.rekenStatus||'Doorgerekend')==='Doorgerekend').length;
@@ -55,7 +55,9 @@ export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30
     planOverzicht:planning||null,
     planActiviteiten:planning?.taken??null,
     // 2.91 / DVM 163: open storingen bij geplande werkzaamheden (uit de DVM-engine).
-    werkImpact:dvm?.werkImpact||null
+    werkImpact:dvm?.werkImpact||null,
+    // 2.92: operationele formatie per VC (samenvatting uit core/operationele-formatie.js).
+    opFormatie
   };
 }
 
@@ -102,7 +104,7 @@ export function pijplijnHtml(m){
   return [
     stap('01','Uitval','Wat is uitgevallen?',m.heeftDvm?`${getal(m.open)} open`:'Onbekend',koppel==null?'Geen open storingen of geen bron':`${pct(koppel*100,0)} aan een asset gekoppeld`,koppel,'faults'),
     stap('02','Gevolgen','Waar raakt het de weg?',net?`${getal(net.geraakt)} ${net.soort} geraakt`:'Onbekend',net?(net.geraakt?`${getal(net.onderNorm)} onder norm ${pct(net.norm,1)} · balk = deel binnen norm`:'Geen geraakte '+net.soort):'Laad open storingen',geraaktFractie,'roads'),
-    stap('03','Uitvoerbaarheid','Is er capaciteit en planning?',fo.waarde,fo.sub,fo.fractie,'planning'),
+    m.opFormatie?stap('03','Uitvoerbaarheid','Is er formatie voor de storingen?',m.opFormatie.waarde,m.opFormatie.sub,m.opFormatie.fractie,'organisation'):stap('03','Uitvoerbaarheid','Is er capaciteit en planning?',fo.waarde,fo.sub,fo.fractie,'planning'),
     stap('04','Actie','Wat vraagt een besluit?',`${getal(m.signalen)} ${m.signalen===1?'signaal':'signalen'}`,m.signalen?'Gezamenlijke signalen uit storingen en formatie':'Geen open signalen',null,'signals')
   ].join('<span class="ov-step-pijl" aria-hidden="true">›</span>');
 }

@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.91 en DVM 164, bijgewerkt op 18 november 2026 met een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.92 en DVM 165, bijgewerkt op 18 november 2026 met de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1343,3 +1343,39 @@ Het lezen van DRIP-logs van een netwerkschijf duurt lang. De wachttijd zit per b
 - **Regeleinden.** `.gitattributes` houdt `*.cmd` op CRLF.
 
 Controle: `tests/drip-map-dialoog-browser.cjs` haalt het script via de link op. De test controleert CRLF, de robocopy-regel met `/E /XO` en de afwezigheid van verwijderende opties. Het script zelf is niet op Windows gedraaid in de tests.
+
+## Operationele formatie per verkeerscentrale, 2.92 / DVM 165
+
+De pagina Formatie & functies heeft een onderdeel Operationele formatie per verkeerscentrale. Het rekent uit wat de open storingen betekenen voor de bezetting van de rollen per VC. Het is een toets: dienstwaarden, kosten en normen veranderen niet.
+
+- **Rollen.**
+  - Standaard zijn er vier rollen: wegverkeersleider, coördinerend wegverkeersleider, officier van dienst (weginspectie) en weginspecteur.
+  - Per rol is de gevoeligheid instelbaar: het percentage extra werk per procentpunt onder de norm. De standaardwaarden zijn 5, 2, 1 en 3.
+- **Per VC en rol.**
+  - Uitgangspunt: de formatie die nodig is als alle signaalgevers op de norm zitten, in FTE.
+  - Beschikbaar: wat er nu is; leeg betekent gelijk aan het uitgangspunt.
+  - Posities 24/7: optioneel, voor de bezettingstoets.
+- **Algemeen.**
+  - De norm komt uit Regels (`kpi_msi`), tenzij hij hier is ingevuld.
+  - De werklast wordt verdeeld naar aantal signaalgevers of gelijk per schakel.
+  - Een 24/7-positie telt standaard voor 5,5 FTE.
+  - De extra werklast per schakel heeft een bovengrens, standaard 100%.
+- **Basis uit de DVM-module.** `overzichtFormatieBasis` (in `dvm-adapter-original.js`, via `formatieBasis` in `HUB.summary()`) levert elke schakel met actieve MSI's uit het assetregister. Met een netwerkschakelmatrix zijn dat schakels, zonder matrix wegdelen per weg, richting en VC. Per schakel komt het aantal signaalgevers N mee, plus de MSI-beschikbaarheid uit `STATE.wegdelen`. Een schakel zonder open storing telt als 100% beschikbaar.
+- **Rekenregel** (`berekenOpFormatie` in `core/operationele-formatie.js`). Per VC, rol r en schakel s:
+  - aandeel(s) = gewicht(s) / som van de gewichten in de VC
+  - tekort(s) = max(0, norm − beschikbaarheid(s))
+  - extra(r) = uitgangspunt(r) × Σ aandeel(s) × min(maximum, tekort(s) × gevoeligheid(r)) / 100
+  - benodigd(r) = uitgangspunt(r) + extra(r)
+  - ruimte(r) = beschikbaar(r) − benodigd(r)
+  - bezetting(r) = posities × FTE per positie, getoetst aan beschikbaar(r)
+- **Uitkomst.** Per VC: per rol uitgangspunt, beschikbaar, extra, benodigd, ruimte en bezettingstoets, plus de vijf schakels die het meest bijdragen. Een VC krijgt het label Tekort als een rol negatieve ruimte heeft of de minimale bezetting niet haalt.
+- **Wat-als.** Een tijdelijke beschikbaarheid voor één schakel. Die staat alleen in het geheugen en wordt niet opgeslagen.
+- **Overzicht.** Stap 3 Uitvoerbaarheid van de pijplijn gebruikt deze toets zodra er een uitgangspunt is ingevuld: Formatie past, of Tekort bij n VC's. De stap verwijst dan naar Formatie & functies.
+- **Opslag.**
+  - `state.opFormatie` gaat mee in de werkruimte en in de export (onderdeel Operationele formatie per VC). Import controleert dat het een object is; `normaliseerOpFormatie` begrenst alle waarden.
+  - Elke wijziging wordt meteen klein bewaard onder `bidash-operationele-formatie`, met tijdstempel `bijgewerkt`. De volledige werkruimte volgt via de gewone automatische opslag, en die kan bij een grote werkruimte enkele seconden duren.
+  - Bij het starten wint de nieuwste van de twee. Na een import wordt de geïmporteerde instelling ook klein bewaard.
+
+Controles:
+- `tests/operationele-formatie.test.js`: het rekenvoorbeeld (70 FTE × 4% × 4 pp × 5% = 0,56 FTE), norm, verdeling, gevoeligheid en bovengrens, tekort door werklast en door bezetting, wat-als, rollen, normaliseren, HTML zonder inline stijl, en export en import.
+- `tests/overview-dashboard-browser.cjs` in de echte schil: invoer voor ZWN, de uitkomst tegen de schakelbasis van de DVM-module, Past bij voldoende beschikbaar, behoud na herladen, wat-als en pijplijnstap 3.

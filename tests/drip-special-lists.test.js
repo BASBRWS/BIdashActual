@@ -70,6 +70,6 @@ test('open storingen gebruikt zowel assetmarkering als referentielijst',()=>{
 });
 
 test('zichtbare versie is verhoogd',()=>{
-  assert.match(read('site/core/versie.js'),/BIDASH_VERSIE='2\.91'/);
-  assert.match(manager,/DVM_VERSION='164'/);
+  assert.match(read('site/core/versie.js'),/BIDASH_VERSIE='2\.92'/);
+  assert.match(manager,/DVM_VERSION='165'/);
 });
