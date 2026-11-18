@@ -6,8 +6,8 @@ import './asset-register-special-filter.js?v=20261016-0834';
 
 export const DVM_PARTS=['assetregister','netwerkschakels','storingshistorie','liveStoringen','dripHistorie','uRoutes','werkzaamheden','parameters','dripSelectie'];
 export const BI_RULE_KEYS=['config','configBron','richtlijnen','amRegels','impact','capgrens'];
-export const LABELS={dvm:'DVM volledig',assetregister:'Assetregister',netwerkschakels:'Netwerkschakelmatrix',storingshistorie:'Storingshistorie',liveStoringen:'Open storingen',dripHistorie:'DRIP-historie',uRoutes:'U-routes',werkzaamheden:'Werkzaamheden',parameters:'DVM-regels en verkeersmodel',dripSelectie:'DRIP-selectie',biData:'BI-data: formatie, contracten en assets',biRules:'BI-rekenregels en normen',planning:'Planning: originele XML en instellingen',links:'Dienstkoppelingen',expertReviews:'Expertduiding dienstverlening',history:'Gezamenlijke dagstanden',quality:'Kwaliteitsaudit en scorehistorie'};
-export const DEFAULT_STATE=()=>({schema:1,dvm:null,bi:null,planning:null,links:[],expertReviews:[],history:[],qualityAudit:null,qualityHistory:[]});
+export const LABELS={dvm:'DVM volledig',assetregister:'Assetregister',netwerkschakels:'Netwerkschakelmatrix',storingshistorie:'Storingshistorie',liveStoringen:'Open storingen',dripHistorie:'DRIP-historie',uRoutes:'U-routes',werkzaamheden:'Werkzaamheden',parameters:'DVM-regels en verkeersmodel',dripSelectie:'DRIP-selectie',biData:'BI-data: formatie, contracten en assets',biRules:'BI-rekenregels en normen',planning:'Planning: originele XML en instellingen',links:'Dienstkoppelingen',expertReviews:'Expertduiding dienstverlening',history:'Gezamenlijke dagstanden',quality:'Kwaliteitsaudit en scorehistorie',opFormatie:'Operationele formatie per VC'};
+export const DEFAULT_STATE=()=>({schema:1,dvm:null,bi:null,planning:null,links:[],expertReviews:[],history:[],qualityAudit:null,qualityHistory:[],opFormatie:null});
 const VALIDATED_ROOTS=new WeakSet();
 export function validate(value,depth=0){
  if(depth===0&&value&&typeof value==='object'&&VALIDATED_ROOTS.has(value))return value;
@@ -28,7 +28,7 @@ export function makeExport(state,selection){
  }
  if(globalThis.BIDASH_ACTUAL&&parts.dvm?.parameters)parts.dvm.parameters=BIDASH_ACTUAL.parameters(parts.dvm.parameters);
  if(state.bi&&(selection.has('biData')||selection.has('biRules'))){parts.bi={};for(const [k,v] of Object.entries(state.bi))if(selection.has(BI_RULE_KEYS.includes(k)?'biRules':'biData'))parts.bi[k]=v;}
- for(const k of ['planning','links','expertReviews','history'])if(selection.has(k))parts[k]=state[k];
+ for(const k of ['planning','links','expertReviews','history','opFormatie'])if(selection.has(k))parts[k]=state[k]??null;
  if(selection.has('quality')){parts.qualityAudit=state.qualityAudit||null;parts.qualityHistory=Array.isArray(state.qualityHistory)?state.qualityHistory:[];}
  return {formaat:'BiDash-integraal',versie:1,...(globalThis.BIDASH_ACTUAL?{toepassing:'BIdashActual',modus:'dagstand'}:{}),opgeslagen:new Date().toISOString(),selectie:[...selection],regelsEigenaar:{impact:'DVM',kosten:'DVM',formatie:'BI',contract:'BI'},delen:parts,afhankelijkheden:dvmKeys.some(k=>k!=='assetregister')&&!selection.has('assetregister')?['Voor DVM-herberekening is een lokaal assetregister nodig.']:[]};
 }
@@ -51,7 +51,8 @@ export function mergeImport(current,bundle){
   next.dvm.exportSelectie=Object.fromEntries(DVM_PARTS.map(k=>[k,true]));
  }
  if(p.bi)next.bi={...(current?.bi||{}),...p.bi};
- for(const k of ['planning','links','expertReviews','history','qualityAudit','qualityHistory'])if(Object.hasOwn(p,k))next[k]=p[k];
+ for(const k of ['planning','links','expertReviews','history','qualityAudit','qualityHistory','opFormatie'])if(Object.hasOwn(p,k))next[k]=p[k];
+ if(next.opFormatie!=null&&(typeof next.opFormatie!=='object'||Array.isArray(next.opFormatie)))throw Error('Operationele formatie moet een object zijn.');
  if(!Array.isArray(next.links)||!Array.isArray(next.expertReviews)||!Array.isArray(next.history)||next.qualityHistory!=null&&!Array.isArray(next.qualityHistory))throw Error('Koppelingen, expertduidingen, dagstanden en kwaliteitshistorie moeten lijsten zijn.');
  if(next.planning&&typeof next.planning.xml!=='string')throw Error('Planning bevat geen originele XML.');
  if(globalThis.BIDASH_ACTUAL&&next.dvm?.parameters)next.dvm={...next.dvm,parameters:BIDASH_ACTUAL.parameters(next.dvm.parameters)};
