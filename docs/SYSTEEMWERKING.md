@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.92 en DVM 165, bijgewerkt op 18 november 2026 met de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.93 en DVM 166, bijgewerkt op 18 november 2026 met de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1379,3 +1379,32 @@ De pagina Formatie & functies heeft een onderdeel Operationele formatie per verk
 Controles:
 - `tests/operationele-formatie.test.js`: het rekenvoorbeeld (70 FTE × 4% × 4 pp × 5% = 0,56 FTE), norm, verdeling, gevoeligheid en bovengrens, tekort door werklast en door bezetting, wat-als, rollen, normaliseren, HTML zonder inline stijl, en export en import.
 - `tests/overview-dashboard-browser.cjs` in de echte schil: invoer voor ZWN, de uitkomst tegen de schakelbasis van de DVM-module, Past bij voldoende beschikbaar, behoud na herladen, wat-als en pijplijnstap 3.
+
+## Rekenmethode ingenieursbureau: operationele gevolgen, 2.93 / DVM 166
+
+Bron: het aangeleverde dashboard "A12 · Regio ↔ VWM Impact", impact sliders A12/A6, basis v7, berekend door een ingenieursbureau. De rekenfunctie `compute()` is overgenomen in `core/ingenieursmodel.js` (`berekenIngenieur`). De bron-HTML staat niet in de repository.
+
+- **Toepassing op de huidige storingsstand.** Het bronmodel rekent vanuit een onderhoudsreductie. Hier is de reductie 0 en staan alle schuifregelaars neutraal (1,0). De beschikbaarheid per assettype is 1 − uitval / areaal per VC. De referentie is de norm uit Regels, of de norm bij Operationele formatie.
+- **Basis uit de DVM-module.** `overzichtGevolgenBasis` in `dvm-adapter-original.js` (via `gevolgenBasis` in `HUB.summary()`) levert per VC en type (MSI, CAM, LUS, DRIP):
+  - het actieve areaal uit het assetregister;
+  - de uitval: per asset de zwaarste open storing, met de ernst van de foutcode, maximaal 1;
+  - het aantal kritieke storingen (ernst 100%);
+  - voor MSI de uitval per locatiecontext (`locCtxCode`).
+
+  De DVM-locatiefactor zit er bewust niet in, anders telt de locatie dubbel.
+- **Afhankelijkheid van signaalgevers.** De MSI-uitval per locatie telt met de beschikbaarheidsweging van het ingenieursbureau (fAvail): rijbaanbreed, weefvak en opvolgend 1,7; laatste portaal voor splitsing 1,35; voor afrit 1,25; voor toerit 1,0.
+  - De weging is relatief: gedeeld door het gemiddelde gewicht.
+  - Een storing voor een afrit telt zo als 1,25 / 1,45 ≈ 0,86 van een gemiddelde storing, een rijbaanbrede als ≈ 1,17.
+  - Het perfgat werkt in het bronmodel alleen via de schuifregelaars; neutraal is dat 0,5, en dat is overgenomen.
+- **Uitkomsten per VC.** Gewogen beschikbaarheid, detectietijd, gemiste incidenten, aanrijtijd, risico op doorrijden van een kruis, blootstelling van de weginspectie, bedieningsfactor, extra inspecteursuren, botsabsorbers, DRIP-wagens, IM-teams, conservatieve maatregelen en operationele kosten (85, 420, 1.850 en 3.200 euro). Voertuigverliesuren rekent BiDash met het eigen verkeerskostenmodel en zitten hier niet in.
+- **Ontbrekend type.** Een type zonder areaal in de VC telt niet mee in het gemiddelde. In de formules telt het als volledig beschikbaar.
+- **Formatie.**
+  - Bij Operationele formatie kies je de rekenmethode: Gevoeligheid per rol (2.92) of Ingenieursbureau.
+  - Bij Ingenieursbureau is de extra formatie per rol: uitgangspunt × (factor − 1).
+  - De factor hangt af van de koppeling per rol: bediening volgt de bedieningsfactor (standaard wegverkeersleider en coördinerend wegverkeersleider), inspectie de blootstelling (standaard officier van dienst en weginspecteur). Een rol kan ook op geen koppeling staan.
+  - De vertaling van factor naar FTE is een interpretatie van BiDash, niet van het ingenieursbureau.
+- **Instelbaar.** De locatiewegingen, de impactgewichten per type (MSI 1, CAM 0,85, LUS 0,9, DRIP 0,7) en de kosten per eenheid. De overige constanten volgen het bronmodel.
+
+Controles:
+- `tests/ingenieursmodel.test.js` reproduceert de uitkomsten van `compute()` met de A12-voorbeelddata (reductie 0, neutraal) op vier decimalen. Daarnaast controleert hij de afritweging, de instelbaarheid, de formatiekoppeling en het normaliseren.
+- `tests/overview-dashboard-browser.cjs` controleert in de echte schil het areaal per VC uit het register, de gevolgenkaart en het wisselen van rekenmethode.

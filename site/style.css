@@ -419,6 +419,12 @@ dialog::backdrop{background:rgba(15,58,49,.45);backdrop-filter:blur(3px)}
 .op-tabel input{width:84px;text-align:right}
 .op-rollen{width:auto;min-width:min(100%,560px)}
 .op-rollen td{text-align:left}
+.op-subtitel{margin:18px 0 10px;font-size:14.5px}
+.op-subtitel small{color:var(--g-ink-3);font-weight:500;font-size:12px;margin-left:6px}
+.ing-ind{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.ing-ind div{padding:8px 10px;border:1px solid var(--g-line);border-radius:10px;background:var(--g-mint-wash)}
+.ing-ind dt{font-size:11px;color:var(--g-ink-2)}
+.ing-ind dd{margin:2px 0 0;font-size:15px;font-weight:650;color:var(--g-ink)}
 .op-knoppen{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
 /* 2.91: storingen bij geplande werkzaamheden */
 .ov-werkimpact{margin:0 0 18px}
