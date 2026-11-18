@@ -6,14 +6,14 @@
    De schil hoort haar eigen versie te kennen en die meteen te tonen; de modules
    melden alleen hun eigen versie aan. */
 
-export const BIDASH_VERSIE='2.90';
+export const BIDASH_VERSIE='2.91';
 
 /* Alleen DVM houdt een eigen engineversie bij. BI en planning melden niets, en
    dan hoort er ook niets over hen in de balk te staan. */
 export const ENGINE_LABELS={dvm:'DVM',bi:'BI',planning:'Planning'};
 
 export function versieTekst(engines={}){
-  const delen=[(globalThis.BIDASH_ACTUAL?'BIdashActual WVM ':'Business Intelligence Dashboard WVM ')+BIDASH_VERSIE];
+  const delen=['Business Intelligence Dashboard WVM '+BIDASH_VERSIE];
   for(const [id,versie] of Object.entries(engines)){
     const v=String(versie??'').trim();
     if(v)delen.push((ENGINE_LABELS[id]||id)+' '+v);

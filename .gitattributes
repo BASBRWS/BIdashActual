@@ -1,0 +1,2 @@
+# Windows-scripts houden CRLF, anders lopen labels in cmd mis.
+*.cmd text eol=crlf

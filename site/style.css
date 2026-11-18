@@ -389,6 +389,27 @@ dialog::backdrop{background:rgba(15,58,49,.45);backdrop-filter:blur(3px)}
 .ov-mp-tekst b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--g-ink)}
 .ov-mp-tekst small{color:var(--g-ink-3);font-size:11px}
 .ov-voetnoot{margin:10px 0 0;font-size:11px}
+/* 2.91: storingen bij geplande werkzaamheden */
+.ov-werkimpact{margin:0 0 18px}
+.ov-werklijst{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.ov-werk{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--g-line);border-left:4px solid var(--g-line);border-radius:var(--g-r-md);background:#fff;position:relative}
+.ov-werk-hoog{border-left-color:#df5f26}
+.ov-werk-midden{border-left-color:#e8a23a}
+.ov-werk-laag{border-left-color:#0f9d78}
+.ov-werk-tekst{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.ov-werk-tekst>b{font-size:13px;color:var(--g-ink);overflow-wrap:anywhere}
+.ov-werk-tekst>small{color:var(--g-ink-2);font-size:11.5px}
+.ov-werk-groep{margin-top:4px}
+.ov-werk-groep>b{display:block;font-size:11.5px;font-weight:650;color:var(--g-ink)}
+.ov-werk-inleidend>b{color:#b8461a}
+.ov-werk-groep ul{list-style:none;margin:3px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:4px}
+.ov-werk-groep li{padding:2px 8px;border-radius:999px;background:var(--g-mint-wash);border:1px solid var(--g-line);font-size:11px;color:var(--g-ink-2)}
+.ov-werk-inleidend li{background:#fff3ec;border-color:#f3c9b3}
+.ov-werk-label{position:absolute;top:10px;right:10px;padding:2px 8px;border-radius:999px;background:#df5f26;color:#fff;font-size:10.5px;font-weight:650}
+.ov-werk-hoog .ov-werk-tekst>b{padding-right:118px}
+.ov-werk .ov-mp-dag{flex:0 0 44px;height:44px}
+.brand>span:not(.brand-mark){display:flex;flex-direction:column;line-height:1.15;font-size:16px}
+.brand-mark{flex:0 0 auto}
 .ov-let{margin:0 0 12px;padding:8px 12px;border-left:4px solid var(--g-peach);border-radius:8px;background:#fff8f3;color:var(--g-ink-2);font-size:12px}
 .ov-tekort{color:#a3361a!important;font-weight:600}
 @media(max-width:720px){.ov-netstat{grid-template-columns:1fr}}

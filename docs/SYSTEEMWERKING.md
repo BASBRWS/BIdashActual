@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.90 en DVM 162, bijgewerkt op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.91 en DVM 164, bijgewerkt op 18 november 2026 met een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1306,3 +1306,40 @@ Meting op de echte feed: de browser leest en selecteert in ongeveer 4,5 seconden
 Controles:
 - `tests/ndw-werkzaamheden-browser.cjs` met synthetische DATEX-situaties: selectie, afgeleide weg en hectometers, omleiding apart, assetkoppeling, herstel uit de werkregels, en de knop met een geldige, te oude en beschadigde kopie.
 - `tests/ndw_werk_fetch_cases.py`, via `tests/ndw-public-cache.test.js`: validatie, terugval tot 26 uur, geweigerd extern manifest en de XML-limiet.
+
+## Storingen bij geplande werkzaamheden, 2.91 / DVM 163
+
+Een werkvak wordt met signaalgevers (MSI) ingeleid: de kruizen en snelheidsbeelden staan op de portalen vóór het werkvak. Is een van die MSI's in storing, dan is het afkruisen onzeker. Het Overzicht toont dit in de kaart Storingen bij geplande werkzaamheden.
+
+- **Rekenplek.** `overzichtWerkImpact` in `dvm-adapter-original.js`, meegegeven als `werkImpact` in `HUB.summary()`. Het overzicht (`werkImpactHtml` in `core/overview-dashboard.js`) rekent niets zelf.
+- **Werken in beeld.** Werkzaamheden uit `WERK_STATE` (NDW-planningsfeed of eigen bestand) die nu lopen of binnen `WERK_HORIZON_DAGEN` (14) starten, via `werkOverlapt`.
+- **Storingen.** De open meldingen uit `STATE.meldingen` met type MSI of DRIP, een weg en een hectometer, één keer per asset.
+- **Inleidend.**
+  - Een open MSI-storing telt als inleidend als ze op dezelfde weg tot `WERK_INLEID_KM` (3 km) vóór het werkvak staat, in rijrichting.
+  - RE loopt op in hectometers, dus de aanloop ligt onder `van_hm`. LI loopt af, dus de aanloop ligt boven `tot_hm`.
+  - Zonder rijrichting bij het werk tellen beide richtingen mee. Dat geldt voor de NDW-feed. Een storing zonder richting telt in beide richtingen.
+- **In het werkvak.** Een open MSI-storing tussen `van_hm` en `tot_hm`.
+- **DRIP.** Een open DRIP-storing tot `WERK_DRIP_KM` (10 km) vóór het werkvak, voor de vooraankondiging.
+- **Zonder hectometers.** Heeft een werk geen hectometers, dan tellen alleen MSI-storingen op assets binnen ±2 km (`assetKeys`). Die staan als 'nabij' vermeld.
+- **Ernst en volgorde.**
+  - Hoog: een inleidende storing bij een afsluiting, zoals dicht, versmald of verlegd. De kaart toont dan het label Afkruisen onzeker.
+  - Midden: een inleidende storing of een storing in het werkvak.
+  - Laag: alleen een DRIP of een storing nabij.
+  - Volgorde: ernst, dan lopend vóór gepland, dan startdatum. De kaart toont er maximaal 8.
+- **Geen gevolgen voor dienstwaarden.** De koppeling is duiding voor de uitvoering. Dienstwaarden, kosten en de 48-uursregel veranderen niet.
+
+Naam: de schil heet nu Business Intelligence Dashboard WVM, in de zijbalk, de paginatitel, de voettekst en de versiebalk. Interne namen zoals `BIDASH_ACTUAL` en `/BIdashActual/` blijven gelijk.
+
+Controle: `tests/overview-dashboard-browser.cjs` legt de werkzaamheden naast een open MSI-storing in RE. Een werk 1 km verder in RE is inleidend met ernst hoog. Hetzelfde werkvak in LI is voor die storing niet inleidend. Een werk op een andere weg valt weg, en een werk na 14 dagen valt buiten de horizon. De test controleert ook de kaart in de echte schil, de naam in de zijbalk en de paginatitel.
+
+## Kopieerscript voor de CDMS-logmappen, DVM 164
+
+Het lezen van DRIP-logs van een netwerkschijf duurt lang. De wachttijd zit per bestand in de netwerkschijf, niet in BiDash. Windows kopieert veel sneller dan de browser kan lezen.
+
+- **Script.** `site/tools/bidash-cdms-kopie.cmd` kopieert met robocopy elke map `cdms\<vc>\log` van `BRON` (standaard `X:\cdms`) naar `DOEL` (standaard `C:\BiDash\cdms`). Lukt het maken van die map niet, dan wordt het `%USERPROFILE%\BiDash\cdms`.
+- **Opties.** Het script gebruikt `/E /XO /FFT /MT:16 /R:2 /W:5`, en `/MAXAGE:DAGEN` met standaard 400 dagen (0 betekent alles). Er staat bewust geen `/MIR`, `/PURGE` of `/MOVE` in: er wordt nooit iets verwijderd. De eerste keer gaat alles mee, daarna alleen nieuwe of gewijzigde bestanden.
+- **Bronmap niet gevonden.** Bestaat de bronmap niet, dan vraagt het script om het pad. Een map met een submap `cdms` wordt ook herkend. Robocopy-exitcode 8 of hoger telt als fout per regio.
+- **Downloadlink.** De DRIP-dialoog heeft een link Download het kopieerscript (`#dgKopieScript`). Daarna kies je de lokale map; de maptraversal herkent `cdms` in het pad zoals op de X-schijf.
+- **Regeleinden.** `.gitattributes` houdt `*.cmd` op CRLF.
+
+Controle: `tests/drip-map-dialoog-browser.cjs` haalt het script via de link op. De test controleert CRLF, de robocopy-regel met `/E /XO` en de afwezigheid van verwijderende opties. Het script zelf is niet op Windows gedraaid in de tests.

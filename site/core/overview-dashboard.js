@@ -53,7 +53,9 @@ export function overzichtModel({dvm,bi,stand,signalen=[],meldingen=[],periode=30
     zwaksteDienst:meetbaar.filter(x=>Number.isFinite(x.lo)).slice().sort((a,b)=>a.lo-b.lo||a.hi-b.hi)[0]||null,
     netwerk:dvm?.netwerk||null,
     planOverzicht:planning||null,
-    planActiviteiten:planning?.taken??null
+    planActiviteiten:planning?.taken??null,
+    // 2.91 / DVM 163: open storingen bij geplande werkzaamheden (uit de DVM-engine).
+    werkImpact:dvm?.werkImpact||null
   };
 }
 
@@ -134,6 +136,28 @@ export function mijlpalenHtml(m){
   if(!po)return `<div class="empty"><b>${m.planning?'Planning nog niet geopend':'Nog geen planning'}</b>${m.planning?'Open de planning eenmaal om mijlpalen te tonen.':'Laad je planning-XML.'}</div>`;
   if(!po.mijlpalen.length)return `<div class="empty"><b>Geen komende mijlpalen</b>${getal(po.mijlpalenTotaal)} mijlpalen in de planning, alle vóór ${esc(datumLabel(po.vandaag))}.</div>`;
   return `<ol class="ov-mijlpalen">${po.mijlpalen.map(x=>`<li><span class="ov-mp-dag"><strong>${esc(String(Number(x.datum.slice(8,10))))}</strong>${esc(['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][Number(x.datum.slice(5,7))-1]||'')}</span><span class="ov-mp-tekst"><b>${esc(x.naam||'Naamloze mijlpaal')}</b><small>${esc(dagenTekst(x.dagen))} · ${esc(datumLabel(x.datum))}${x.project?` · ${esc(x.project)}`:''}</small></span></li>`).join('')}</ol><p class="muted ov-voetnoot">${getal(po.mijlpalenKomend)} komende en ${getal(po.mijlpalenVoorbij)} verstreken mijlpalen · datums inclusief scenarioverschuiving</p>`;
+}
+
+/* Storingen bij geplande werkzaamheden (2.91). Toont per werk de signaalgevers in storing
+   in de aanloop (inleidend), in het werkvak en de DRIP's voor vooraankondiging. De regels
+   en afstanden komen uit de engine (overzichtWerkImpact); hier wordt alleen getoond. */
+function kmTekst(x){return x.afstandKm==null?'':x.afstandKm===0?' · in het werkvak':` · ${getal(x.afstandKm,1)} km ervoor`;}
+function storingChips(lijst,soort,max=3){
+  const namen=lijst.slice(0,max).map(x=>`<li title="${esc(x.naam)}${x.code?' · '+esc(x.code):''}">${esc(`${x.weg} ${x.richting||''} hm ${getal(x.hm,1)}`.replace(/\s+/g,' '))}${esc(kmTekst(x))}</li>`).join('');
+  return `<div class="ov-werk-groep ov-werk-${soort}"><b>${esc(soort==='inleidend'?`${lijst.length} ${lijst.length===1?'signaalgever':'signaalgevers'} in storing in de aanloop`:soort==='binnen'?`${lijst.length} in storing in het werkvak`:soort==='drip'?`${lijst.length} DRIP in storing voor vooraankondiging`:`${lijst.length} in storing binnen 2 km`)}</b><ul>${namen}${lijst.length>max?`<li>+${getal(lijst.length-max)}</li>`:''}</ul></div>`;
+}
+export function werkImpactHtml(m){
+  const w=m.werkImpact;
+  if(!m.heeftDvm)return `<div class="empty"><b>Nog geen storingsbron</b>Laad de open storingen om ze naast de geplande werkzaamheden te zien.</div>`;
+  if(!w||!w.geladen)return `<div class="empty"><b>Nog geen werkzaamheden</b>Kies bij Data &amp; export, Werkzaamheden, de knop Haal NDW werkzaamheden op, of laad een eigen werkzaamhedenbestand.</div>`;
+  const stat=`<div class="ov-netstat">${[[getal(w.werken),`werkzaamheden nu of binnen ${getal(w.horizonDagen)} dagen`],[getal(w.metInleidend),`met een signaalgever in storing tot ${getal(w.inleidKm)} km ervoor`],[getal(w.metBinnen),'met een signaalgever in storing in het werkvak']].map(([a,b])=>`<div><strong>${esc(a)}</strong><span>${esc(b)}</span></div>`).join('')}</div>`;
+  const voet=`<p class="muted ov-voetnoot">Inleidend: een open MSI-storing op dezelfde weg tot ${getal(w.inleidKm)} km vóór het werkvak, in rijrichting (re oplopend, li aflopend in hectometers). Zonder rijrichting bij het werk tellen beide richtingen. DRIP tot ${getal(w.dripKm)} km ervoor.${w.zonderLocatie?` ${getal(w.zonderLocatie)} ${w.zonderLocatie===1?'werk heeft':'werken hebben'} geen hectometers; daar tellen alleen storingen binnen 2 km.`:''} Bron: ${esc(w.bron||'werkzaamheden')}.</p>`;
+  if(!w.lijst.length)return stat+`<div class="empty"><b>Geen signaalgevers in storing bij geplande werkzaamheden</b>${getal(w.storingenOpWeg)} open MSI- en DRIP-storingen met een locatie vergeleken.</div>`+voet;
+  const dag=ms=>{if(ms==null)return ['?',''];const d=new Date(ms);return [String(d.getDate()),['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][d.getMonth()]];};
+  const rij=r=>{const [d,mnd]=r.actief?['nu','loopt']:dag(r.startMs);
+    const kop=[r.periode,r.afsluiting,r.hinder].filter(Boolean).join(' · ');
+    return `<li class="ov-werk ov-werk-${esc(r.ernst)}"><span class="ov-mp-dag"><strong>${esc(d)}</strong>${esc(mnd)}</span><div class="ov-werk-tekst"><b>${esc(r.label)}</b><small>${esc(kop)}${r.status?` · ${esc(r.status)}`:''}</small>${r.inleidend.length?storingChips(r.inleidend,'inleidend'):''}${r.binnen.length?storingChips(r.binnen,'binnen'):''}${r.drip.length?storingChips(r.drip,'drip'):''}${r.nabij.length?storingChips(r.nabij,'nabij'):''}</div>${r.ernst==='hoog'?'<span class="ov-werk-label">Afkruisen onzeker</span>':''}</li>`;};
+  return stat+`<ol class="ov-werklijst">${w.lijst.map(rij).join('')}</ol>${w.geraakt>w.lijst.length?`<p class="muted">En nog ${getal(w.geraakt-w.lijst.length)} werkzaamheden met een storing in de buurt.</p>`:''}`+voet;
 }
 
 export function formatieHtml(m){
