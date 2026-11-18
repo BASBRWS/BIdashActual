@@ -73,6 +73,38 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.match(await page.locator('#ovPipeline').innerText(),new RegExp(net.geraakt+' wegdelen geraakt'));
   // Geen dubbele "x van y binnen norm": alleen in de kaart van de zwakste dienst.
   assert.equal((await page.locator('#overview').innerText()).match(/aantoonbaar binnen norm/g)?.length,1);
+  // 3c. 2.91 / DVM 163: storingen bij geplande werkzaamheden. Werk W1 ligt 1 km na een
+  // open MSI-storing in rijrichting RE (inleidend), W2 dezelfde plek in LI (storing ligt
+  // erachter: niet inleidend), W3 zonder werkzaamheden in de buurt.
+  assert.match(await page.locator('#ovWerk').innerText(),/Nog geen werkzaamheden/);
+  const dvmF=page.frames().find(f=>/engines\/dvm.html/.test(f.url()));
+  const wi=await dvmF.evaluate(()=>{
+   const f=(STATE.meldingen||[]).find(m=>m.typeId==='MSI'&&normAssetRichting(m.richting)==='RE'&&m.weg&&Number.isFinite(Number(m.hm))&&m.hm!=null);
+   const zelfde=(STATE.meldingen||[]).filter(m=>m.weg===f.weg&&m.typeId==='MSI');
+   const nu=Date.now(),iso=ms=>new Date(ms).toISOString(),hm=Number(f.hm);
+   // Een werkvak op een plek zonder andere storingen in de aanloop van LI.
+   const rijen=[{werk_id:'W1',weg:f.weg,richting:'RE',van_hm:hm+1,tot_hm:hm+1.4,start:iso(nu-36e5),einde:iso(nu+5*36e5),afsluiting:'rijstrook dicht'},
+    {werk_id:'W2',weg:f.weg,richting:'LI',van_hm:hm+1,tot_hm:hm+1.4,start:iso(nu+2*864e5),einde:iso(nu+3*864e5)},
+    {werk_id:'W3',weg:'A99',richting:'RE',van_hm:1,tot_hm:2,start:iso(nu),einde:iso(nu+36e5)},
+    {werk_id:'W4',weg:f.weg,richting:'RE',van_hm:hm+1,tot_hm:hm+1.4,start:iso(nu+30*864e5),einde:iso(nu+31*864e5)}];
+   const werken=rijen.map(normWerkRij);
+   WERK_STATE={bestand:'synthetisch',werken,totaal:werken.length,bronTotaal:werken.length,genegeerdN:0,exactN:0,assetKoppelingenN:0,ruweRijen:rijen};
+   const s=HUB.summary().werkImpact;parent.postMessage({type:'hub:changed',engine:'dvm'},location.origin);
+   const verwachtLi=zelfde.filter(m=>normAssetRichting(m.richting)!=='RE'&&Number(m.hm)>hm+1.4&&Number(m.hm)<=hm+4.4).length;
+   return {s,fHm:hm,verwachtLi};
+  });
+  assert.equal(wi.s.geladen,true);assert.equal(wi.s.werken,3,'W4 start na 14 dagen en valt buiten de horizon');
+  const w1=wi.s.lijst.find(r=>r.id==='W1');
+  assert.ok(w1,'W1 heeft een inleidende storing: '+JSON.stringify(wi.s));
+  assert.ok(w1.inleidend.some(x=>x.hm===wi.fHm&&x.afstandKm===1&&x.richting==='RE'),JSON.stringify(w1.inleidend));
+  assert.equal(w1.ernst,'hoog','rijstrook dicht met een inleidende storing');
+  const w2=wi.s.lijst.find(r=>r.id==='W2');
+  if(w2)assert.ok(!w2.inleidend.some(x=>x.hm===wi.fHm),'een storing achter het werkvak (LI) is niet inleidend');
+  assert.equal(wi.s.lijst.find(r=>r.id==='W3'),undefined);
+  await page.waitForFunction(()=>/Afkruisen onzeker/.test(document.getElementById('ovWerk').innerText),null,{timeout:30000});
+  const ovw=await page.locator('#ovWerk').innerText();
+  assert.match(ovw,/3\s*werkzaamheden nu of binnen 14 dagen/);assert.match(ovw,/signaalgevers? in storing in de aanloop/);assert.match(ovw,/\d+(,\d)? km ervoor/);
+  assert.match(await page.locator('.brand').innerText(),/Business Intelligence Dashboard/);assert.equal(await page.title(),'Business Intelligence Dashboard WVM');
   // 4. Doorklikken vanuit de pijplijn.
   await page.locator('#ovPipeline .ov-step').first().click();await page.waitForFunction(()=>location.hash==='#faults');
   // 5. Telefoon: geen horizontaal scrollen.
