@@ -4,7 +4,7 @@
    de assetkoppeling, export en herstel, en de knop met de openbare kopie (manifest,
    vingerafdruk, leeftijd). */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),zlib=require('node:zlib'),crypto=require('node:crypto');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const site=path.join(__dirname,'../site'),SOURCE='https://opendata.ndw.nu/planningsfeed_wegwerkzaamheden_en_evenementen.xml.gz';
 
 function wgsNaarRd(lat,lon){

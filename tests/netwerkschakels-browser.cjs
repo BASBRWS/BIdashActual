@@ -1,6 +1,6 @@
 /* Synthetische browserketen voor de echte upload, rapportage en totaalexport. */
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const site=path.join(__dirname,'../site');
 const x={};vm.createContext(x);vm.runInContext(fs.readFileSync(path.join(site,'vendor/xlsx.full.min.js'),'utf8'),x);
 const matrix=[{Code:'TEST1',Verkeerscentrale:'VC Zuidwest-Nederland (Rhoon)',Rijksweg:'A15',Netwerkschakel:'Testvak 1','HMP van':0,'HMP tot':10,Status:'Voorlopig'},

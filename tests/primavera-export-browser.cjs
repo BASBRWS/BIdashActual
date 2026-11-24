@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {leesExport}=require('./helpers/export-bestand.cjs');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const ns='http://xmlns.oracle.com/Primavera/P6/V23.12/API/BusinessObjects';
 // Uitsluitend synthetische gegevens, met dezelfde objectsoorten als een P6-export.
 const fixture=`<?xml version="1.0" encoding="UTF-8"?>

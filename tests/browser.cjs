@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {leesExport}=require('./helpers/export-bestand.cjs');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 (async()=>{
  const server=require('http').createServer((req,res)=>{const f=path.join(process.cwd(),'site',req.url==='/'?'index.html':new URL(req.url,'http://localhost').pathname);try{res.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(f));}catch{res.statusCode=404;res.end();}});await new Promise(r=>server.listen(8080,r));
  const browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:path.resolve(process.env.CHROMIUM_PATH)}:{}),args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote'],headless:true});

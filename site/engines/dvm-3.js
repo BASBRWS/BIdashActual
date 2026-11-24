@@ -503,7 +503,7 @@ self.onmessage=function(ev){
       }
     };
     worker.onerror=e=>{sluit();reject(new Error(e.message||'geïsoleerde Excel-import mislukt'));};
-    worker.postMessage({file,allowed:[...(toegestaan||[])],url:'../vendor/xlsx.full.min.js'});
+    worker.postMessage({file,allowed:[...(toegestaan||[])],url:'../vendor/xlsx.full.min.js?v=0.20.3'});
   });
 }
 

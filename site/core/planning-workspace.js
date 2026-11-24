@@ -1,3 +1,4 @@
+import {versleutelVoorOpslag,ontsleutelUitOpslag} from './storage.js';
 /* Planning-only snapshots have their own database and contain no DVM/BI sources. */
 export const PLANNING_WORKSPACE_DB='bidash-planning';
 export function normalizePlanningSnapshot(value){
@@ -26,13 +27,13 @@ export async function readPlanningWorkspace(scope=globalThis){
     const transaction=connection.transaction('workspace','readonly'),request=transaction.objectStore('workspace').get('current');
     let value;request.onsuccess=()=>{value=request.result;};
     transaction.oncomplete=()=>resolve(value||null);transaction.onabort=()=>reject(transaction.error||Error('Planning kon niet worden gelezen.'));
-  });}finally{connection.close();}
+  }).then(v=>ontsleutelUitOpslag(v));}finally{connection.close();}
 }
 export async function writePlanningWorkspace(value,scope=globalThis){
   const snapshot=planningSnapshot(normalizePlanningSnapshot(value));
-  const connection=await db(scope);
+  const stored=await versleutelVoorOpslag(snapshot),connection=await db(scope);
   try{await new Promise((resolve,reject)=>{
-    const transaction=connection.transaction('workspace','readwrite');transaction.objectStore('workspace').put(snapshot,'current');
+    const transaction=connection.transaction('workspace','readwrite');transaction.objectStore('workspace').put(stored,'current');
     transaction.oncomplete=resolve;transaction.onabort=()=>reject(transaction.error||Error('Planning kon niet worden opgeslagen.'));
   });}finally{connection.close();}
   return snapshot;

@@ -204,7 +204,7 @@ function mergeBundles(bundles){
 
 async function ensureXlsx(){
   if(globalThis.XLSX)return globalThis.XLSX;
-  await new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-bidash-xlsx]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return;}const s=document.createElement('script');s.src='vendor/xlsx.full.min.js';s.dataset.bidashXlsx='1';s.onload=resolve;s.onerror=()=>reject(new Error('Excel-lezer kon niet worden geladen.'));document.head.appendChild(s);});
+  await new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-bidash-xlsx]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return;}const s=document.createElement('script');s.src='vendor/xlsx.full.min.js?v=0.20.3';s.dataset.bidashXlsx='1';s.onload=resolve;s.onerror=()=>reject(new Error('Excel-lezer kon niet worden geladen.'));document.head.appendChild(s);});
   if(!globalThis.XLSX)throw new Error('Excel-lezer is niet beschikbaar.');return globalThis.XLSX;
 }
 

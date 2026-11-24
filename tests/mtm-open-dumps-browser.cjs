@@ -1,6 +1,6 @@
 /* Echte maproute, overdracht en opslag. Alle bronregels zijn synthetisch. */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 (async()=>{
  const root=path.join(__dirname,'../site'),fixture=path.join(__dirname,'../.browser-test/open-dumps');fs.rmSync(fixture,{recursive:true,force:true});
  function dump(day,ids,extra=''){

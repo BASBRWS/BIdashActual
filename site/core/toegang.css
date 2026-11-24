@@ -1,0 +1,17 @@
+/* 2.99: inlogscherm en wachtwoordbeheer (core/toegang.js). */
+.tg-scherm{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:16px;background:rgba(10,24,40,.82);backdrop-filter:blur(6px);font-family:inherit}
+.tg-kaart{width:min(420px,100%);background:#fff;color:#14202e;border-radius:14px;padding:28px 26px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.tg-merk{width:44px;height:44px;border-radius:10px;background:#154273;color:#fff;display:grid;place-items:center;font-weight:700;font-size:22px;margin-bottom:12px}
+.tg-kaart h1{font-size:15px;margin:0 0 4px;color:#4a5a6b;font-weight:600}
+.tg-kaart h2{font-size:21px;margin:6px 0 8px}
+.tg-uitleg{font-size:14px;line-height:1.5;color:#3b4a5a;margin:0 0 16px}
+.tg-form{display:grid;gap:12px}
+.tg-veld{display:grid;gap:5px;font-size:13px;font-weight:600;color:#26364a}
+.tg-veld input{font:inherit;font-size:15px;padding:10px 12px;border:1px solid #9aa8b8;border-radius:8px;width:100%;box-sizing:border-box;background:#fff;color:#14202e}
+.tg-veld input:focus{outline:3px solid #8fc1ef;outline-offset:1px;border-color:#154273}
+.tg-melding{min-height:1.2em;margin:0;font-size:13px;color:#a3241a}
+.tg-knop{font:inherit;font-size:15px;font-weight:600;padding:11px 14px;border:0;border-radius:8px;background:#154273;color:#fff;cursor:pointer}
+.tg-knop:disabled{opacity:.6;cursor:wait}
+.tg-knop.tg-gevaar{background:#a3241a}
+.tg-link{font:inherit;font-size:13px;background:none;border:0;color:#154273;text-decoration:underline;cursor:pointer;justify-self:start;padding:2px 0}
+@media (prefers-color-scheme:dark){.tg-kaart{background:#16212e;color:#e6edf5}.tg-kaart h1,.tg-uitleg{color:#b4c2d2}.tg-veld{color:#d3dde8}.tg-veld input{background:#0f1822;color:#e6edf5;border-color:#4a5c70}.tg-melding{color:#ff8d82}.tg-link{color:#8fc1ef}}

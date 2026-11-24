@@ -1,7 +1,8 @@
 import './core/dvm-compact.js';
 import './core/signaalgever-import.js?v=20261103-1400';
-import {createWorkspaceStorage} from './core/storage.js?v=20261103-1400';
-import {BIDASH_VERSIE} from './core/versie.js?v=20261124-1600';
+import {createWorkspaceStorage} from './core/storage.js?v=20261124-1700';
+import {vraagToegang} from './core/toegang.js?v=20261124-1700';
+import {BIDASH_VERSIE} from './core/versie.js?v=20261124-1700';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);
 const storage=createWorkspaceStorage(globalThis.BIDASH_ACTUAL?'bidash-actual-signaalgever-importer':'bidash-signaalgever-importer');
 let stands={},busy=false,cancelled=false,H,frame;
@@ -83,6 +84,7 @@ try{
   const iframe=$('runtime');
   await new Promise((resolve,reject)=>{const deadline=setTimeout(()=>reject(Error('De MTM-verwerking kon niet worden gestart. Herlaad de pagina.')),30000);const ready=()=>{if(iframe.contentWindow?.__BIDASH_STORINGSBUNDELAAR__&&iframe.contentWindow?.DVM_INCIDENT_LIFECYCLE&&iframe.contentWindow?.DVM_MTM_BSS&&iframe.contentWindow?.DVM_MTM_OPEN_DUMPS){clearTimeout(deadline);resolve();}};iframe.addEventListener('load',ready,{once:true});ready();});
   frame=iframe.contentWindow;H=frame.__BIDASH_STORINGSBUNDELAAR__;
+  await vraagToegang({titel:'Signaalgever-importer',databases:['bidash-actual','bidash-planning','bidash-actual-signaalgever-importer']});
   const saved=await storage.read();if(saved&&saved.schema!==1)throw Error('Onbekende opslagversie van de importer.');
   stands=Object.fromEntries(Object.entries(saved?.stands||{}).filter(([v])=>C.vcs.includes(v)).map(([v,s])=>[v,C.retain(s)]));
   render();status('Gereed. Kies een verkeerscentrale en daarna de bronmap.');

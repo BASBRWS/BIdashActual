@@ -1,7 +1,7 @@
 /* Synthetische openbare bron. Een expliciete lokale NDW_REAL_CACHE-proef leest
    een al opgehaalde openbare kopie. Geen gebruikersgegevens of bronextracten. */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),zlib=require('node:zlib'),crypto=require('node:crypto');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const site=path.join(__dirname,'../site'),SOURCE='https://opendata.ndw.nu/snelheden_en_intensiteiten_meetgegevens_en_configuratie_meetlocaties.xml.gz';
 const pub=new Date(Date.now()-60000).toISOString();
 const xml='<mc:messageContainer xmlns:mc="urn:synthetic:container" xmlns:com="urn:synthetic:common" xmlns:roa="urn:synthetic:road" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><mc:payload xsi:type="roa:MeasurementSiteTablePublication"><com:publicationTime>'+pub+'</com:publicationTime><roa:measurementSite id="S" version="1"><roa:measurementSiteName><com:value>A15 km 25.000 Re</com:value></roa:measurementSiteName><roa:measurementSpecificCharacteristics index="1"><roa:specificMeasurementValueType>trafficFlow</roa:specificMeasurementValueType><roa:specificLane>lane1</roa:specificLane><roa:vehicleType>anyVehicle</roa:vehicleType></roa:measurementSpecificCharacteristics></roa:measurementSite></mc:payload><mc:payload xsi:type="roa:MeasuredDataPublication"><com:publicationTime>'+pub+'</com:publicationTime><roa:siteMeasurements><roa:measurementSiteReference id="S" version="1"/><roa:measurementTimeDefault>'+pub+'</roa:measurementTimeDefault><roa:physicalQuantity index="1"><roa:vehicleFlowRate>900</roa:vehicleFlowRate></roa:physicalQuantity></roa:siteMeasurements></mc:payload></mc:messageContainer>';

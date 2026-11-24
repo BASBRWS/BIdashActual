@@ -2,7 +2,7 @@
    via de echte knoppen, met zichtbare bezig-melding, binnen een tijdsbudget en met
    exact dezelfde koppeluitkomst als een volledige scan. Geen operationele bronnen. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const N=Number(process.env.ASSETCONFIG_ASSETS||12000),F=Number(process.env.ASSETCONFIG_MELDINGEN||9000);
 (async()=>{
  const root=path.join(__dirname,'../site'),server=http.createServer((req,res)=>{try{const url=new URL(req.url,'http://localhost');let p=path.join(root,url.pathname);if(p.endsWith('/'))p+='index.html';res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(p));}catch{res.statusCode=404;res.end();}});

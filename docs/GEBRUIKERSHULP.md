@@ -18,6 +18,14 @@ Onderin de navigatie staat hetzelfde nummer als `Integratie 2.28`. Noem dat numm
 bij een melding over een verschil in uitkomsten; zonder versie is een uitkomst niet
 terug te vinden.
 
+## Inloggen en je gegevens beveiligen, vanaf 2.99
+
+De eerste keer stel je een wachtwoord in van minstens 12 tekens. Daarna vraagt het dashboard bij elk bezoek om dat wachtwoord. Je gegevens blijven in je browser en zijn versleuteld met je wachtwoord.
+
+- **Vergrendelen:** met de knop 🔒 bovenin. Na 30 minuten zonder activiteit vergrendelt het dashboard ook vanzelf.
+- **Wachtwoord wijzigen:** op de pagina Data laden, onder Toegang en versleuteling.
+- **Wachtwoord vergeten:** je gegevens zijn dan niet terug te halen. Je kunt de werkruimte wissen en een export opnieuw laden. Maak daarom regelmatig een export en bewaar die op een beveiligde schijf, want exportbestanden zijn niet versleuteld.
+
 ## Welke regels worden gebruikt, vanaf 2.90
 
 Op **Regels & signalen → Impactregels** en **Organisatieregels** staat een * achter regels die BIdashActual niet volledig gebruikt.

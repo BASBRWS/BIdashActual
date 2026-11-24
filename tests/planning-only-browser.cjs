@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const ns='http://xmlns.oracle.com/Primavera/P6/V23.12/API/BusinessObjects';
 const msp=`<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><Title>Synthetische planning</Title><Tasks><Task><UID>1</UID><ID>1</ID><Name>Testproject</Name><OutlineLevel>1</OutlineLevel><Summary>1</Summary></Task><Task><UID>2</UID><ID>2</ID><Name>Testtaak</Name><OutlineLevel>2</OutlineLevel><Start>2030-01-15T08:00:00</Start><Finish>2030-02-15T17:00:00</Finish><Summary>0</Summary><Milestone>0</Milestone></Task></Tasks></Project>`;
 const p6=`<?xml version="1.0"?><APIBusinessObjects xmlns="${ns}"><Project><ObjectId>1</ObjectId><Name>Synthetisch P6-project</Name><WBS><ObjectId>10</ObjectId><Name>Testgroep</Name></WBS><Activity><ObjectId>2</ObjectId><Id>A2</Id><Name>Testtaak</Name><WBSObjectId>10</WBSObjectId><StartDate>2030-01-15T08:00:00</StartDate><FinishDate>2030-02-15T17:00:00</FinishDate><Type>Task Dependent</Type></Activity></Project></APIBusinessObjects>`;
