@@ -124,7 +124,9 @@ export function rapportModel({overzicht=null,opFormatie=null,meldingen=[],signal
   const gevolgen=(op?.perVc||[]).filter(v=>v.ingenieur&&(!vc||v.vc===vc));
   const po=m.planOverzicht;
   const sig=signalen.slice().sort((a,b)=>sevRang(a.sev)-sevRang(b.sev));
-  return {s,vc,nu,peildatum:m.peildatum,open:melding.length,onzeker:melding.filter(f=>f.levenscyclus_status&&f.levenscyclus_status!=='OPEN_BEVESTIGD').length,
+  /* Zonder storingsbron is het aantal storingen onbekend, niet nul. */
+  const heeftBron=!!m.heeftDvm;
+  return {s,vc,nu,heeftBron,peildatum:m.peildatum,open:heeftBron?melding.length:null,onzeker:melding.filter(f=>f.levenscyclus_status&&f.levenscyclus_status!=='OPEN_BEVESTIGD').length,
     nietDoorgerekend:vc?melding.filter(f=>(f.rekenStatus||'Doorgerekend')!=='Doorgerekend').length:m.nietDoorgerekend,
     typen:[...perType].map(([k,r])=>({id:k,label:TYPE_TAAL[k],...r})).sort((a,b)=>b.n-a.n),vcsStoring:(m.vcs||[]).filter(x=>!vc||x.vc===vc),
     verloop,recent,vorige,diensten,net,laagste,roads,kosten,kostenBekend:vc?roads.length:m.kostenBekend,kostenTotaal:m.kostenTotaal,
@@ -145,7 +147,7 @@ function themaStatus(r){
   const d=r.diensten,onder=d.filter(x=>x.oordeel==='onder').length,onzeker=d.filter(x=>x.oordeel==='onzeker'||x.oordeel==='onbekend').length;
   const tekortVc=r.vcs.filter(v=>v.tekortRollen||v.bezettingTekort).length;
   return [
-    {thema:'Storingen',status:!r.open&&r.open!==0?'onbekend':r.recent>r.vorige*1.2?'ernstig':r.recent>r.vorige?'let':'goed',duiding:r.verloop.length?`${meervoud(r.open,'installatie','installaties')} verstoord; ${r.recent>r.vorige?'meer':'minder of evenveel'} nieuwe storingen dan een week eerder.`:`${meervoud(r.open,'installatie','installaties')} verstoord.`},
+    {thema:'Storingen',status:!r.heeftBron?'onbekend':r.recent>r.vorige*1.2?'ernstig':r.recent>r.vorige?'let':'goed',duiding:!r.heeftBron?'Nog geen storingsbron geladen.':r.verloop.length?`${meervoud(r.open,'installatie','installaties')} verstoord; ${r.recent>r.vorige?'meer':'minder of evenveel'} nieuwe storingen dan een week eerder.`:`${meervoud(r.open,'installatie','installaties')} verstoord.`},
     {thema:'Dienstverlening',status:!d.length?'onbekend':onder>=2?'kritiek':onder===1?'ernstig':onzeker?'let':'goed',duiding:d.length?`${g(d.length-onder-onzeker)} van ${g(d.length)} diensten aantoonbaar op niveau; ${g(onder)} onder de afgesproken norm${onzeker?`, ${g(onzeker)} nog onzeker`:''}.`:'Nog geen storingsbron geladen.'},
     {thema:'Netwerk',status:!r.net?'onbekend':r.net.onderNorm>r.net.geraakt/2?'ernstig':r.net.onderNorm?'let':'goed',duiding:r.net?`${meervoud(r.net.geraakt,'wegvak','wegvakken')} geraakt, waarvan ${g(r.net.onderNorm)} onder de norm. Maatschappelijke kosten ${euro(r.kosten)} per dag.`:'Nog niet bekend.'},
     {thema:'Werkzaamheden',status:!r.wi?.geladen?'onbekend':r.wi.hoog?'kritiek':r.wi.metInleidend?'ernstig':'goed',duiding:r.wi?.geladen?`${meervoud(r.wi.werken,'werk','werken')} gepland; bij ${g(r.wi.metInleidend)} is de beveiliging vooraf onzeker.`:'Geen werkzaamheden geladen.'},
@@ -157,14 +159,15 @@ function themaStatus(r){
 function hfdSamenvatting(r,nr){
   const th=themaStatus(r),kern=[];
   const onder=r.diensten.filter(d=>d.oordeel==='onder');
-  kern.push(`Op dit moment ${r.open===1?'is':'zijn'} <b>${meervoud(r.open,'installatie','installaties')}</b> langs de weg verstoord${r.vc?` in het gebied van verkeerscentrale ${esc(r.vc)}`:''}. ${r.verloop.length?(r.recent>r.vorige?`Het aantal nieuwe storingen is de afgelopen week gestegen (${g(r.recent)} tegen ${g(r.vorige)} de week ervoor).`:`Het aantal nieuwe storingen is de afgelopen week niet gestegen (${g(r.recent)} tegen ${g(r.vorige)}).`):''}`);
+  if(!r.heeftBron)kern.push('Er is nog geen storingsbron geladen. Daardoor is nog niet bekend hoeveel installaties verstoord zijn en wat dat betekent voor de dienstverlening. Laad de actuele storingen en stel het rapport opnieuw op.');
+  else kern.push(`Op dit moment ${r.open===1?'is':'zijn'} <b>${meervoud(r.open,'installatie','installaties')}</b> langs de weg verstoord${r.vc?` in het gebied van verkeerscentrale ${esc(r.vc)}`:''}. ${r.verloop.length?(r.recent>r.vorige?`Het aantal nieuwe storingen is de afgelopen week gestegen (${g(r.recent)} tegen ${g(r.vorige)} de week ervoor).`:`Het aantal nieuwe storingen is de afgelopen week niet gestegen (${g(r.recent)} tegen ${g(r.vorige)}).`):''}`);
   if(r.diensten.length)kern.push(onder.length?`<b>${onder.map(d=>esc(d.naam)).join(' en ')}</b> ${onder.length===1?'haalt':'halen'} het afgesproken niveau niet. Dat betekent dat weggebruikers daar merkbaar minder ondersteuning krijgen dan we beloven.`:`Alle diensten met een betrouwbare meting halen het afgesproken niveau.`);
   if(r.wi?.geladen&&r.wi.metInleidend)kern.push(`Bij <b>${meervoud(r.wi.metInleidend,'gepland werk','geplande werken')}</b> zijn de borden die het werkvak moeten afschermen deels verstoord. Zonder herstel of aanpassing kan het werk niet veilig worden opgestart.`);
   const tekort=r.vcs.filter(v=>v.tekortRollen||v.bezettingTekort);
   if(r.vcs.length)kern.push(tekort.length?`De storingsdruk vraagt meer mensen dan beschikbaar bij <b>${tekort.map(v=>'VC '+esc(v.vc)).join(', ')}</b>. Samen is circa <b>${g(r.op?.extraTotaal,1)} FTE</b> extra inzet nodig.`:`De bezetting is voldoende voor de huidige storingsdruk.`);
   if(Number.isFinite(r.kosten))kern.push(`De vertraging die storingen veroorzaken kost de samenleving naar schatting <b>${euro(r.kosten)} per dag</b>.`);
   const schema=r.s.schemas?figuur(`${nr}.1`,'Van storing tot gevolg: hoe uitval doorwerkt in dienstverlening, uitvoerbaarheid en kosten',keten([
-    {titel:'Storingen',waarde:g(r.open),sub:'installaties verstoord',status:th[0].status},
+    {titel:'Storingen',waarde:r.heeftBron?g(r.open):'–',sub:'installaties verstoord',status:th[0].status},
     {titel:'Wegvakken',waarde:r.net?g(r.net.onderNorm):'–',sub:'onder de norm',status:th[2].status},
     {titel:'Diensten',waarde:r.diensten.length?`${g(onder.length)} van ${g(r.diensten.length)}`:'–',sub:'onder de norm',status:th[1].status},
     {titel:'Werken',waarde:r.wi?.geladen?g(r.wi.metInleidend):'–',sub:'beveiliging onzeker',status:th[3].status},
@@ -174,6 +177,7 @@ function hfdSamenvatting(r,nr){
   return `<p class="rap-lead">Deze rapportage geeft het management in één oogopslag zicht op de stand van het wegverkeersmanagement: wat er verstoord is, wat dat betekent voor de weggebruiker en de organisatie, en waar een besluit nodig is.</p>${kader('kern','Kernboodschappen',kern)}${schema}${st}`;
 }
 function hfdStoringen(r,nr){
+  if(!r.heeftBron)return p('Er is nog geen storingsbron geladen. Zodra de actuele storingen zijn ingelezen, toont dit hoofdstuk hoeveel installaties verstoord zijn, waar, en hoe dat zich ontwikkelt.');
   const top=r.typen[0],vcTop=r.vcsStoring.slice().sort((a,b)=>b.n-a.n)[0];
   const tekst=[`Langs de weg staan duizenden installaties die het verkeer meten, waarschuwen en informeren. Valt zo’n installatie uit, dan spreken we van een storing. Op dit moment ${r.open===1?'is':'zijn'} er ${meervoud(r.open,'storing','storingen')} open${top?`; de meeste betreffen ${esc(top.label)} (${g(top.n)})`:''}.`,
     vcTop&&!r.vc?`Verkeerscentrale <b>${esc(vcTop.vc)}</b> heeft de meeste open storingen (${g(vcTop.n)}). Dat zegt nog niet alles over de gevolgen: één storing op een druk knooppunt weegt zwaarder dan meerdere op een rustig traject. De hoofdstukken over dienstverlening en netwerk gaan daarop in.`:'',

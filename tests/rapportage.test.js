@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RAPPORT_ONDERDELEN,standaardRapportInstelling,rapportModel,rapportHtml,rapportBuilderHtml,schoneTaal} from '../site/core/rapportage.js';
 
-const overzicht={peildatum:Date.parse('2026-11-24T08:00:00Z'),verloop:Array.from({length:30},(_,i)=>({dag:`2026-11-${String(i<6?24-6+i:i-5).padStart(2,'0')}`,nieuw:i<23?5:9})),
+const overzicht={heeftDvm:true,peildatum:Date.parse('2026-11-24T08:00:00Z'),verloop:Array.from({length:30},(_,i)=>({dag:`2026-11-${String(i<6?24-6+i:i-5).padStart(2,'0')}`,nieuw:i<23?5:9})),
   diensten:[{id:'im',naam:'Incidentmanagement',norm:99,besch:98.6,oordeel:'onder'},{id:'vm',naam:'Verkeersmanagement',norm:99,besch:99.3,oordeel:'binnen'},{id:'rri',naam:'Reis- en netwerksturing',norm:98,lo:97,hi:99,oordeel:'onzeker'},{id:'wiu',naam:'Werk in Uitvoering',norm:98,besch:98.4,oordeel:'binnen'}],
   netwerk:{soort:'netwerkschakels',totaal:20,geraakt:12,onderNorm:5,norm:99.5,laagste:[{key:'A15 Vaanplein – Ridderkerk',vc:'ZWN',besch:91.2,n:6},{key:'A12 Oudenrijn – Lunetten',vc:'MN',besch:95,n:3}]},
   kosten:250000,kostenBekend:18,kostenTotaal:20,vcs:[{vc:'ZWN',n:30},{vc:'MN',n:12}],dekking:1,nietDoorgerekend:2,
@@ -37,6 +37,7 @@ test('zonder bronnen: eerlijk "nog niet bekend", geen verzonnen nul',()=>{
   const h=rapportHtml(rapportModel({},standaardRapportInstelling()));
   assert.doesNotMatch(h,/NaN|undefined/);assert.match(h,/Nog niet bekend/);assert.match(h,/nog geen storingsbron geladen/i);
   assert.match(h,/Er zijn nog geen geplande werkzaamheden geladen/);
+  assert.doesNotMatch(h,/0 installaties/,'zonder bron geen verzonnen nul');assert.match(h,/Er is nog geen storingsbron geladen/);
 });
 test('schone taal en builder',()=>{
   assert.equal(schoneTaal('Norm 99,5% (kpi.asset_beschikbaarheid.msi) · actueel 96,60% · locatie Landelijk (weging ×1,0) · CMDB DVM.'),'Norm 99,5% · actueel 96,60%');

@@ -1,7 +1,8 @@
 import '../core/load-progress.js';
 
 const ALL_GROUPS=[
- {id:'overview',label:'Overzicht',icon:'◈',desc:'Dagstand van de operatie, bronactualiteit, dienstverlening en capaciteit.',items:[['overview','Integraal overzicht','native','overview'],['report','Managementrapportage','native','report']]},
+ {id:'overview',label:'Overzicht',icon:'◈',desc:'Dagstand van de operatie, bronactualiteit, dienstverlening en capaciteit.',items:[['overview','Integraal overzicht','native','overview']]},
+ {id:'report',label:'Rapportage',icon:'✎',desc:'Managementrapportage in gewone taal, met grafieken, tabellen en schema’s, om af te drukken of te delen.',items:[['report','Managementrapportage','native','report']]},
  {id:'assets',label:'Assetmanagement',icon:'▦',desc:'Eén register, open storingen en de gevolgen op de weg.',items:[['assets','Assetregister','native','assets'],['faults','Open storingen','native','faults'],['roads','Netwerkschakels','dvm','wegdelen'],['signalForecast','Signaalgeverprognose & WIS','dvm','prognose'],['lifecycle','Levensduur & DRIP','dvm','drips'],['chains','Bedienketens','bi','am']]},
  {id:'services',label:'Dienstverlening',icon:'◎',desc:'Van assetuitval naar dienstverlening, verkeerskosten en verantwoording.',items:[['services','Dienstimpact','dvm','overzicht'],['costs','Verkeerskosten','native','costs'],['area','Gebied & knelpunten','dvm','gebied'],['region','Regio','dvm','rapport'],['calculation','Rekenverslag','dvm','berekening'],['memos','Memo’s & verdieping','dvm','wegdeelverslag']]},
  {id:'planning',label:'Planning',icon:'▤',desc:'Tijdlijn, afhankelijkheden en capaciteit uit jouw plannings-XML.',items:[['planning','Tijdlijn','planning','s16'],['planningDash','Planningsdashboard','planning','s11'],['planningBudget','Project & budget','planning','s17'],['planningViews','Dashboardbeheer','planning','s19']]},
