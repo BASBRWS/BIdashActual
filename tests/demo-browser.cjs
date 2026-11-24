@@ -37,6 +37,13 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
     assert.match(await demo.locator('#opGevolgen').innerText(),/Voor afrit/);
     await demo.evaluate(()=>{location.hash='#quality';});
     await demo.waitForFunction(()=>!/Nog geen kwaliteitsaudit/.test(document.getElementById('quality')?.innerText||'Nog geen kwaliteitsaudit'));
+    // 2b. Inhoudelijk ingevuld: wind- en RIA4-lijsten, planningtriggers en expertduidingen.
+    const special=await dvm.evaluate(()=>{const e=getDripSpecialListsExport();return [e.wind.identifiers.length,e.ria4.identifiers.length,(ASSET_REGISTER_STATE.assets||[]).filter(a=>a.specialWind).length];});
+    assert.deepEqual(special,[6,4,6],'referentielijst gekoppeld aan precies de DRIP-codes');
+    const plan=page.frames().find(f=>f.parentFrame()===demo&&/engines\/planning\.html/.test(f.url()));
+    assert.equal(await plan.evaluate(()=>Object.keys(TRIGGERS).length),4);
+    await demo.evaluate(()=>{location.hash='#expertInput';});
+    await demo.waitForFunction(()=>/23 van 23 verplichte antwoorden/.test(document.getElementById('expertInput')?.innerText||''));
     // 3. De eigen werkruimte is niet aangeraakt.
     await page.locator('#demoSluit').click();await page.locator('#demoDialog').waitFor({state:'hidden'});
     assert.match(await page.locator('#cards').innerText(),/Open storingen\s*Onbekend/);

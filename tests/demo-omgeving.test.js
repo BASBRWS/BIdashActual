@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
-import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte,DEMO_NETWERK} from '../site/core/demo-omgeving.js';
+import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte,DEMO_NETWERK,demoTriggers} from '../site/core/demo-omgeving.js';
+import {expertReviewCompletion,validateServiceExpertReview} from '../site/core/service-expert-input.js';
 
 const nu=Date.parse('2026-11-24T09:00:00Z');
 test('demo is deterministisch en volgt de datum van vandaag',()=>{
@@ -12,7 +13,7 @@ test('demo is deterministisch en volgt de datum van vandaag',()=>{
   assert.equal(JSON.stringify(a.dvm.liveStoringen),JSON.stringify(b.dvm.liveStoringen));
   const later=maakDemoWerkruimte(nu+7*864e5);
   assert.equal(later.dvm.liveStoringen[0].peildatum-a.dvm.liveStoringen[0].peildatum,7*864e5);
-  assert.equal(DEMO_VERSIE,'1');
+  assert.equal(DEMO_VERSIE,'2');
 });
 test('alle onderdelen zijn gevuld',()=>{
   const d=maakDemoWerkruimte(nu),t=d.telling;
@@ -27,6 +28,8 @@ test('alle onderdelen zijn gevuld',()=>{
   assert.match(d.planning.xml,/Contractvoorbereiding/);assert.match(d.planning.xml,/<Milestone>1<\/Milestone>/);
   assert.equal(d.opFormatie.methode,'ingenieursbureau');assert.equal(d.opFormatie.vcs.ZWN.wvl.uitgangspunt,70);
   assert.equal(d.links.length,4);
+  assert.equal(d.expertReviews.length,4);assert.deepEqual(d.expertReviews.map(r=>r.status),['vastgesteld','ter_beoordeling','ter_beoordeling','concept']);
+  assert.match(d.dripReferentieCsv,/^DRIP,Windwaarschuwing,RIA4\n/);assert.equal(d.dripReferentieCsv.split('\n').length,11);
   assert.deepEqual(Object.keys(DEMO_PLANNING_FTE),['GPO','CIV','VWM','PPO','Regio']);
   assert.ok(demoTaakFte('Contractvoorbereiding: uitvoeren').some(x=>x.dienst==='GPO'));
 });
@@ -48,4 +51,11 @@ test('demomodus: eigen opslag in een venster met ?demo=1, ook voor geneste engin
   for(const w of [echt,demo,engine,echtEngine])w.globalThis=w;
   assert.equal(run(echt).workspace,'bidash-actual');assert.equal(run(demo).workspace,'bidash-demo');
   assert.equal(run(engine).demo,true,'engine in de demo erft de demomodus');assert.equal(run(echtEngine).demo,false);
+});
+test('expertduidingen zijn volledig en triggers geldig',()=>{
+  const d=maakDemoWerkruimte(nu);
+  for(const r of d.expertReviews){assert.equal(expertReviewCompletion(r).percentage,100,r.dienstId);assert.deepEqual(validateServiceExpertReview(r).filter(f=>!/subproces|dienstnorm/i.test(f)),[],r.dienstId);}
+  assert.ok(d.expertReviews[0].validatie.akkoordNaam&&d.expertReviews[0].validatie.akkoordDatum,'vastgesteld heeft een akkoord');
+  const t=demoTriggers(nu).triggers;assert.equal(Object.keys(t).length,4);
+  for(const x of Object.values(t)){assert.ok(['rood','oranje'].includes(x.klasse)&&x.naam&&x.oorzaak&&x.besluitopties.length&&x.diensten.length&&x.deadline);}
 });

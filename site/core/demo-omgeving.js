@@ -10,7 +10,7 @@
    deterministisch (vaste startwaarde), alleen de datums volgen 'nu'. De demo draait in
    een eigen opslag (zie core/actual-profile.js, ?demo=1) en raakt de echte werkruimte niet. */
 
-export const DEMO_VERSIE='1';
+export const DEMO_VERSIE='2';
 /* Beschikbare FTE per dienst voor de planning (Dashboardbeheer); geen standaardwaarden,
    zodat de formatietoets tekorten kan tonen. */
 export const DEMO_PLANNING_FTE={GPO:9,CIV:6,VWM:8,PPO:4,Regio:3};
@@ -81,7 +81,8 @@ export function maakDemoWerkruimte(nu=Date.now()){
   // Bestuurlijke context en contract per asset (regionale dienst, district, aannemer).
   for(const a of assets){const [rdNaam,districten,contract,aannemer]=ORGANISATIE[a.regio],tp=a.asset.slice(0,3)==='MSI'?'MSI':a.asset.slice(0,3)==='LUS'?'LUS':a.asset.slice(0,3)==='CAM'?'CAM':'DRIP';
     a['regionale dienst']=rdNaam;a.district=districten[Number(a.wegnummer)%2];a.contract=contract;a.aannemer=aannemer;a.leverancier=LEVERANCIER[tp];}
-  drip.slice(0,6).forEach(x=>{x.a.windwaarschuwing='ja';});drip.slice(6,10).forEach(x=>{x.a.ria4='ja';});
+  // Referentie-DRIP's verspreid over de VC's: zes voor windwaarschuwing, vier voor RIA4.
+  const refDrips=drip.filter((_,i)=>i%9===0).slice(0,10);
   /* Storingen. Per VC een verschillend beeld: ZWN en NWN zwaar belast (een paar
      schakels ver onder de norm), MN en ZN gemiddeld, NON rustig. Een deel staat
      bewust vóór afritten en toeritten, zodat de locatieweging zichtbaar is. */
@@ -212,6 +213,75 @@ export function maakDemoWerkruimte(nu=Date.now()){
 
   // Dienstkoppelingen: welke DVM-dienst bij welke bedrijfsfunctie hoort, met eigenaar.
   const links=[{dienst:'vm',functie:'f-sturen',eigenaar:'Afdelingshoofd verkeersmanagement'},{dienst:'im',functie:'f-im',eigenaar:'Coördinator incidentmanagement'},{dienst:'rri',functie:'f-reis',eigenaar:'Teamleider reis- en netwerksturing'},{dienst:'wiu',functie:'f-wiu',eigenaar:'Coördinator werk in uitvoering'}];
-  return {dvm,bi,links,planning:{name:'demo-planning.xml',xml,state:null},opFormatie,
+  // Referentielijst wind- en RIA4-DRIP's, zoals een aangeleverd Excel- of CSV-bestand.
+  // Alleen de DRIP-code: een locatiekolom zou ook signaalgevers op dezelfde plek koppelen.
+  const dripReferentieCsv=['DRIP,Windwaarschuwing,RIA4',...refDrips.map((x,i)=>`${x.code},${i<6?'ja':'nee'},${i>=6?'ja':'nee'}`)].join('\n');
+  return {dvm,bi,links,dripReferentieCsv,expertReviews:demoExpertReviews(nu),planning:{name:'demo-planning.xml',xml,state:null},opFormatie,
     telling:{dripIncidenten:dripInc.length,dripOpen:dripInc.filter(x=>x.einde==null).length,assets:assets.length,msi:msi.length,lus:lus.length,cam:cam.length,drip:drip.length,open:live.length,historie:hist.length,schakels:schakels.length,werk:werk.length,uRoutes:uRoutes.length}};
+}
+
+/* Fictieve expertduidingen per dienst (2.96). Alle verplichte velden zijn ingevuld,
+   met relaties, regel- en signaalvoorstellen. Eén is vastgesteld, twee staan ter
+   beoordeling, één is nog concept. Namen en organisaties zijn verzonnen. */
+export function demoExpertReviews(nu=Date.now()){
+  const iso=new Date(nu).toISOString(),datum=new Date(nu-6*864e5).toISOString().slice(0,10);
+  const basis=(dienstId,dienstNaam,status,expert,context,proces,impact,meting,validatie,extra)=>({schema:3,dienstId,dienstNaam,status,expert,context,proces,
+    afhankelijkheden:extra.afh,impact,meting,validatie,toelichtingen:extra.toelichtingen||{},modelWijziging:{norm:'',subprocessen:[],test:null,toepassing:null},
+    relaties:extra.relaties,regelVoorstellen:extra.regels,signaalVoorstellen:extra.signalen,bijgewerktOp:iso});
+  return [
+    basis('im','Incidentmanagement','vastgesteld',{naam:'Anouk de Vries',rol:'Proces- of diensteigenaar',organisatie:'Team Incidentmanagement, VC ZWN'},
+      {doel:'Veiligheid bewaken',resultaat:'Incident of verstoring afgehandeld',gebruikers:'Meerdere groepen',scope:'Regio of verkeerscentrale',buitenScope:'Bergingsbedrijven en hulpdiensten vallen buiten de dienst, wel de afstemming ermee.'},
+      {start:'Meerdere soorten startmomenten',stappen:'Ja, de lijst is compleet',beslismomenten:'Door een combinatie van regel en beoordeling',overdrachten:'Zowel intern als extern',einde:'Situatie is weer veilig'},
+      {faalwijzen:'Meerdere oorzaken',veiligheid:'Dienst wordt trager',informatie:'Zonder camerabeeld duurt verificatie gemiddeld 4 minuten langer.',alternatief:'Ja, maar met beperkingen',herstel:'Door een combinatie',escalatie:'Bij een combinatie van tijd en impact'},
+      {normDuiding:'Ja',meetwijze:'Reactietijd',meetvenster:'Per maand',bron:'Combinatie van bronnen',onzekerheid:'Voldoende compleet'},
+      {bewijs:'Evaluatie incidentafhandeling 2025, 312 incidenten.',aannames:'Camera’s binnen 2 km van het incident zijn bruikbaar voor verificatie.',openVragen:'Rol van de weginspecteur bij nachtelijke incidenten.',vertrouwen:'4',akkoordNaam:'Rik Jansen',akkoordDatum:datum},
+      {afh:{assets:'Camera’s en signaalgevers',informatie:'Meldingen 112 en NDW-verstoringen',functies:'Bediening en weginspectie',extern:'Politie, brandweer, berging',bovenstrooms:'Detectie van stilstand',benedenstrooms:'Reis- en netwerksturing'},
+       relaties:[{bron:'camera',relatie:'Verificatie van het incident',doel:'Incidentmanagement',kritiek:'Hoog',duiding:'Zonder beeld geen snelle verificatie',bewijs:'Evaluatie 2025'}],
+       regels:[{als:'Camera binnen 2 km van een incident in storing',dan:'Verificatietijd + 4 minuten',maatstaf:'Minuten',gewicht:'0,8',uitzondering:'Bij melding door weginspecteur ter plaatse',eigenaar:'Team Incidentmanagement',bewijs:'Evaluatie 2025'}],
+       signalen:[{voorwaarde:'Twee of meer camera’s in storing op één corridor',ernst:'Hoog',actie:'Weginspecteur preventief positioneren',eigenaar:'Coördinerend wegverkeersleider',responstijd:'30 minuten',escalatie:'Officier van dienst'}]}),
+    basis('vm','Verkeersmanagement (sturen & geleiden)','ter_beoordeling',{naam:'Bas Hendriks',rol:'Uitvoerend expert',organisatie:'Verkeerscentrale Midden-Nederland'},
+      {doel:'Doorstroming herstellen',resultaat:'Verkeer kan doorrijden',gebruikers:'Weggebruiker',scope:'Corridor of weg',buitenScope:'Onderliggend wegennet.'},
+      {start:'Waarneming vanuit de verkeerscentrale',stappen:'Nee, er ontbreekt één subproces',beslismomenten:'Met een vaste beslisregel',overdrachten:'Overdracht binnen RWS',einde:'Verkeer stroomt weer normaal'},
+      {faalwijzen:'Techniek of asset valt uit',veiligheid:'Dienst is deels niet beschikbaar',informatie:'Uitval van signaalgevers vóór een afrit raakt vooral de filestaartbeveiliging.',alternatief:'Nee',herstel:'Door een externe partij',escalatie:'Direct bij uitval'},
+      {normDuiding:'Deels',meetwijze:'Beschikbaarheid',meetvenster:'Per dag',bron:'Systeemmeting',onzekerheid:'Deels compleet'},
+      {bewijs:'MTM-logging en storingshistorie van het afgelopen jaar.',aannames:'Opvolgende portalen kunnen een uitgevallen portaal deels compenseren.',openVragen:'Subproces toeritdosering ontbreekt nog in het model.',vertrouwen:'3',akkoordNaam:'',akkoordDatum:''},
+      {afh:{assets:'Signaalgevers en detectielussen',informatie:'Intensiteiten uit NDW',functies:'Wegverkeersleiders',extern:'Aannemer signalering',bovenstrooms:'Detectie',benedenstrooms:'Werk in uitvoering'},
+       relaties:[{bron:'signalering',relatie:'Filestaartbeveiliging',doel:'Verkeersmanagement',kritiek:'Hoog',duiding:'Portaal vóór afrit weegt zwaarder',bewijs:'Rapport ingenieursbureau'}],
+       regels:[{als:'Signaalgever vóór een afrit in storing',dan:'Gewicht 1,25 in de beschikbaarheid',maatstaf:'Relatieve weging',gewicht:'1,25',uitzondering:'Bij opvolgend portaal binnen 600 m',eigenaar:'Assetmanagement DVM',bewijs:'Rapport ingenieursbureau'}],
+       signalen:[{voorwaarde:'Schakel onder 98% beschikbaarheid',ernst:'Midden',actie:'Herstelopdracht met voorrang',eigenaar:'Assetmanager',responstijd:'1 werkdag',escalatie:'Afdelingshoofd'}]}),
+    basis('rri','Reis- en netwerksturing','ter_beoordeling',{naam:'Fatima El Amrani',rol:'Informatie- of dataspecialist',organisatie:'Team Reis- en netwerksturing'},
+      {doel:'Weggebruiker informeren',resultaat:'Juiste informatie beschikbaar',gebruikers:'Weggebruiker',scope:'Landelijk',buitenScope:'Navigatieaanbieders.'},
+      {start:'Automatische melding',stappen:'Ja, de lijst is compleet',beslismomenten:'Met een vaste beslisregel',overdrachten:'Overdracht naar een externe partij',einde:'Informatie is bijgewerkt'},
+      {faalwijzen:'Informatie ontbreekt of is onbetrouwbaar',veiligheid:'Kwaliteit wordt lager',informatie:'Een DRIP zonder actuele reistijd leidt tot verkeerde routekeuze.',alternatief:'Ja, maar met beperkingen',herstel:'Automatisch',escalatie:'Na een vaste tijd'},
+      {normDuiding:'Ja',meetwijze:'Kwaliteit van het resultaat',meetvenster:'Per week',bron:'Systeemmeting',onzekerheid:'Voldoende compleet'},
+      {bewijs:'Vergelijking DRIP-reistijden met gerealiseerde reistijden.',aannames:'NDW-meetvakken zijn representatief.',openVragen:'Invloed van windwaarschuwing-DRIP’s bij storm.',vertrouwen:'4',akkoordNaam:'',akkoordDatum:''},
+      {afh:{assets:'DRIP’s en detectie',informatie:'NDW-reistijden',functies:'Wegverkeersleiders',extern:'Serviceproviders',bovenstrooms:'Detectie',benedenstrooms:'Weggebruiker'},
+       relaties:[{bron:'drip',relatie:'Reistijdinformatie tonen',doel:'Reis- en netwerksturing',kritiek:'Midden',duiding:'Bij storing geen route-advies',bewijs:'Reistijdvergelijking'}],
+       regels:[{als:'Windwaarschuwing-DRIP in storing bij windkracht 7 of meer',dan:'Ernst verhogen naar hoog',maatstaf:'Ernstklasse',gewicht:'1,5',uitzondering:'Buiten het stormseizoen',eigenaar:'Team Reis- en netwerksturing',bewijs:'KNMI-waarschuwingen 2024'}],
+       signalen:[{voorwaarde:'RIA4-DRIP langer dan 24 uur in storing',ernst:'Hoog',actie:'Tekstwagen inzetten',eigenaar:'Coördinerend wegverkeersleider',responstijd:'4 uur',escalatie:'Officier van dienst'}]}),
+    basis('wiu','Werk in Uitvoering','concept',{naam:'Kees Bakker',rol:'Beheerder of assetexpert',organisatie:'District Zuid-Holland Zuid'},
+      {doel:'Operationele uitvoering ondersteunen',resultaat:'Maatregel correct uitgevoerd',gebruikers:'Weginspecteur',scope:'Locatie of asset',buitenScope:''},
+      {start:'Geplande activiteit',stappen:'Ja, de lijst is compleet',beslismomenten:'Door beoordeling van een medewerker',overdrachten:'Overdracht naar een externe partij',einde:'Maatregel is beëindigd en vastgelegd'},
+      {faalwijzen:'Techniek of asset valt uit',veiligheid:'Dienst is volledig niet beschikbaar',informatie:'Zonder werkende signaalgevers in de aanloop kan niet worden afgekruist.',alternatief:'Ja, maar met beperkingen',herstel:'Door handmatige actie',escalatie:'Direct bij uitval'},
+      {normDuiding:'Deels',meetwijze:'Tijdige afronding',meetvenster:'Per week',bron:'Procesregistratie',onzekerheid:'Deels compleet'},
+      {bewijs:'Registratie van afgeschaalde werkvakken.',aannames:'Mobiele afzetting is een volwaardig alternatief overdag.',openVragen:'Kosten van extra afzetting.',vertrouwen:'2',akkoordNaam:'',akkoordDatum:''},
+      {afh:{assets:'Signaalgevers en camera’s',informatie:'Werkzaamhedenplanning',functies:'Weginspectie',extern:'Aannemer verkeersmaatregelen',bovenstrooms:'Planning',benedenstrooms:'Verkeersmanagement'},
+       relaties:[],regels:[],signalen:[{voorwaarde:'Signaalgever in de aanloop van een geplande afsluiting in storing',ernst:'Hoog',actie:'Werk verplaatsen of mobiele afzetting',eigenaar:'Coördinator werk in uitvoering',responstijd:'1 werkdag',escalatie:'Officier van dienst'}]})
+  ];
+}
+
+/* Fictieve planningtriggers (2.96), in het formaat van docs/voorbeeld-triggers.json.
+   Triggers gelden per sessie en worden bij elke start van de demo geladen. */
+export function demoTriggers(nu=Date.now()){
+  const d=n=>new Date(nu+n*864e5).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+  return {triggers:{
+    'a15-gunning-schuift':{naam:'Gunning A15 signalering schuift 6 weken',klasse:'rood',urgentie:'ROOD',oorzaakcat:'Project schuift',oorzaak:'De aanbesteding van de A15-signalering vraagt een extra vragenronde. De gunning schuift zes weken en de sitetesten vallen daardoor in de wintermaanden.',
+      impact:{GPO:'Contractplanning en mijlpaal Gunning verschuiven',CIV:'Testcapaciteit in december en januari nodig',VWM:'Extra afkruisavonden in de spits rond Vaanplein'},besluitopties:['Sitetesten splitsen in twee fasen','Gunning versnellen met een onderhandelingsprocedure','Planning accepteren en extra VWM-capaciteit inhuren'],deadline:d(14),diensten:['GPO','CIV','VWM']},
+    'vwm-piek-april':{naam:'VWM-formatie piek in april',klasse:'rood',urgentie:'ROOD',oorzaakcat:'Capaciteit',oorzaak:'In april vallen de installatie op de A15 en de camera-upgrade op de A12 samen. De VWM-vraag komt boven de beschikbare formatie.',
+      impact:{VWM:'Ongeveer 5 FTE tekort gedurende 10 weken',Regio:'Minder ruimte voor omgevingsmanagement'},besluitopties:['Installatie A12 drie weken later','Tijdelijke inhuur operatie','Werkzaamheden in de nacht concentreren'],deadline:d(30),diensten:['VWM','Regio']},
+    'a28-drip-levering':{naam:'Levering DRIP-panelen A28 onzeker',klasse:'oranje',urgentie:'ORANJE',oorzaakcat:'Leverancier',oorzaak:'De leverancier meldt een mogelijke vertraging van drie weken voor de nieuwe DRIP-panelen.',
+      impact:{CIV:'Installatiewindow opnieuw plannen',PPO:'Oude panelen langer in onderhoud'},besluitopties:['Wachten op levering','Tijdelijk tekstwagens inzetten'],deadline:d(21),diensten:['CIV','PPO']},
+    'storingen-zwn':{naam:'Verhoogd storingsbeeld signaalgevers ZWN',klasse:'oranje',urgentie:'ORANJE',oorzaakcat:'Assetconditie',oorzaak:'Op de A15 tussen hm 0 en 7 zit de beschikbaarheid van de signaalgevers ruim onder de norm. Dit raakt geplande werkzaamheden in de aanloop.',
+      impact:{VWM:'Afkruisen onzeker bij geplande werkzaamheden',PPO:'Herstel met voorrang nodig'},besluitopties:['Herstelopdracht met voorrang','Werkzaamheden met inleidende storing uitstellen'],deadline:d(7),diensten:['VWM','PPO']}
+  }};
 }
