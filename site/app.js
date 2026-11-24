@@ -1,12 +1,12 @@
 import {actualStand} from './core/actual-state.js?v=20261105-1515';
 import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,netwerkHtml,mijlpalenHtml,formatieHtml,werkImpactHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261118-1500';
 import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
-import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte} from './core/demo-omgeving.js?v=20261124-1100';
+import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte,demoTriggers} from './core/demo-omgeving.js?v=20261124-1300';
 import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting,opGevolgenHtml} from './core/operationele-formatie.js?v=20261118-1600';
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
-import {toonVersies} from './core/versie.js?v=20261124-1100';
+import {toonVersies} from './core/versie.js?v=20261124-1300';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
 import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
@@ -28,7 +28,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261124-1100';
+const APP_BUILD='20261124-1300';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -260,9 +260,25 @@ let opWhatIf={};
    (core/actual-profile.js). Bij de eerste start, of na Opnieuw opbouwen, wordt de
    gesimuleerde werkruimte via de gewone importroute geladen. */
 const DEMO=!!globalThis.BIDASH_ACTUAL?.demo;
+let demoBron=null;
 function demoWerkruimte(){
- const d=maakDemoWerkruimte();
- return {...mergeImport(DEFAULT_STATE(),d.dvm),bi:d.bi,planning:d.planning,opFormatie:d.opFormatie,demoVersie:DEMO_VERSIE,links:d.links,expertReviews:[],history:[]};
+ const d=maakDemoWerkruimte();demoBron=d;
+ return {...mergeImport(DEFAULT_STATE(),d.dvm),bi:d.bi,planning:d.planning,opFormatie:d.opFormatie,demoVersie:DEMO_VERSIE,links:d.links,expertReviews:d.expertReviews,history:[]};
+}
+/* Na het opbouwen: de referentielijst voor wind- en RIA4-DRIP's via de gewone
+   importfunctie van de DVM-engine. Bij elke start: de planningtriggers (die gelden per
+   sessie en worden niet in de werkruimte bewaard). */
+async function demoNaOpbouw(){
+ const dw=frames.dvm?.contentWindow;
+ if(demoBron?.dripReferentieCsv&&typeof dw?.loadDripSpecialList==='function'){
+  try{await dw.loadDripSpecialList('wind',new dw.File([demoBron.dripReferentieCsv],'demo-drip-referentielijst.csv',{type:'text/csv'}));dw.renderDatasetBeheer?.();}
+  catch(e){console.warn('Demo-referentielijst DRIP niet geladen',e);}
+ }
+}
+function demoTriggersLaden(){
+ const w=frames.planning?.contentWindow;if(typeof w?.ipl_zetTriggers!=='function')return;
+ try{const u=w.ipl_zetTriggers(demoTriggers(),'demo-triggers.json');const st=w.document.getElementById('ipl-trigger-status');if(st){st.textContent='Geladen: demo-triggers.json · '+u.geladen+' triggers (gesimuleerd)';st.style.color='#1a8a4a';}}
+ catch(e){console.warn('Demo-triggers niet geladen',e);}
 }
 function koppelDemo(){
  const open=$('#demoOpen'),dlg=$('#demoDialog'),frame=$('#demoFrame'),banner=$('#demoBanner');
@@ -534,7 +550,7 @@ window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 
 let demoAuditNodig=false;
 koppelDemo();
-try{busy=true;[state,latestSnapshotDirectory]=await Promise.all([importStap('Werkruimte lezen',()=>read()),readValue(LATEST_SNAPSHOT_DIRECTORY_KEY).catch(()=>null)]);state=state||DEFAULT_STATE();const demoNieuw=DEMO&&(state.demoVersie!==DEMO_VERSIE||!state.dvm?.assetregister);if(demoNieuw){status('Demo-omgeving opbouwen met gesimuleerde gegevens…');state=demoWerkruimte();}if(!Array.isArray(state.expertReviews))state.expertReviews=[];state.opFormatie=nieuwsteOpFormatie(state.opFormatie,await readValue(OP_FORMATIE_KEY).catch(()=>null));renderLatestSnapshotSource();await restore(state);if(demoNieuw){try{const w=frames.planning?.contentWindow;if(w?.IPL_DASHCONFIG)w.IPL_DASHCONFIG.beschikbareFte={...DEMO_PLANNING_FTE};if(w?.IPL_CONFIG&&w.IPL_MODEL){for(const r of w.IPL_MODEL.regels||[]){if(r.kind==='mile'||(w.IPL_CONFIG.fte[r.id]||[]).length)continue;w.IPL_CONFIG.fte[r.id]=demoTaakFte(r.naam);}w.ipl_refreshFormatie?.();}}catch(e){console.warn('Demo-planning niet volledig ingesteld',e);}}await capture();if(demoNieuw){await write(state);await writeValue(OP_FORMATIE_KEY,state.opFormatie).catch(()=>{});demoAuditNodig=true;}render();status('Werkruimte gereed. Kies Laden & exporteren voor jouw bestanden.');}catch(e){fail(e);}finally{busy=false;}
+try{busy=true;[state,latestSnapshotDirectory]=await Promise.all([importStap('Werkruimte lezen',()=>read()),readValue(LATEST_SNAPSHOT_DIRECTORY_KEY).catch(()=>null)]);state=state||DEFAULT_STATE();const demoNieuw=DEMO&&(state.demoVersie!==DEMO_VERSIE||!state.dvm?.assetregister);if(demoNieuw){status('Demo-omgeving opbouwen met gesimuleerde gegevens…');state=demoWerkruimte();}if(!Array.isArray(state.expertReviews))state.expertReviews=[];state.opFormatie=nieuwsteOpFormatie(state.opFormatie,await readValue(OP_FORMATIE_KEY).catch(()=>null));renderLatestSnapshotSource();await restore(state);if(demoNieuw){try{const w=frames.planning?.contentWindow;if(w?.IPL_DASHCONFIG)w.IPL_DASHCONFIG.beschikbareFte={...DEMO_PLANNING_FTE};if(w?.IPL_CONFIG&&w.IPL_MODEL){for(const r of w.IPL_MODEL.regels||[]){if(r.kind==='mile'||(w.IPL_CONFIG.fte[r.id]||[]).length)continue;w.IPL_CONFIG.fte[r.id]=demoTaakFte(r.naam);}w.ipl_refreshFormatie?.();}}catch(e){console.warn('Demo-planning niet volledig ingesteld',e);}await demoNaOpbouw();}if(DEMO)demoTriggersLaden();await capture();if(demoNieuw){await write(state);await writeValue(OP_FORMATIE_KEY,state.opFormatie).catch(()=>{});demoAuditNodig=true;}render();status('Werkruimte gereed. Kies Laden & exporteren voor jouw bestanden.');}catch(e){fail(e);}finally{busy=false;}
 if(demoAuditNodig){try{await executeQualityAudit();}catch(e){console.warn('Demo-kwaliteitsaudit mislukt',e);}status('Werkruimte gereed. Demo-omgeving opgebouwd met gesimuleerde gegevens.');}
 
 show(location.hash.slice(1)||'overview');
