@@ -389,6 +389,18 @@ dialog::backdrop{background:rgba(15,58,49,.45);backdrop-filter:blur(3px)}
 .ov-mp-tekst b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--g-ink)}
 .ov-mp-tekst small{color:var(--g-ink-3);font-size:11px}
 .ov-voetnoot{margin:10px 0 0;font-size:11px}
+/* 2.95: demo-omgeving */
+.demo-open{background:var(--g-peach,#f4874f);color:#3b1604;border-color:transparent;font-weight:650}
+.demo-banner{display:inline-flex;align-items:center;gap:8px;padding:4px 6px 4px 12px;border-radius:999px;background:#fff3ec;border:1px solid #f3c9b3;color:#8a3412;font-size:12px;font-weight:650}
+.demo-banner button{padding:3px 10px;font-size:11.5px}
+.demo-dialog{width:min(1500px,96vw);height:min(940px,94vh);max-width:none;max-height:none;padding:0;border:0;border-radius:18px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.demo-dialog[open]{display:flex;flex-direction:column}
+.demo-dialog::backdrop{background:rgba(9,25,20,.55)}
+.demo-kop{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 18px;background:var(--g-forest,#0f3d33);color:#fff}
+.demo-kop span{display:block;font-size:12px;color:#cfe6dd}
+.demo-knoppen{display:flex;gap:10px;align-items:center;flex-shrink:0}
+.demo-knoppen a{color:#fff;font-size:12.5px}
+.demo-dialog iframe{flex:1;width:100%;border:0;background:#fff}
 /* 2.92: operationele formatie per VC */
 .op-formatie{margin:0 0 18px}
 .op-kop{margin:0 0 12px;color:var(--g-ink-2);font-size:12.5px}

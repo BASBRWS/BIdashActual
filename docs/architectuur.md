@@ -6,7 +6,7 @@ BiDash heeft twee nuttige architectuurbeelden die niet hetzelfde doel hebben. He
 
 ![Logische architectuur: VWM-dienstverlening bovenaan, daaronder de rule engine en trigger engine, gevoed door bedrijfsvoering BI, technische DVM-assets en planning/externe invloeden](afbeeldingen/architectuur-dienstverlening.svg)
 
-De bovenste laag is bewust niet BI, DVM of Planning maar de dienstverlening zelf. De centrale vraag is: kunnen we Incidentmanagement, Verkeersmanagement, Reis- en route-informatie en Werk in Uitvoering nu en straks leveren, en met welke prestatie, capaciteit, risico en kosten?
+De bovenste laag is bewust niet BI, DVM of Planning maar de dienstverlening zelf. De centrale vraag is: kunnen we Incidentmanagement, Verkeersmanagement, Reis- en netwerksturing en Werk in Uitvoering nu en straks leveren, en met welke prestatie, capaciteit, risico en kosten?
 
 Daaronder staan drie informatiedomeinen naast elkaar.
 

@@ -89,7 +89,7 @@ afhankelijkheden op tot één. Optellen levert het effectieve signaleringsgewich
 | Verkeersmanagement | 99,0% | 55,0% | 1,82% |
 | Werk in Uitvoering | 98,0% | 35,0% | 5,71% |
 | Incidentmanagement | 99,0% | 24,0% | 4,17% |
-| Reis- & route-informatie | 98,0% | 16,7% | 12,00% |
+| Reis- en netwerksturing | 98,0% | 16,7% | 12,00% |
 
 Omdat in dit voorbeeld alleen de signaalgevers verslechteren — camera, detectie,
 DRIP en communicatie blijven op honderd procent — geldt per dienst:
@@ -98,17 +98,17 @@ DRIP en communicatie blijven op honderd procent — geldt per dienst:
 dienstbeschikbaarheid = 100 − signaleringsgewicht × uitvalspercentage
 ```
 
-![Verkeersmanagement zakt van 100 naar 64,6 procent en duikt als eerste onder zijn norm; werk in uitvoering, incidentmanagement en reis- en route-informatie volgen met kleinere dalingen](afbeeldingen/voorbeeld-diensten.svg)
+![Verkeersmanagement zakt van 100 naar 64,6 procent en duikt als eerste onder zijn norm; werk in uitvoering, incidentmanagement en reis- en netwerksturing volgen met kleinere dalingen](afbeeldingen/voorbeeld-diensten.svg)
 
 Het beeld is scheef, en dat is precies de bedoeling van de weging.
 **Verkeersmanagement** leunt voor 55 procent op de matrixsignaalgevers en zakt
 daarom van 100 naar 64,6 procent — het verliest bijna net zoveel als het areaal
-zelf. **Reis- en route-informatie** leunt vooral op detectie en DRIP en houdt
+zelf. **Reis- en netwerksturing** leunt vooral op detectie en DRIP en houdt
 89,3 procent over.
 
 De eerste zes procent uitval in 2028 is meteen genoeg om drie van de vier normen
 te breken: verkeersmanagement, incidentmanagement en werk in uitvoering gaan er
-in 2028 doorheen, reis- en route-informatie volgt in 2029. Normen van 98 en 99
+in 2028 doorheen, reis- en netwerksturing volgt in 2029. Normen van 98 en 99
 procent laten nu eenmaal weinig ruimte.
 
 ## Stap 5 en 6 · WIS-compensatie en wat die kost

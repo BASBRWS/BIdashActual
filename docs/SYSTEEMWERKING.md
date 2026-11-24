@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.93 en DVM 166, bijgewerkt op 18 november 2026 met de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.95 en DVM 168, bijgewerkt op 24 november 2026 met een demo-omgeving (2.95 / DVM 168); op 18 november 2026 met de dienstnaam Reis- en netwerksturing (2.94 / DVM 167), de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1408,3 +1408,32 @@ Bron: het aangeleverde dashboard "A12 · Regio ↔ VWM Impact", impact sliders A
 Controles:
 - `tests/ingenieursmodel.test.js` reproduceert de uitkomsten van `compute()` met de A12-voorbeelddata (reductie 0, neutraal) op vier decimalen. Daarnaast controleert hij de afritweging, de instelbaarheid, de formatiekoppeling en het normaliseren.
 - `tests/overview-dashboard-browser.cjs` controleert in de echte schil het areaal per VC uit het register, de gevolgenkaart en het wisselen van rekenmethode.
+
+## Dienstnaam Reis- en netwerksturing, 2.94 / DVM 167
+
+De dienst `rri` heette Reis- en route-informatie en heet nu Reis- en netwerksturing.
+
+- **Waar.** De naam is aangepast in de diensten van de DVM-module (`dvm-1.js`), de standaarddiensten van de schil (`app.js`), de bedienketen `bk_info` van de BI-module (`bi-1.js`), de teksten in DVM en de documentatie (`architectuur.md`, het rekenvoorbeeld en de grafieken).
+- **Oude namen.** `migreerDB` in `bi-1.js` zet opgeslagen ketens en functies met de oude naam om.
+- **Ongewijzigd.** Het id `rri`, de norm, de afhankelijkheden en de subprocessen. De DRIP-functie "route-informatie tonen" beschrijft wat een DRIP doet en is daarom blijven staan.
+
+## Demo-omgeving, 2.95 / DVM 168
+
+De knop Demo in de kop opent een pop-up (`#demoDialog`) met de app als `index.html?demo=1` in een iframe. Een link opent dezelfde demo in een nieuw venster.
+
+- **Gescheiden opslag.** `core/actual-profile.js` herkent demomodus aan `demo=1` in de URL van het eigen venster of van een omvattend venster. De engines in iframes erven die modus. In demomodus heet de werkruimte `bidash-demo` (IndexedDB) en krijgen alle `localStorage`-sleutels het voorvoegsel `bidash-demo:`. De echte werkruimte (`bidash-actual`) wordt niet gelezen en niet geschreven. De losse planningpagina (`bidash-planning`) wordt door de demo niet geopend.
+- **Opbouw.** `core/demo-omgeving.js` (`maakDemoWerkruimte`) is deterministisch, met een vaste startwaarde; alleen de datums volgen vandaag. Bij de eerste start in demomodus, of na Opnieuw opbouwen, laadt `app.js` de werkruimte via de gewone route: `mergeImport`, `restore`, `capture` en `write`. Daarna zet de app de beschikbare FTE en de FTE per taak in de planning, bewaart de operationele formatie en voert de kwaliteitsaudit uit. `demoVersie` in de werkruimte bepaalt of de demo opnieuw moet worden opgebouwd.
+- **Inhoud** (alles verzonnen):
+  - **Netwerk.** Vijf VC's met elk drie wegen van 20 km.
+  - **Assetregister.** Ongeveer 4.650 assets: signaalgevers, lussen, camera's en DRIP's, met RD-coördinaten, bouwjaar, regionale dienst, district, contract, aannemer en leverancier.
+  - **Storingen.** Open storingen en een half jaar historie, met per VC een ander beeld. Signaalgeverstoringen krijgen een `msi_context`: rijbaanbreed, opvolgend, voor afrit, voor toerit, laatste portaal voor splitsing of weefvak. DRIP-storingen komen als DRIP-historie mee.
+  - **Netwerk en werk.** Een netwerkschakelmatrix (60 schakels), werkzaamheden (deels vlak na open signaalgeverstoringen) en U-routes.
+  - **Parameters.** De bronbevestiging per type (`liveDekking`) en een NDW-meting per kilometer voor de verkeerskosten.
+  - **BI.** Bedieningsketen-assets voor alle objecttypen, vijf bedrijfsfuncties met benodigd en actueel FTE, en het budget.
+  - **Planning.** Drie projecten met VWM-fasen en mijlpalen.
+  - **Formatie en koppelingen.** De operationele formatie per VC (methode ingenieursbureau) en de dienstkoppelingen.
+- **Niet gevuld.** Een P6-triggerbestand, de referentielijsten voor wind- en RIA4-DRIP's (de vlaggen staan wel in het register) en de expertinvoer. Die vult de gebruiker zelf in.
+
+Controles:
+- `tests/demo-omgeving.test.js`: determinisme, alle onderdelen gevuld, locatiecontexten (waaronder voor afrit), inleidende werkzaamheden en de herkenning van demomodus, ook voor geneste engines.
+- `tests/demo-browser.cjs`: knop en pop-up, de opgebouwde demo met exacte dienstwaarden, berekenbare kosten, inleidende werkzaamheden, planning zonder standaardwaarden, de formatie met de methode ingenieursbureau en de afritweging, en een uitgevoerde audit. De test controleert ook dat de eigen werkruimte leeg blijft.
