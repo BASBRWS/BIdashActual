@@ -389,6 +389,76 @@ dialog::backdrop{background:rgba(15,58,49,.45);backdrop-filter:blur(3px)}
 .ov-mp-tekst b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--g-ink)}
 .ov-mp-tekst small{color:var(--g-ink-3);font-size:11px}
 .ov-voetnoot{margin:10px 0 0;font-size:11px}
+/* 2.97: managementrapportage */
+.rap-builder{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:20px;align-items:start}
+.rap-paneel{position:sticky;top:12px;padding:16px;border:1px solid var(--g-line);border-radius:var(--g-r-md);background:#fff;max-height:calc(100vh - 24px);overflow:auto}
+.rap-paneel h2{margin:0 0 6px;font-size:16px}
+.rap-velden{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.rap-velden label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--g-ink-2)}
+.rap-opties{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.rap-optie{display:grid!important;grid-template-columns:18px minmax(0,1fr);gap:8px;align-items:start;padding:5px 6px;margin:0!important;border-radius:8px;font-size:12.5px;cursor:pointer}
+.rap-optie input{width:16px!important;height:16px;min-height:0!important;margin:2px 0 0!important;padding:0!important}
+.rap-optie span{display:block}
+.rap-optie:hover{background:var(--g-mint-wash)}
+.rap-optie small{display:block;color:var(--g-ink-3);font-size:11px;line-height:1.3}
+.rap-knoppen{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.rap-voorbeeld{min-width:0;padding:18px;border-radius:var(--g-r-md);background:#e9efec}
+.rap-document{max-width:860px;margin:0 auto;background:#fff;color:#16241f;padding:44px 52px;border-radius:6px;box-shadow:0 6px 26px rgba(16,38,31,.12);font-size:13.5px;line-height:1.55}
+.rap-voorblad{border-bottom:3px solid #0f3d33;padding-bottom:18px;margin-bottom:8px}
+.rap-eyebrow{margin:0;color:#0f9d78;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.rap-document h1{margin:6px 0 4px;font-size:26px;line-height:1.2;color:#0f3d33}
+.rap-meta{margin:0 0 14px;color:#4b625a}
+.rap-colofon{display:flex;flex-wrap:wrap;gap:8px 28px;margin:0 0 14px}
+.rap-colofon dt{font-size:10.5px;color:#5f736c;text-transform:uppercase;letter-spacing:.08em}
+.rap-colofon dd{margin:0;font-weight:600}
+.rap-inhoud ol{margin:4px 0 0;padding:0;list-style:none;columns:2;font-size:12.5px}
+.rap-hoofdstuk{margin-top:26px}
+.rap-hoofdstuk h2{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-size:18px;color:#0f3d33;border-bottom:1px solid #d7e2dd;padding-bottom:6px}
+.rap-nr{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#0f3d33;color:#fff;font-size:13px}
+.rap-lead{font-size:14.5px;color:#2c3d37}
+.rap-kader{margin:12px 0;padding:10px 14px;border-radius:8px;border-left:4px solid #0f9d78;background:#f1f8f5}
+.rap-kader p,.rap-kader ul{margin:4px 0 0}
+.rap-kader ul{padding-left:18px}
+.rap-kader li{margin:4px 0}
+.rap-kader-betekenis{border-left-color:#2a78d6;background:#f0f5fc}
+.rap-kader-advies{border-left-color:#eb6834;background:#fdf3ee}
+.rap-figuur{margin:16px 0;padding:12px 14px;border:1px solid #e1e9e5;border-radius:8px;break-inside:avoid}
+.rap-figuur figcaption{margin-bottom:8px;font-size:12.5px;color:#2c3d37}
+.rap-bron{margin:6px 0 0;font-size:11px;color:#6a7c75}
+.rap-svg{display:block;width:100%;height:auto}
+.rap-svg-label{font-size:11.5px;fill:#2c3d37}
+.rap-svg-waarde{font-size:11.5px;fill:#16241f;font-weight:600}
+.rap-svg-as{font-size:10.5px;fill:#6a7c75}
+.rap-svg-track{fill:#edf2ef}
+.rap-svg-grid{stroke:#e3ebe7;stroke-width:1}
+.rap-svg-norm{stroke:#16241f;stroke-width:1.5;stroke-dasharray:3 3}
+.rap-svg-normdik{stroke:#16241f;stroke-width:2.5}
+.rap-svg-hit{fill:transparent}
+.rap-svg-vak{fill:#f6faf8;stroke:#cfdcd6}
+.rap-svg-vaktitel{font-size:11px;fill:#4b625a;font-weight:600}
+.rap-svg-vakwaarde{font-size:17px;fill:#0f3d33;font-weight:700}
+.rap-svg-pijl{stroke:#7d9088;stroke-width:1.6;fill:none}
+.rap-tabelblok{margin:14px 0;break-inside:avoid}
+.rap-tabeltitel{margin:0 0 6px;font-size:12.5px}
+.rap-tabel{width:100%;border-collapse:collapse;font-size:12.5px}
+.rap-tabel th{text-align:left;padding:6px 8px;background:#0f3d33;color:#fff;font-weight:600;font-size:11.5px}
+.rap-tabel td{padding:6px 8px;border-bottom:1px solid #e3ebe7;vertical-align:top}
+.rap-tabel tr:nth-child(even) td{background:#f8fbf9}
+.rap-r{text-align:right!important;white-space:nowrap}
+.rap-status{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-weight:600;font-size:11.5px}
+.rap-status-goed span{color:#0ca30c}.rap-status-let span{color:#c98500}.rap-status-ernstig span{color:#d4622f}.rap-status-kritiek span{color:#d03b3b}.rap-status-onbekend span{color:#9aa5ae}
+.rap-voet{margin-top:30px;padding-top:10px;border-top:1px solid #d7e2dd;font-size:11px;color:#6a7c75}
+@media(max-width:1000px){.rap-builder{grid-template-columns:1fr}.rap-paneel{position:static;max-height:none}.rap-document{padding:24px 18px}.rap-inhoud ol{columns:1}}
+@media print{
+ body.rap-afdrukken>*:not(.workspace),body.rap-afdrukken .workspace>*:not(.page-content),body.rap-afdrukken .page-content>*:not(#report),body.rap-afdrukken .rap-paneel{display:none!important}
+ body.rap-afdrukken,body.rap-afdrukken .workspace,body.rap-afdrukken .page-content,body.rap-afdrukken #report,body.rap-afdrukken .rap-builder{display:block!important;margin:0!important;padding:0!important;background:#fff!important;box-shadow:none!important;border:0!important}
+ body.rap-afdrukken .rap-voorbeeld{padding:0;background:#fff}
+ body.rap-afdrukken .rap-document{max-width:none;box-shadow:none;padding:0;border-radius:0}
+ body.rap-afdrukken .rap-hoofdstuk h2{break-after:avoid}
+ body.rap-afdrukken .rap-kader,body.rap-afdrukken .rap-figuur,body.rap-afdrukken .rap-tabelblok{break-inside:avoid}
+ body.rap-afdrukken .rap-voorblad{break-after:page}
+ @page{size:A4;margin:16mm 15mm}
+}
 /* 2.95: demo-omgeving */
 .demo-open{background:var(--g-peach,#f4874f);color:#3b1604;border-color:transparent;font-weight:650}
 .demo-banner{display:inline-flex;align-items:center;gap:8px;padding:4px 6px 4px 12px;border-radius:999px;background:#fff3ec;border:1px solid #f3c9b3;color:#8a3412;font-size:12px;font-weight:650}

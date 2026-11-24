@@ -44,6 +44,18 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
     assert.equal(await plan.evaluate(()=>Object.keys(TRIGGERS).length),4);
     await demo.evaluate(()=>{location.hash='#expertInput';});
     await demo.waitForFunction(()=>/23 van 23 verplichte antwoorden/.test(document.getElementById('expertInput')?.innerText||''));
+    // 2c. 2.97: managementrapportage in de demo, met alle hoofdstukken, figuren en tabellen.
+    await demo.evaluate(()=>{location.hash='#report';});
+    await demo.locator('[data-rap-opstellen]').waitFor();await demo.locator('[data-rap-opstellen]').click();
+    await demo.locator('.rap-document').waitFor();
+    const rap=await demo.locator('.rap-document').innerText();
+    assert.match(rap,/Kernboodschappen/);assert.match(rap,/Van storing tot gevolg/);assert.doesNotMatch(rap,/NaN|undefined/);
+    assert.equal(await demo.locator('.rap-hoofdstuk').count(),11);
+    assert.ok(await demo.locator('.rap-figuur').count()>=8);assert.ok(await demo.locator('.rap-tabel').count()>=8);
+    await demo.locator('[data-rap-veld="scope"]').selectOption('ZWN');
+    await demo.waitForFunction(()=>/Verkeerscentrale ZWN/.test(document.querySelector('.rap-meta')?.textContent||''));
+    const [download]=await Promise.all([page.waitForEvent('download'),demo.locator('[data-rap-download]').click()]);
+    assert.match(download.suggestedFilename(),/managementrapportage.*\.html$/);
     // 3. De eigen werkruimte is niet aangeraakt.
     await page.locator('#demoSluit').click();await page.locator('#demoDialog').waitFor({state:'hidden'});
     assert.match(await page.locator('#cards').innerText(),/Open storingen\s*Onbekend/);

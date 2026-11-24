@@ -1,6 +1,6 @@
 # BiDash — systeemwerking en kwaliteitscontract
 
-Status: beschrijving van BIdashActual 2.96 en DVM 169, bijgewerkt op 24 november 2026 met een demo-omgeving (2.95 / DVM 168) die ook expertduidingen, DRIP-referentielijsten en planningtriggers bevat (2.96 / DVM 169); op 18 november 2026 met de dienstnaam Reis- en netwerksturing (2.94 / DVM 167), de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
+Status: beschrijving van BIdashActual 2.97 en DVM 170, bijgewerkt op 24 november 2026 met een managementrapportage-builder (2.97 / DVM 170) en een demo-omgeving (2.95 / DVM 168) die ook expertduidingen, DRIP-referentielijsten en planningtriggers bevat (2.96 / DVM 169); op 18 november 2026 met de dienstnaam Reis- en netwerksturing (2.94 / DVM 167), de rekenmethode van het ingenieursbureau voor operationele gevolgen (2.93 / DVM 166), de operationele formatie per verkeerscentrale (2.92 / DVM 165), een kopieerscript voor de CDMS-logmappen (DVM 164), storingen bij geplande werkzaamheden op het Overzicht en de naam Business Intelligence Dashboard (2.91 / DVM 163); op 17 november 2026 met het register voor regelgebruik (* op Impactregels en Organisatieregels, 2.90 / DVM 162), NDW-werkzaamheden uit de planningsfeed (DVM 161) en een snellere DRIP-mapimport (DVM 160); op 16 november 2026 met ingepakte JSON-exports (.json.gz), het glass-dashboardthema en de leesbaarheidsfix 2.85; daarvoor op 5 november 2026 voor behoud van MTM-meldingen bij een tegenstrijdige kopklok op dezelfde brondag. Compacte totaalexports en hervatten per VC blijven beschikbaar. Dienstimpact en regiofocus gebruiken dezelfde dienstbanden. MTM-BSS-gebeurtenissen met expliciete registratie en herstel blijven beschikbaar. De storingslevenscyclus, uitvoerbare memobesluiten en PDOK-kaart blijven beschikbaar.
 Dit document bevat geen operationele brongegevens. Bij een functionele wijziging moeten code, tests, `docs/GEBRUIKERSHULP.md`, `docs/processflow.md`, de gepubliceerde Help-pagina en deze beschrijving samen worden beoordeeld en waar nodig bijgewerkt.
 
 
@@ -1440,3 +1440,29 @@ De knop Demo in de kop opent een pop-up (`#demoDialog`) met de app als `index.ht
 Controles:
 - `tests/demo-omgeving.test.js`: determinisme, alle onderdelen gevuld, locatiecontexten (waaronder voor afrit), inleidende werkzaamheden en de herkenning van demomodus, ook voor geneste engines.
 - `tests/demo-browser.cjs`: de referentielijst (6 en 4 codes, 6 gekoppelde assets), 4 planningtriggers en een expertinvoer van 23 van 23. Verder knop en pop-up, de opgebouwde demo met exacte dienstwaarden, berekenbare kosten, inleidende werkzaamheden, planning zonder standaardwaarden, de formatie met de methode ingenieursbureau en de afritweging, en een uitgevoerde audit. De test controleert ook dat de eigen werkruimte leeg blijft.
+
+## Managementrapportage, 2.97 / DVM 170
+
+Onder Overzicht staat de pagina Managementrapportage (route `report`). Links stel je het rapport samen, rechts staat het rapport zoals het wordt afgedrukt.
+
+- **Doelgroep en taal.** Het rapport is geschreven voor management zonder technische achtergrond: korte zinnen, begrippen vertaald (signaalgevers boven de weg, informatiepanelen, maatschappelijke kosten) en een begrippenlijst. Signaalteksten met technische verwijzingen worden opgeschoond met `schoneTaal`: codes tussen haakjes, CMDB-labels en wegingen vallen weg.
+- **Opbouw per hoofdstuk.** Elk hoofdstuk heeft een kernboodschap of toelichting, figuren, tabellen en schema's, een kader "Wat betekent dit?" en een aanbeveling of gevraagd besluit. De hoofdstukken zijn:
+  - Managementsamenvatting: kernboodschappen, ketenschema "Van storing tot gevolg" en een stoplicht per thema. Dit hoofdstuk staat altijd in het rapport.
+  - Storingsbeeld: verloop per dag en verdeling per soort installatie.
+  - Dienstverlening: kogelgrafiek per dienst tegen de norm.
+  - Netwerk en maatschappelijke kosten.
+  - Werkzaamheden en uitvoerbaarheid.
+  - Formatie en bezetting: beschikbaar tegen benodigd per VC.
+  - Operationele gevolgen: rekenmethode ingenieursbureau.
+  - Projecten en mijlpalen: tijdlijn en capaciteitsvraag.
+  - Risico's en besluitpunten.
+  - Betrouwbaarheid van de informatie: kwaliteitsaudit en expertduidingen.
+  - Begrippenlijst.
+- **Instellingen.** Titel, ontvanger, auteur, gebied (landelijk of één VC), de onderwerpen en de opmaak (grafieken, tabellen, schema's). De instellingen gelden per kijker en staan in `localStorage` onder `bidash-rapport-instelling`.
+- **Bron.** `core/rapportage.js` (`rapportModel` en `rapportHtml`) rekent niets nieuws. Het gebruikt `overzichtNu()`, `opFormatieNu()`, de open meldingen, `combine()` voor de signalen, de kwaliteitsaudit en de expertduidingen. Ontbreekt een bron, dan staat er "nog niet bekend" in plaats van een nul.
+- **Grafieken.** Inline SVG zonder inline stijl. De vier dienstkleuren komen uit het gevalideerde categorische palet; de lichte tinten hebben altijd een direct label en een tabel. De enkele reeks gebruikt `#0f9d78`. Statussen hebben een icoon en een label, nooit alleen een kleur. Er is één as, en marks hebben een `<title>` voor de tooltip.
+- **Uitvoer.** Afdrukken of opslaan als PDF via `window.print()`. Met `body.rap-afdrukken` toont de afdrukversie alleen het rapport; figuren, tabellen en kaders breken niet over een pagina. Download als HTML neemt de `.rap-`-regels uit de stylesheets op, zodat het bestand zelfstandig te openen is.
+
+Controles:
+- `tests/rapportage.test.js`: alle hoofdstukken, figuren en tabellen, geen inline stijl en geen NaN, kernzinnen met getallen, gebied en onderdelen kiesbaar, eerlijk bij ontbrekende bronnen, en schone taal.
+- `tests/demo-browser.cjs`: het rapport in de demo met 11 hoofdstukken, het gebied ZWN en de download.
