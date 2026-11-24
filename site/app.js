@@ -1,12 +1,13 @@
 import {actualStand} from './core/actual-state.js?v=20261105-1515';
 import {overzichtModel,kpiHtml,pijplijnHtml,verloopHtml,meterlijstHtml,vcRijen,dienstenHtml,netwerkHtml,mijlpalenHtml,formatieHtml,werkImpactHtml,koppelVerloopHover,PERIODES} from './core/overview-dashboard.js?v=20261118-1500';
-import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js';
+import {GROUPS,ROUTES,resolveRoute} from './ui/routes.js?v=20261124-1500';
+import {RAPPORT_ONDERDELEN,standaardRapportInstelling,rapportModel,rapportHtml,rapportBuilderHtml} from './core/rapportage.js?v=20261124-1500';
 import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte,demoTriggers} from './core/demo-omgeving.js?v=20261124-1300';
 import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting,opGevolgenHtml} from './core/operationele-formatie.js?v=20261118-1600';
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
 import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
-import {toonVersies} from './core/versie.js?v=20261124-1300';
+import {toonVersies} from './core/versie.js?v=20261124-1500';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
 import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
@@ -28,7 +29,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261124-1300';
+const APP_BUILD='20261124-1500';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -330,6 +331,46 @@ function koppelOpFormatie(){
   if(b.hasAttribute('data-op-standaard')){const d=standaardOpFormatie();bewaarOpFormatie(s=>{s.norm=d.norm;s.verdeling=d.verdeling;s.ftePerPositie=d.ftePerPositie;s.maxExtraPct=d.maxExtraPct;s.rollen=d.rollen;s.ingenieur=d.ingenieur;}).then(()=>renderOpFormatie(true));}
  });
 }
+/* Managementrapportage (2.97): builder met instellingen (per kijker in localStorage)
+   en een rapport uit dezelfde modellen als het Overzicht. */
+const RAP_KEY='bidash-rapport-instelling';
+function rapInstelling(){try{return {...standaardRapportInstelling(),...JSON.parse(localStorage.getItem(RAP_KEY)||'{}')};}catch{return standaardRapportInstelling();}}
+function rapBewaar(s){try{localStorage.setItem(RAP_KEY,JSON.stringify(s));}catch{}}
+function rapVcs(){return [...new Set([...(summaries.dvm?.formatieBasis?.rijen||[]).map(r=>r.vc),...allFaultsVeilig().map(f=>f.vc)].filter(v=>v&&v!=='onbekend'))].sort();}
+function allFaultsVeilig(){try{return summaries.dvm?allFaults():[];}catch{return [];}}
+function rapOpstellen(){
+ const s=rapInstelling(),d=summaries.dvm,b=summaries.bi;
+ const r=rapportModel({overzicht:overzichtNu(),opFormatie:opFormatieNu(),meldingen:allFaultsVeilig(),signalen:combine(d,b,state.links),kwaliteit:state.qualityAudit,expert:state.expertReviews,dvm:d},s);
+ const host=$('#rapVoorbeeld');if(host){host.innerHTML=rapportHtml(r);host.dataset.opgesteld='1';}
+ return r;
+}
+function renderRapport(){
+ const inst=$('#rapInstellingen');if(!inst)return;
+ if(!inst.dataset.klaar||!inst.contains(document.activeElement)){inst.innerHTML=rapportBuilderHtml(rapInstelling(),{vcs:rapVcs()});inst.dataset.klaar='1';}
+ if($('#rapVoorbeeld')?.dataset.opgesteld)rapOpstellen();
+}
+function rapDownload(){
+ const doc=$('#rapVoorbeeld .rap-document');if(!doc){status('Stel eerst een rapport op.',true);return;}
+ const regels=[];for(const sheet of document.styleSheets){let lijst;try{lijst=sheet.cssRules;}catch{continue;}for(const regel of lijst){const t=regel.cssText;if(/\.rap-|\.ov-subkop/.test(t))regels.push(t);}}
+ const titel=rapInstelling().titel;
+ const html=`<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titel)}</title><style>body{margin:0;background:#eef2f0;font-family:'Segoe UI',Arial,sans-serif}${regels.join('\n')}</style></head><body>${doc.outerHTML}</body></html>`;
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download=(titel||'managementrapportage').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').toLowerCase()+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+function koppelRapport(){
+ const host=$('#report');if(!host||host.dataset.gekoppeld)return;host.dataset.gekoppeld='1';
+ host.addEventListener('change',e=>{const el=e.target,s=rapInstelling();
+  if(el.dataset.rapVeld){s[el.dataset.rapVeld]=el.value;rapBewaar(s);}
+  else if(el.dataset.rapOnderdeel){const set=new Set(s.onderdelen);el.checked?set.add(el.dataset.rapOnderdeel):set.delete(el.dataset.rapOnderdeel);s.onderdelen=RAPPORT_ONDERDELEN.map(o=>o.id).filter(id=>set.has(id));rapBewaar(s);}
+  else if(el.dataset.rapOpmaak){s[el.dataset.rapOpmaak]=el.checked;rapBewaar(s);}
+  else return;
+  if($('#rapVoorbeeld')?.dataset.opgesteld)rapOpstellen();
+ });
+ host.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-rap-opstellen')){rapOpstellen();status('Rapport opgesteld.');}
+  if(b.hasAttribute('data-rap-print')){if(!$('#rapVoorbeeld')?.dataset.opgesteld)rapOpstellen();document.body.classList.add('rap-afdrukken');window.print();setTimeout(()=>document.body.classList.remove('rap-afdrukken'),500);}
+  if(b.hasAttribute('data-rap-download')){if(!$('#rapVoorbeeld')?.dataset.opgesteld)rapOpstellen();rapDownload();}
+ });
+}
 /* Overzichtsdashboard (2.88): één model voor kaarten, pijplijn, verloop en lijsten. */
 const OV_PERIODE_KEY='bidash-overzicht-periode';
 let ovPeriode=(()=>{try{const v=Number(localStorage.getItem(OV_PERIODE_KEY));return PERIODES.includes(v)?v:30;}catch{return 30;}})();
@@ -600,7 +641,7 @@ function renderNative(){
  const signals=combine(d,b,state.links);
  $('#prioritySignals').innerHTML=signals.length?signals.slice(0,3).map(t=>`<article class="signal"><small>${esc(t.eigenaar)} · ${esc(t.resp||'Verantwoordelijke vastleggen')}</small><strong>${esc(t.titel)}</strong><p>${esc(t.msg)}</p></article>`).join(''):empty('Nog geen gezamenlijke prioriteiten','Laad bronnen en verbind diensten aan bedrijfsfuncties.','rules');
  renderOverzicht();
- koppelOpFormatie();renderOpFormatie();
+ koppelOpFormatie();renderOpFormatie();koppelRapport();renderRapport();
  $('#planningStatus').innerHTML=b?.planning?`<b>${num(b.planning.regels,0)} planningsactiviteiten</b><span>${esc(b.planning.naam)}</span><br><button data-route="planning">Tijdlijn bekijken →</button>`:'<span>Planning-XML nog niet geladen.</span><br><button data-route="planning">Planning openen →</button>';
  $('#organisationTable').innerHTML=b?.functies.length?`<div class="table-scroll"><table><thead><tr><th>Bedrijfsfunctie</th><th>Benodigd FTE</th><th>Beschikbaar FTE</th><th>Verschil</th></tr></thead><tbody>${b.functies.map(f=>`<tr><td>${esc(f.naam)}</td><td>${num(f.benodigd)}</td><td>${num(f.actueel)}</td><td>${num(f.actueel-f.benodigd)}</td></tr>`).join('')}</tbody></table></div>`:empty('Nog geen bedrijfsfuncties','Vul de formatie in bij Bedrijfsgegevens.','businessData');
  if(view==='assets')renderAssets();
