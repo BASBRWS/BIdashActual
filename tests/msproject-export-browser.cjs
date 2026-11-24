@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const fixture=`<?xml version="1.0" encoding="UTF-8"?><Project xmlns="http://schemas.microsoft.com/project" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ext="urn:test"><Name>Test &amp; export</Name><StartDate>2030-01-01T08:00:00</StartDate><FinishDate>2030-03-01T17:00:00</FinishDate><CalendarUID>1</CalendarUID><Calendars><Calendar><UID>1</UID><Name>Testkalender</Name></Calendar></Calendars><Tasks>
 <Task><UID>0</UID><Name>Projectsamenvatting</Name><OutlineLevel>0</OutlineLevel><Start>2030-01-01T08:00:00</Start><Finish>2030-03-01T17:00:00</Finish><Summary>1</Summary></Task>
 <Task><UID>1</UID><ID>1</ID><Name>Testgroep</Name><WBS>1</WBS><OutlineNumber>1</OutlineNumber><OutlineLevel>1</OutlineLevel><Start>2030-01-01T08:00:00</Start><Finish>2030-03-01T17:00:00</Finish><Summary>1</Summary></Task>

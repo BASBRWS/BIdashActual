@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 (async()=>{
  const root=path.join(__dirname,'../site'),dir=path.join(__dirname,'../.browser-test/bss-map'),date='14-10-2026',folder=path.join(dir,'mtm/mn/storinglijst/2026/10/14');fs.mkdirSync(folder,{recursive:true});
  const line=(action,id,time,unit)=>`${action} BSS : BSS_ID= ${id}, 1003 Fatale fout bij MSI ${unit}\tA77 R 11,250\t${date} ${time}`;

@@ -1,7 +1,7 @@
 /* Synthetische browserregressie: aparte bronnen, hergebruik, fouten en oude routes.
    Geen operationele bestanden of afgeleide brongegevens. */
 const fs=require('fs'),path=require('path'),assert=require('assert/strict'),zlib=require('zlib');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const site=path.join(__dirname,'../site');
 const publication='<publicationTime>2026-01-05T07:01:00Z</publicationTime>';
 const wrap=(type,body)=>`<publication xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="${type}">${publication}${body}</publication>`;

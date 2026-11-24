@@ -1,6 +1,7 @@
-import {BIDASH_VERSIE} from '../core/versie.js?v=20261116-285';
+import {BIDASH_VERSIE} from '../core/versie.js?v=20261124-1700';
 import {createFileDownload} from '../core/file-download.js';
-import {normalizePlanningSnapshot,planningSnapshot,readPlanningWorkspace,writePlanningWorkspace} from '../core/planning-workspace.js';
+import {normalizePlanningSnapshot,planningSnapshot,readPlanningWorkspace,writePlanningWorkspace} from '../core/planning-workspace.js?v=20261124-1700';
+import {vraagToegang} from '../core/toegang.js?v=20261124-1700';
 const $=selector=>document.querySelector(selector),frame=$('#planning');
 const downloads=createFileDownload($('#backupDownload'));
 let api=null,busy=true,timer=null,saveChain=Promise.resolve(),saveGeneration=0,managedLoads=0;
@@ -67,6 +68,7 @@ async function start(){
  try{
   for(let count=0;count<600&&!frame.contentWindow?.HUB;count++)await new Promise(resolve=>setTimeout(resolve,50));
   api=frame.contentWindow?.HUB;if(!api)throw Error('De planning reageert niet. Ververs de pagina.');
+  await vraagToegang({titel:'Integrale planning',databases:['bidash-actual','bidash-planning','bidash-actual-signaalgever-importer']});
   const saved=await readPlanningWorkspace();
   if(saved){importPlanning(normalizePlanningSnapshot(saved));status('Laatst opgeslagen planning hersteld · '+api.summary().naam);}
   else status('Klaar. Laad een planning-XML of een back-up met de planning.');

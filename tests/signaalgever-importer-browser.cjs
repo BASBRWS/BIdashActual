@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 (async()=>{
  const root=path.join(__dirname,'../site'),fixture=path.join(__dirname,'../.browser-test/sg-importer');fs.rmSync(fixture,{recursive:true,force:true});
  function file(rootDir,vc,date,hour,ids,text){const [y,m,d]=date.split('-'),dir=path.join(rootDir,'mtm',vc,'storinglijst',y,m,d);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,hour+'.txt'),text??`MTM storinglijst\n${d}-${m}-${y} ${hour}:30:00\n`+ids.map(id=>`|${id}|1003|1003 Fatale fout bij MSI ${id}|A4 R 26,200|${id===1?'01-01-2024':d+'-'+m+'-'+y} 00:00:00|`).join('\n'));}

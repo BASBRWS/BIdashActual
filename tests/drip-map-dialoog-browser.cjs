@@ -4,7 +4,7 @@
    map, en controleert het hele pad: regio- en periodefilter, inlezen, episodes,
    toevoegen aan DRIP-historie en koppelen aan All Assets. Synthetische logregels. */
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require('./helpers/playwright-met-toegang.cjs');
 const regel=(t,asset,loc,toestand,waarde)=>[t,'2','1',asset,loc,toestand,waarde,'x'].join('\t');
 const LOGS={
   'cdms/mn/log/2025/01/15/a.txt':[regel('07:00:00','DBD80','A15R_12,300','M','URGENT'),regel('13:00:00','DBD80','A15R_12,300','M','OK')].join('\n'),

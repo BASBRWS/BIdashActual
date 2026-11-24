@@ -5,9 +5,10 @@ import {RAPPORT_ONDERDELEN,standaardRapportInstelling,rapportModel,rapportHtml,r
 import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte,demoTriggers} from './core/demo-omgeving.js?v=20261124-1300';
 import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting,opGevolgenHtml} from './core/operationele-formatie.js?v=20261118-1600';
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261105-1515';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261124-1700';
+import {vraagToegang,isIngesteld,vergrendelEnHerlaad,toonWachtwoordWijzigen} from './core/toegang.js?v=20261124-1700';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
-import {toonVersies} from './core/versie.js?v=20261124-1600';
+import {toonVersies} from './core/versie.js?v=20261124-1700';
 import {nieuwsteMomentopnameUitBestanden,nieuwsteMomentopnameUitMap,mapToestemming,schrijfBestandNaarMap} from './core/latest-snapshot.js?v=20261116-286';
 import {leesBestandTekst,maakJsonBestand,zonderGzip,leesGzipVoorkeur,bewaarGzipVoorkeur} from './core/json-gzip.js?v=20261116-286';
 import {runQualityAudit,QUALITY_CATEGORIES} from './core/quality-audit.js';
@@ -29,7 +30,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261124-1600';
+const APP_BUILD='20261124-1700';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}
@@ -589,8 +590,21 @@ $('#primaryNav').innerHTML=GROUPS.map(g=>`<button data-route="${g.items[0][0]}" 
 toonVersies(document,engineVersies);
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 
+function koppelToegang(){
+ const actief=!DEMO&&isIngesteld();
+ for(const id of ['toegangVergrendel','toegangWijzig'])$('#'+id)?.toggleAttribute('hidden',!actief);
+ globalThis.__BIDASH_VOOR_VERGRENDELEN__=async()=>{clearTimeout(timer);await sync();};
+ $('#toegangVergrendel')?.addEventListener('click',()=>vergrendelEnHerlaad());
+ $('#toegangWijzig')?.addEventListener('click',async()=>{if(await toonWachtwoordWijzigen())status('Wachtwoord gewijzigd. Je gegevens blijven versleuteld.');});
+ const st=$('#toegangStatus');if(st)st.textContent=DEMO?'De demo gebruikt geen wachtwoord: alle gegevens zijn verzonnen.':actief?'Je werkruimte in deze browser is versleuteld (AES-256) met een sleutel die alleen met je wachtwoord te openen is. Na 30 minuten zonder activiteit vergrendelt het dashboard zichzelf. Exportbestanden zijn niet versleuteld: bewaar ze op een beveiligde schijf.':'Er is nog geen wachtwoord ingesteld.';
+}
 let demoAuditNodig=false;
 koppelDemo();
+/* 2.99: eerst ontgrendelen (of de eerste keer een wachtwoord instellen); pas dan wordt de
+   versleutelde werkruimte gelezen. De demo heeft geen wachtwoord. */
+const TOEGANG_DATABASES=['bidash-actual','bidash-planning','bidash-actual-signaalgever-importer'];
+await vraagToegang({databases:TOEGANG_DATABASES});
+koppelToegang();
 try{busy=true;[state,latestSnapshotDirectory]=await Promise.all([importStap('Werkruimte lezen',()=>read()),readValue(LATEST_SNAPSHOT_DIRECTORY_KEY).catch(()=>null)]);state=state||DEFAULT_STATE();const demoNieuw=DEMO&&(state.demoVersie!==DEMO_VERSIE||!state.dvm?.assetregister);if(demoNieuw){status('Demo-omgeving opbouwen met gesimuleerde gegevens…');state=demoWerkruimte();}if(!Array.isArray(state.expertReviews))state.expertReviews=[];state.opFormatie=nieuwsteOpFormatie(state.opFormatie,await readValue(OP_FORMATIE_KEY).catch(()=>null));renderLatestSnapshotSource();await restore(state);if(demoNieuw){try{const w=frames.planning?.contentWindow;if(w?.IPL_DASHCONFIG)w.IPL_DASHCONFIG.beschikbareFte={...DEMO_PLANNING_FTE};if(w?.IPL_CONFIG&&w.IPL_MODEL){for(const r of w.IPL_MODEL.regels||[]){if(r.kind==='mile'||(w.IPL_CONFIG.fte[r.id]||[]).length)continue;w.IPL_CONFIG.fte[r.id]=demoTaakFte(r.naam);}w.ipl_refreshFormatie?.();}}catch(e){console.warn('Demo-planning niet volledig ingesteld',e);}await demoNaOpbouw();}if(DEMO)demoTriggersLaden();await capture();if(demoNieuw){await write(state);await writeValue(OP_FORMATIE_KEY,state.opFormatie).catch(()=>{});demoAuditNodig=true;}render();status('Werkruimte gereed. Kies Laden & exporteren voor jouw bestanden.');}catch(e){fail(e);}finally{busy=false;}
 if(demoAuditNodig){try{await executeQualityAudit();}catch(e){console.warn('Demo-kwaliteitsaudit mislukt',e);}status('Werkruimte gereed. Demo-omgeving opgebouwd met gesimuleerde gegevens.');}
 
