@@ -55,10 +55,10 @@ class WerkCacheTests(unittest.TestCase):
             if url == werk.SOURCE:
                 raise OSError('Offline')
             return json.dumps(previous).encode() if url.endswith('latest.json') else self.data
-        m = werk.refresh(self.output, 'https://example.github.io/Project/', self.now + timedelta(hours=20), fetch)
+        m = werk.refresh(self.output, 'https://example.gitlab.io/Project/', self.now + timedelta(hours=20), fetch)
         self.assertTrue(m['retained'])
-        self.assertEqual(requests[1], 'https://example.github.io/Project/ndw/werk/latest.json')
-        m = werk.refresh(self.output, 'https://example.github.io/Project/', self.now + timedelta(hours=27), fetch)
+        self.assertEqual(requests[1], 'https://example.gitlab.io/Project/ndw/werk/latest.json')
+        m = werk.refresh(self.output, 'https://example.gitlab.io/Project/', self.now + timedelta(hours=27), fetch)
         self.assertEqual(m['status'], 'unavailable')
 
     def test_rejects_previous_hash_or_external_filename(self):
@@ -68,7 +68,7 @@ class WerkCacheTests(unittest.TestCase):
                 if url == werk.SOURCE:
                     raise OSError('Offline')
                 return json.dumps({**previous, **bad}).encode() if url.endswith('latest.json') else self.data
-            m = werk.refresh(self.output, 'https://example.github.io/Project', self.now, fetch)
+            m = werk.refresh(self.output, 'https://example.gitlab.io/Project', self.now, fetch)
             self.assertEqual(m['status'], 'unavailable')
 
     def test_xml_limit(self):

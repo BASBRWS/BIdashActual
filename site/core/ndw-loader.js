@@ -4,7 +4,7 @@ const PATCH_SOURCE=String.raw`
   if(globalThis.__BIDASH_NDW_LOADER_ACTIVE__)return;
   if(typeof ndw69Summary!=='function'||typeof kostenDagRows!=='function')return;
   /* De openbare NDW-kopie wordt elke vier uur ververst (2.87). Een kopie tot vijf uur
-     oud is geldig: vier uur plus speling voor vertraagde geplande GitHub-runs. */
+     oud is geldig: vier uur plus speling voor vertraagde geplande pipelines. */
   const NDW_VERVERS_MINUTEN=240;
   const NDW_MAX_LEEFTIJD_MS=5*60*60000;
 

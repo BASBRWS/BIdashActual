@@ -69,7 +69,7 @@ Achtergrond bij BiDash integraal. De applicatie zelf staat in [`site/`](../site)
 
 `scripts/stage-docs.mjs` kopieert `docs/` naar de tijdelijke publicatiemap `site/docs/` en genereert `site/help-docs.js` met de inhoud van alle Markdown-bestanden op het hoogste niveau van deze map. De documentatiepagina's houden hun vaste volgorde; de release notes worden op datum uit de bestandsnaam gesorteerd, nieuwste eerst, zodat de Help de laatste wijziging bovenaan toont. Beide gegenereerde paden staan in `.gitignore`.
 
-De Help-viewer in `site/help.html` gebruikt die bundel met `site/help.js` en `site/core/markdown.js`. Relatieve afbeeldingsverwijzingen zoals `afbeeldingen/bidash-processflow.svg`, `afbeeldingen/storingsfilter-flow.svg` en `afbeeldingen/architectuur-dienstverlening.svg` blijven daardoor zowel op GitHub als in de gepubliceerde Help werken. Een wijziging onder `docs/**` start de Pages-workflow opnieuw.
+De Help-viewer in `site/help.html` gebruikt die bundel met `site/help.js` en `site/core/markdown.js`. Relatieve afbeeldingsverwijzingen zoals `afbeeldingen/bidash-processflow.svg`, `afbeeldingen/storingsfilter-flow.svg` en `afbeeldingen/architectuur-dienstverlening.svg` blijven daardoor zowel op GitLab als in de gepubliceerde Help werken. Een wijziging onder `docs/**` start de Pages-pipeline opnieuw.
 
 ## Documentatiecontract
 

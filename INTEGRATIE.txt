@@ -1,13 +1,13 @@
 BiDash integraal — browserapp
 
-Startpunt: site/index.html. GitHub Pages publiceert uitsluitend site/.
+Startpunt: site/index.html. GitLab Pages publiceert uitsluitend site/.
 Lokaal ontwikkelen: npm run serve en http://localhost:8080 openen.
 Testen: npm test. Er zijn geen runtime package-installaties nodig.
 
 GEGEVENS
 De browser leest gekozen bestanden met FileReader/File.text. De gezamenlijke
 werkruimte staat in IndexedDB (bidash-integraal). Planning bewaart daarnaast
-instellingen in lokale browseropslag. Niets wordt naar GitHub verzonden.
+instellingen in lokale browseropslag. Niets wordt naar GitLab verzonden.
 CSP connect-src 'none' blokkeert netwerkverkeer vanuit applicatielogica.
 Spreadsheetbibliotheek staat lokaal onder site/vendor; geen externe CDN.
 Gebruik één werkruimte-tab tegelijk. Exporteer voor back-up of overdracht.
@@ -53,9 +53,9 @@ trajectmethode blijft beschikbaar; de oude ingebedde geografische routegrafiek
 is niet vooraf beschikbaar in deze versie. Bron-JSON/XML nooit committen.
 
 HOSTING
-Workflow .github/workflows/pages.yml test en publiceert site/. Indien Pages nog
-niet actief is: repository Settings > Pages > Source: GitHub Actions.
-GitHub App-verbindingen kunnen deze beheerinstelling mogelijk niet wijzigen.
+Pipeline .gitlab-ci.yml test en publiceert site/ via GitLab Pages (sinds 3.00).
+Het vierurenschema staat in Build > Pipeline schedules. Pages-toegang voor
+iedereen: Settings > General > Visibility > Pages > Everyone.
 
 site/ is de nieuwe ingang. De verwijderde oudere repositorybestanden zijn niet teruggezet.
 

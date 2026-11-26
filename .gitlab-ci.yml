@@ -1,0 +1,57 @@
+# BIdashActual operationele dagstand: testen, openbare NDW-kopie ophalen en
+# publiceren via GitLab Pages. Vervangt sinds 3.00 de GitHub Pages-workflow.
+#
+# Elke vier uur verversen (UTC 17 */4 * * *; 01:17, 05:17, ... Nederlandse
+# wintertijd) stel je in GitLab in: Build > Pipeline schedules, doelbranch main.
+# Handmatig publiceren: Build > Pipelines > Run pipeline op main.
+# De pipeline leest uitsluitend code en openbare NDW-feeds en schrijft niets
+# terug naar Git; gebruikersdata komt er nooit in.
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - site/**/*
+        - docs/**/*
+        - scripts/**/*
+        - tests/**/*
+        - package.json
+        - .gitlab-ci.yml
+
+default:
+  image: node:22-bookworm
+
+.controleren: &controleren
+  - npm test
+  - |
+    for file in site/*.js site/engines/*.js site/core/*.js site/ui/*.js site/planning/*.js; do
+      node --check "$file"
+    done
+
+# Controle bij een merge request; publiceert niets.
+test:
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script: *controleren
+
+# Publicatie vanaf main: dezelfde controle, dan NDW ophalen en site/ publiceren.
+pages:
+  stage: deploy
+  resource_group: pages
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - *controleren
+    - echo "Actuele openbare NDW-bron ophalen"
+    - python3 scripts/fetch-ndw.py --output site/ndw --previous-base "$CI_PAGES_URL"
+    - echo "Openbare NDW-planningsfeed werkzaamheden ophalen"
+    - python3 scripts/fetch-ndw-werk.py --output site/ndw/werk --previous-base "$CI_PAGES_URL"
+  pages:
+    publish: site
+  artifacts:
+    paths:
+      - site

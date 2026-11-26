@@ -1,10 +1,10 @@
 BiDash integraal
 
-GitHub Pages
-1. Plaats de uitgepakte projectbestanden in BASBRWS/BiDash.
-2. Kies Settings > Pages > Source > GitHub Actions.
-3. De workflow test het project en publiceert uitsluitend de map site/.
-   Gegevens worden uitsluitend lokaal geladen; bronbestanden nooit toevoegen aan GitHub.
+GitLab Pages
+1. De broncode staat in GitLab: basb_dd-group/BIdashActual.
+2. De pipeline .gitlab-ci.yml test het project en publiceert uitsluitend de map site/.
+3. Verversing elke vier uur: Build > Pipeline schedules, 17 */4 * * * (UTC), branch main.
+   Gegevens worden uitsluitend lokaal geladen; bronbestanden nooit toevoegen aan GitLab.
 
 Lokaal testen
 Open een terminal in deze projectmap en voer uit:

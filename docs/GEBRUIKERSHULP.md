@@ -338,7 +338,7 @@ kunnen niet beide waar zijn, omdat één melding maar één foutcode heeft.
 
 De publicatiestap voert `scripts/stage-docs.mjs` uit. Die maakt voor de browser een Help-bundel van alle Markdown-bestanden in `docs/` en kopieert de overige documentatiebestanden naar `site/docs/` in het publicatie-artifact. De gegenereerde bundel en kopie worden niet in Git opgeslagen.
 
-Afbeeldingen in Markdown blijven relatieve bronverwijzingen gebruiken, bijvoorbeeld `afbeeldingen/bidash-processflow.svg`. In Help worden die paden vanuit het bijbehorende Markdown-bestand opgelost, zodat dezelfde SVG zowel op GitHub als in de applicatie zichtbaar is.
+Afbeeldingen in Markdown blijven relatieve bronverwijzingen gebruiken, bijvoorbeeld `afbeeldingen/bidash-processflow.svg`. In Help worden die paden vanuit het bijbehorende Markdown-bestand opgelost, zodat dezelfde SVG zowel op GitLab als in de applicatie zichtbaar is.
 
 
 ## Kwaliteitsaudit uitvoeren
@@ -518,11 +518,11 @@ De grenscorrectie geldt voor areaal, storingen en afhankelijke rapportages. Hand
 
 Laad jouw Assetregister / All Assets. Open Data & export, Bronbeheer. Kies bij NDW meetlocaties of NDW trafficspeed **Haal laatste NDW op**. De knop staat ook in het verkeerskostenoverzicht. De app haalt meetlocaties, snelheden en intensiteiten samen op; je hoeft daarvoor geen twee bestanden te kiezen.
 
-De openbare NDW-kopie wordt gepland elke vier uur ververst, rond 01:17, 05:17, 09:17, 13:17, 17:17 en 21:17 (wintertijd; in de zomertijd een uur later). Op de kaart staan de NDW-meettijd, de ophaaltijd en de ouderdom. GitHub kan de verversing vertragen; de knop haalt dus de laatste gepubliceerde kopie op, niet rechtstreeks de nieuwste minuut bij NDW. Een kopie ouder dan vijf uur wordt geweigerd. Wil je een verse meting buiten die tijden, laad dan zelf de NDW-bestanden of laat de beheerder de workflow handmatig uitvoeren. Bij een mislukte download blijft de vorige geladen meting staan. Als een vorige openbare kopie wordt gebruikt, staat dat erbij.
+De openbare NDW-kopie wordt gepland elke vier uur ververst, rond 01:17, 05:17, 09:17, 13:17, 17:17 en 21:17 (wintertijd; in de zomertijd een uur later). Op de kaart staan de NDW-meettijd, de ophaaltijd en de ouderdom. GitLab kan de verversing vertragen; de knop haalt dus de laatste gepubliceerde kopie op, niet rechtstreeks de nieuwste minuut bij NDW. Een kopie ouder dan vijf uur wordt geweigerd. Wil je een verse meting buiten die tijden, laad dan zelf de NDW-bestanden of laat de beheerder de workflow handmatig uitvoeren. Bij een mislukte download blijft de vorige geladen meting staan. Als een vorige openbare kopie wordt gebruikt, staat dat erbij.
 
-De eerste kopie verschijnt na merge en geslaagde websitepublicatie. Als verversing stopt kan de beheerder bij GitHub Actions de workflow Business Intelligence Dashboard WVM handmatig uitvoeren. Geplande runs kunnen in een publieke repository stoppen na zestig dagen zonder repositoryactiviteit. Zelf bestanden laden blijft beschikbaar.
+De eerste kopie verschijnt na merge en geslaagde websitepublicatie. Sinds 3.00 wordt de site via GitLab Pages gepubliceerd, op een nieuw adres. Je werkruimte staat per adres in de browser: maak op de oude site een totaalexport en laad die op de nieuwe site. Als verversing stopt kan de beheerder in GitLab bij Build > Pipelines een pipeline op main handmatig starten, of het pipelineschema controleren. Zelf bestanden laden blijft beschikbaar.
 
-Controleer na ophalen de ruimere koppelingen; lokale koppelingen binnen 1 km zijn automatisch passend. Een nieuwe meting laat een bevestiging staan. Een ander meetpunt of een gewijzigde meetpuntconfiguratie maakt haar ongeldig. Actuele NDW en een oudere storingspeildatum zijn verschillende momenten; dat verschil staat bij de verkeerskosten. Hinderuren en snelheidsreductie blijven scenario-invoer. De verkeerssnapshot en ophaalherkomst gaan mee in de totaalexport met Parameters. Jouw eigen bestanden worden niet naar NDW of GitHub gestuurd.
+Controleer na ophalen de ruimere koppelingen; lokale koppelingen binnen 1 km zijn automatisch passend. Een nieuwe meting laat een bevestiging staan. Een ander meetpunt of een gewijzigde meetpuntconfiguratie maakt haar ongeldig. Actuele NDW en een oudere storingspeildatum zijn verschillende momenten; dat verschil staat bij de verkeerskosten. Hinderuren en snelheidsreductie blijven scenario-invoer. De verkeerssnapshot en ophaalherkomst gaan mee in de totaalexport met Parameters. Jouw eigen bestanden worden niet naar NDW of GitLab gestuurd.
 
 ## Assetlocaties corrigeren, BiDash 2.48 / DVM 129
 

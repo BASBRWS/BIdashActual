@@ -12,7 +12,7 @@ hier afzonderlijk beheerd; er is geen automatische broncodesynchronisatie.
 ## Gebruik
 
 Start met `npm run serve`. Laad je bestaande integrale JSON, DVM-totaalbestand of
-afzonderlijke bronnen. Persoonlijke brondata wordt niet naar GitHub gestuurd.
+afzonderlijke bronnen. Persoonlijke brondata wordt niet naar GitLab of een andere server gestuurd.
 De overname bevat geen browserwerkruimte of gekoppelde bronmap; laad je eigen
 export opnieuw en koppel de map in deze applicatie.
 
@@ -33,13 +33,15 @@ in deze browser bewaard, ook bij een nieuwe bronimport.
 ## Opslag en publicatie
 
 De browseropslag is gescheiden van BiDash, ook als beide apps onder dezelfde
-GitHub Pages-origin draaien. BIdashActual gebruikt IndexedDB `bidash-actual`,
+Pages-origin draaien. BIdashActual gebruikt IndexedDB `bidash-actual`,
 importer-database `bidash-actual-signaalgever-importer` en de localStorage- en
 sessionStorage-prefix `bidash-actual:`.
 
-De workflow `.github/workflows/pages.yml` test en publiceert `site/` via GitHub
-Pages en haalt openbare NDW-data op. Selecteer GitHub Actions als Pages-bron in
-de repository-instellingen. Publicatie bevat code en openbare NDW-data, geen
+Sinds 3.00 staat de broncode op GitLab (`basb_dd-group/BIdashActual`). De
+pipeline `.gitlab-ci.yml` test en publiceert `site/` via GitLab Pages en haalt
+openbare NDW-data op. De vierurenverversing is een pipelineschema in GitLab
+(Build > Pipeline schedules, `17 */4 * * *` UTC, branch `main`). Zet Pages bij
+Settings > General > Visibility op Everyone als de site openbaar moet zijn. Publicatie bevat code en openbare NDW-data, geen
 lokale gebruikersbestanden. `npm test` voert de volledige unitregressie uit.
 De aanvullende dagstandtest staat in `tests/actual-browser.cjs`.
 

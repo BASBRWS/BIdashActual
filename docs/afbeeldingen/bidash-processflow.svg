@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="640" viewBox="0 0 1040 640" role="img" aria-label="Processflow van BiDash: GitHub Pages levert alleen de applicatie; daarna kiest de gebruiker lokale bestanden, die na een voorvertoning en validatie naar twee gescheiden rekenengines gaan, waarvan de samenvattingen in de samenhangfunctie worden gecombineerd, en waarvan de werkruimte in IndexedDB wordt bewaard en selectief geëxporteerd.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="640" viewBox="0 0 1040 640" role="img" aria-label="Processflow van BiDash: GitLab Pages levert alleen de applicatie; daarna kiest de gebruiker lokale bestanden, die na een voorvertoning en validatie naar twee gescheiden rekenengines gaan, waarvan de samenvattingen in de samenhangfunctie worden gecombineerd, en waarvan de werkruimte in IndexedDB wordt bewaard en selectief geëxporteerd.">
     <rect x="0" y="0" width="1040" height="640" fill="#ffffff"/><defs>
       <marker id="ar-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path fill="#93a4bc" d="M0 0 L10 5 L0 10 z"/>
@@ -11,7 +11,7 @@
 
     <!-- levering -->
     <rect fill="#f5f7fb" stroke="#ccd5e2" stroke-width="1" x="40" y="20" width="214" height="48" rx="3"/>
-    <text font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" font-weight="600" fill="#0f1724" x="54" y="41">GitHub Pages</text>
+    <text font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" font-weight="600" fill="#0f1724" x="54" y="41">GitLab Pages</text>
     <text font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="10.5" font-weight="500" fill="#4d5a6e" x="54" y="58">levert alleen de applicatie</text>
     <line fill="none" stroke="#93a4bc" stroke-width="1.5" x1="147" y1="68" x2="147" y2="100" marker-end="url(#ar-f)"/>
     <text font-family="'DejaVu Sans Mono',Consolas,monospace" font-size="10" fill="#6f7d92" x="157" y="90">eenmalig, statisch</text>

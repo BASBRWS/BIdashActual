@@ -7,13 +7,13 @@
 
 BiDash brengt drie informatiedomeinen samen rond één doel: de VWM-dienstverlening. Bedrijfsvoering beschrijft of de organisatie de dienst kan uitvoeren, technische middelen beschrijven of de benodigde assets beschikbaar zijn en planning/context beschrijft externe en tijdgebonden invloeden. Rule engine en trigger engine vertalen die bronnen naar dienstimpact, signalen en besluitinformatie. Alles rekent in de browser van de gebruiker. Er gaat geen bronbestand het apparaat af.
 
-![Processflow: GitHub Pages levert de statische BiDash-applicatie en documentatie; daarna kiest de gebruiker lokale bestanden, die na voorvertoning en validatie naar gescheiden domeinen gaan, waarvan uitkomsten via regels en expliciete koppelingen naar dienstverlening worden vertaald, en waarvan de werkruimte in IndexedDB wordt bewaard en selectief geëxporteerd](afbeeldingen/bidash-processflow.svg)
+![Processflow: GitLab Pages levert de statische BiDash-applicatie en documentatie; daarna kiest de gebruiker lokale bestanden, die na voorvertoning en validatie naar gescheiden domeinen gaan, waarvan uitkomsten via regels en expliciete koppelingen naar dienstverlening worden vertaald, en waarvan de werkruimte in IndexedDB wordt bewaard en selectief geëxporteerd](afbeeldingen/bidash-processflow.svg)
 
 De inhoudelijke denkwijze staat ook in de [logische architectuur](architectuur.md).
 
-## 1. De app en documentatie komen van GitHub, de gegevens nooit
+## 1. De app en documentatie komen van GitLab Pages, de gegevens nooit
 
-De workflow publiceert de map `site/` naar GitHub Pages. Vóór het publicatie-artifact wordt gemaakt voert de teststap `scripts/stage-docs.mjs` uit. Die kopieert de repositorydocumentatie naar `site/docs/` en maakt `site/help-docs.js` uit de echte Markdown-bestanden. Deze twee paden zijn gegenereerd en worden niet in Git opgeslagen.
+De pipeline `.gitlab-ci.yml` publiceert de map `site/` naar GitLab Pages. Vóór het publicatie-artifact wordt gemaakt voert de teststap `scripts/stage-docs.mjs` uit. Die kopieert de repositorydocumentatie naar `site/docs/` en maakt `site/help-docs.js` uit de echte Markdown-bestanden. Deze twee paden zijn gegenereerd en worden niet in Git opgeslagen.
 
 De gebruiker haalt statische applicatiebestanden, uitleg en afbeeldingen op. Vanaf 2.47 bevat het artifact ook een periodiek opgehaalde openbare NDW-feed. Eigen operationele bronbestanden worden nooit onderdeel van die publicatie. De hoofdapp behoudt een Content Security Policy met `connect-src 'none'`; de Help-viewer heeft geen fetch of externe Markdown-service nodig, omdat de Markdown tijdens publicatie lokaal in de Help-bundel is opgenomen.
 
@@ -325,7 +325,7 @@ Weg, HMP, zijde en hectoletter vergelijken, één passende code koppelen, matrix
 
 Pages-publicatie of gepland vijfminutenschema, vaste NDW-feed downloaden, gzip/XML/tijd controleren, hash en bronmanifest schrijven, alleen openbare feed in Pages-artifact publiceren. Fout betekent een aantoonbaar geldige vorige openbare kopie behouden of niet beschikbaar melden.
 
-All Assets laden, Bronbeheer, Haal laatste NDW op, manifest en gzip van eigen website lezen, omvang/hash/meettijd controleren, gecombineerde DATEX II v3 in blokken lezen, bestaande koppeling en verkeerskosten bijwerken, bronkaarten met tijden tonen, snapshot en herkomst lokaal bewaren en exporteren. Te oude of ongeldige bronnen vervangen de geladen snapshot niet. Geen browserpolling en geen upload van gebruikersdata. Geplande GitHub-verversing kan vertragen; werkelijke ouderdom blijft leidend.
+All Assets laden, Bronbeheer, Haal laatste NDW op, manifest en gzip van eigen website lezen, omvang/hash/meettijd controleren, gecombineerde DATEX II v3 in blokken lezen, bestaande koppeling en verkeerskosten bijwerken, bronkaarten met tijden tonen, snapshot en herkomst lokaal bewaren en exporteren. Te oude of ongeldige bronnen vervangen de geladen snapshot niet. Geen browserpolling en geen upload van gebruikersdata. Geplande GitLab-verversing kan vertragen; werkelijke ouderdom blijft leidend.
 
 ### Locatiecorrectie en zijbaan
 

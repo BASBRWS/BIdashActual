@@ -15,7 +15,7 @@ MAX_BYTES = 25 * 1024 * 1024
 MAX_XML_BYTES = 256 * 1024 * 1024
 MAX_AGE = timedelta(minutes=30)
 # De workflow ververst elke vier uur. Een vorige openbare kopie mag daarom tot vijf
-# uur oud zijn: vier uur plus speling voor vertraagde geplande GitHub-runs. Een vers
+# uur oud zijn: vier uur plus speling voor vertraagde geplande pipelines. Een vers
 # opgehaalde NDW-publicatie moet nog steeds binnen MAX_AGE liggen.
 MAX_AGE_RETAINED = timedelta(hours=5)
 REFRESH_MINUTES = 240

@@ -1,7 +1,7 @@
 /* Genereert de figuren bij docs/rekenvoorbeeld-signaalgevers.md uit de
    uitkomsten van bereken-rekenvoorbeeld.mjs. Alle opmaak staat als attribuut
    op het element zelf, zodat de SVG ook blijft kloppen wanneer een viewer
-   stijlblokken verwijdert (GitHub doet dat). */
+   stijlblokken verwijdert (zoals de bestandsweergave van GitLab). */
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';

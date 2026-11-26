@@ -1,4 +1,4 @@
-/* BIdashActual: vaste dagstand, eigen browseropslag op dezelfde GitHub Pages-origin. */
+/* BIdashActual: vaste dagstand, eigen browseropslag op dezelfde Pages-origin. */
 (function(scope){
   'use strict';
   if(scope.BIDASH_ACTUAL)return;

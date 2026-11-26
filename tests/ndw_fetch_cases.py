@@ -48,7 +48,7 @@ class CacheTests(unittest.TestCase):
             if url == ndw.SOURCE:
                 raise OSError('Offline')
             return json.dumps(previous).encode() if url.endswith('latest.json') else self.data
-        m = ndw.refresh(self.output, 'https://example.github.io/Project/', self.now + timedelta(minutes=5), fetch)
+        m = ndw.refresh(self.output, 'https://example.gitlab.io/Project/', self.now + timedelta(minutes=5), fetch)
         self.assertTrue(m['retained'])
         self.assertEqual(m['downloadedAt'], previous['downloadedAt'])
         self.assertEqual(m['publication'], previous['publication'])
@@ -61,7 +61,7 @@ class CacheTests(unittest.TestCase):
                 if url == ndw.SOURCE:
                     raise OSError('Offline')
                 return json.dumps({**previous, **bad}).encode() if url.endswith('latest.json') else self.data
-            m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now, fetch)
+            m = ndw.refresh(self.output, 'https://example.gitlab.io/Project', self.now, fetch)
             self.assertEqual(m['status'], 'unavailable')
 
     def test_retains_previous_within_four_hour_schedule(self):
@@ -70,7 +70,7 @@ class CacheTests(unittest.TestCase):
             if url == ndw.SOURCE:
                 raise OSError('Offline')
             return json.dumps(previous).encode() if url.endswith('latest.json') else self.data
-        m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now + timedelta(hours=4, minutes=30), fetch)
+        m = ndw.refresh(self.output, 'https://example.gitlab.io/Project', self.now + timedelta(hours=4, minutes=30), fetch)
         self.assertEqual(m['status'], 'ready')
         self.assertTrue(m['retained'])
         self.assertEqual(m['refreshMinutes'], 240)
@@ -86,7 +86,7 @@ class CacheTests(unittest.TestCase):
             if url == ndw.SOURCE:
                 raise OSError('Offline')
             return json.dumps(previous).encode() if url.endswith('latest.json') else self.data
-        m = ndw.refresh(self.output, 'https://example.github.io/Project', self.now + timedelta(hours=6), fetch)
+        m = ndw.refresh(self.output, 'https://example.gitlab.io/Project', self.now + timedelta(hours=6), fetch)
         self.assertEqual(m['status'], 'unavailable')
 
     def test_limits(self):

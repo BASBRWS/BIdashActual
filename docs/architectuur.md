@@ -80,7 +80,7 @@ De gezamenlijke schil combineert uitkomsten en expliciete koppelingen. Hij intro
 
 De technische tekening bevat drie soorten scheiding die niet door elkaar moeten worden gehaald.
 
-De netwerkgrens is echt. De gestippelde rand is de browser. De Content Security Policy met `connect-src 'none'` betekent dat de applicatie geen netwerkverzoek voor brondata kan doen. Er is geen upload, geen accountopslag en geen telemetrie. GitHub levert de applicatie; de gegevens blijven aan deze kant van de rand.
+De netwerkgrens is echt. De gestippelde rand is de browser. De Content Security Policy met `connect-src 'none'` betekent dat de applicatie geen netwerkverzoek voor brondata kan doen. Er is geen upload, geen accountopslag en geen telemetrie. GitLab Pages levert de applicatie; de gegevens blijven aan deze kant van de rand.
 
 De eigenaarsgrens is een afspraak. Niets in de techniek verhindert dat iemand een dienstnorm in de schil programmeert. Review, tests en documentatie moeten voorkomen dat één rekenregel op twee plaatsen ontstaat.
 
