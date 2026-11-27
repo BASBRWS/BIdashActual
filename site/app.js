@@ -5,7 +5,7 @@ import {RAPPORT_ONDERDELEN,standaardRapportInstelling,rapportModel,rapportHtml,r
 import {maakDemoWerkruimte,DEMO_VERSIE,DEMO_PLANNING_FTE,demoTaakFte,demoTriggers} from './core/demo-omgeving.js?v=20261124-1300';
 import {standaardOpFormatie,normaliseerOpFormatie,berekenOpFormatie,opFormatieUitkomstHtml,opFormatieInstellingenHtml,opFormatieSamenvatting,opGevolgenHtml} from './core/operationele-formatie.js?v=20261118-1600';
 import {DEFAULT_STATE,DVM_PARTS,BI_RULE_KEYS,LABELS,validate,makeExport,mergeImport,combine} from './core/model.js?v=20261118-1500';
-import {read,write,readValue,writeValue} from './core/storage.js?v=20261124-1700';
+import {read,write,readValue,writeValue} from './core/storage.js?v=20261127-0301';
 import {vraagToegang,isIngesteld,vergrendelEnHerlaad,toonWachtwoordWijzigen} from './core/toegang.js?v=20261124-1700';
 import {createFileDownload} from './core/file-download.js?v=20261111-283';
 import {toonVersies} from './core/versie.js?v=20261124-1700';
@@ -30,7 +30,7 @@ let state=DEFAULT_STATE(),summaries={},busy=false,failedImport=false,timer,view=
 const engineVersies={};
 const diagnostics=window.BIDASH_DIAGNOSTICS;
 diagnostics?.setContext(()=>({version:document.getElementById('bidashVersionBadge')?.textContent,build:APP_BUILD,route:view,busy,failedImport,engines:{...engineVersies},loaded:Object.keys(ready).join(','),modules:Object.fromEntries(Object.entries(frames).map(([name,f])=>[name,{ready:!!f.contentWindow?.HUB,patches:Object.fromEntries(Object.keys(f.contentWindow||{}).filter(k=>k.startsWith('__BIDASH_')&&typeof f.contentWindow[k]==='boolean').map(k=>[k,f.contentWindow[k]]))}]))}));
-const APP_BUILD='20261124-1700';
+const APP_BUILD='20261127-0301';
 const LATEST_SNAPSHOT_DIRECTORY_KEY='latest-snapshot-directory';
 let latestSnapshotDirectory=null,latestSnapshotBusy=false;
 function status(s,error=false){$('#status').textContent=s;$('#status').classList.toggle('error',error);}

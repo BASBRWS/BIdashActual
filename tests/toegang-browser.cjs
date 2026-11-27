@@ -25,7 +25,7 @@ const W='mijn-test-wachtwoord-2026';
     assert.equal(await page.locator('#toegangVergrendel').isVisible(),true);
     assert.equal(await page.evaluate(()=>localStorage.getItem('bidash_integratie_v1')),null,'onversleutelde kopie verwijderd');
     // 2. Gegevens opslaan; in IndexedDB staat alleen versleutelde inhoud.
-    await page.evaluate(async()=>{const S=await import('/core/storage.js?v=20261124-1700');await S.writeValue('test-geheim',{toelichting:'GEHEIM-MERKTEKEN-123'});});
+    await page.evaluate(async()=>{const S=await import('/core/storage.js?v=20261127-0301');await S.writeValue('test-geheim',{toelichting:'GEHEIM-MERKTEKEN-123'});});
     const ruw=await page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('bidash-actual');r.onsuccess=()=>{const q=r.result.transaction('workspace').objectStore('workspace').getAll();q.onsuccess=()=>{const dec=new TextDecoder('latin1');const tekst=JSON.stringify(q.result,(k,v)=>v instanceof ArrayBuffer?dec.decode(v):v);resolve({tekst,versleuteld:/__bidashVersleuteld/.test(tekst)||q.result.some(x=>x?.entries)});r.result.close();};q.onerror=()=>reject(q.error);};r.onerror=()=>reject(r.error);}));
     assert.ok(!ruw.tekst.includes('GEHEIM-MERKTEKEN-123'),'geen leesbare gegevens in de browseropslag');
     assert.ok(ruw.tekst.includes('__bidashVersleuteld'),'versleutelde vorm opgeslagen');
@@ -34,13 +34,13 @@ const W='mijn-test-wachtwoord-2026';
     await page.locator('.tg-scherm').waitFor();assert.match(await page.locator('.tg-kaart').innerText(),/Werkruimte vergrendeld/);
     await page.locator('.tg-veld input').fill('fout-wachtwoord-123');await page.locator('.tg-knop').click();
     await page.waitForFunction(()=>/Onjuist wachtwoord/.test(document.querySelector('.tg-melding')?.textContent||''));
-    const vergrendeld=await page.evaluate(()=>import('/core/storage.js?v=20261124-1700').then(m=>m.read()).then(()=>'gelezen',e=>e.message));
+    const vergrendeld=await page.evaluate(()=>import('/core/storage.js?v=20261127-0301').then(m=>m.read()).then(()=>'gelezen',e=>e.message));
     assert.match(vergrendeld,/vergrendeld/,'zonder wachtwoord geen toegang tot de werkruimte');
     await page.locator('.tg-veld input').fill(W);await page.waitForFunction(()=>!document.querySelector('.tg-knop').disabled);await page.locator('.tg-knop').click();
     await page.waitForFunction(()=>document.getElementById('status').textContent.includes('Werkruimte gereed'),null,{timeout:90000});
-    const terug=await page.evaluate(()=>import('/core/storage.js?v=20261124-1700').then(m=>m.readValue('test-geheim')));
+    const terug=await page.evaluate(()=>import('/core/storage.js?v=20261127-0301').then(m=>m.readValue('test-geheim')));
     assert.equal(terug?.toelichting,'GEHEIM-MERKTEKEN-123');
-    const werkruimte=await page.evaluate(()=>import('/core/storage.js?v=20261124-1700').then(m=>m.read()));assert.ok(werkruimte&&werkruimte.schema,'werkruimte ontsleuteld na ontgrendelen');
+    const werkruimte=await page.evaluate(()=>import('/core/storage.js?v=20261127-0301').then(m=>m.read()));assert.ok(werkruimte&&werkruimte.schema,'werkruimte ontsleuteld na ontgrendelen');
     // 4. Wachtwoord wijzigen via de Data-pagina.
     await page.evaluate(()=>{location.hash='#data';});await page.locator('#toegangWijzig').click();
     const w=page.locator('.tg-scherm .tg-veld input');await w.nth(0).fill(W);await w.nth(1).fill(W+'-nieuw');await w.nth(2).fill(W+'-nieuw');await page.locator('.tg-scherm .tg-knop').click();

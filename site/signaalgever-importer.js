@@ -1,6 +1,6 @@
 import './core/dvm-compact.js';
 import './core/signaalgever-import.js?v=20261103-1400';
-import {createWorkspaceStorage} from './core/storage.js?v=20261124-1700';
+import {createWorkspaceStorage} from './core/storage.js?v=20261127-0301';
 import {vraagToegang} from './core/toegang.js?v=20261124-1700';
 import {BIDASH_VERSIE} from './core/versie.js?v=20261124-1700';
 const C=globalThis.BIDASH_SIGNAALGEVER_IMPORT,$=id=>document.getElementById(id);

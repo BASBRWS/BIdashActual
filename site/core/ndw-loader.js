@@ -1,4 +1,4 @@
-import {read as readWorkspace} from './storage.js?v=20261016-0834';
+import {read as readWorkspace} from './storage.js?v=20261127-0301';
 const PATCH_SOURCE=String.raw`
 (function(){
   if(globalThis.__BIDASH_NDW_LOADER_ACTIVE__)return;

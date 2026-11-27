@@ -2,7 +2,11 @@ import {workspaceParts,workspaceDecoder} from './workspace-parts.js';
 import {TOEGANG_KEY,gedeeldeToestand} from './toegang.js';
 /* 2.99: met een ingesteld wachtwoord wordt elke opgeslagen waarde versleuteld (zie
    core/toegang.js). Oude onversleutelde waarden blijven leesbaar en worden bij de
-   volgende opslag versleuteld. Vergrendeld schrijven wordt geweigerd. */
+   volgende opslag versleuteld. Vergrendeld schrijven wordt geweigerd.
+   3.01: de werkruimte wordt eerst in opslagblokken verdeeld en daarna per blok
+   versleuteld. In 2.99 en 3.00 ging de hele werkruimte als één JSON-tekst door de
+   versleuteling; bij een groot DVM-bestand gaf dat "Invalid string length".
+   Werkruimtes die als één versleuteld geheel zijn opgeslagen blijven leesbaar. */
 const VERGRENDELD='De werkruimte is vergrendeld. Ontgrendel eerst met je wachtwoord.';
 function slot(){
   let ingesteld=false;try{ingesteld=!!globalThis.localStorage?.getItem(TOEGANG_KEY);}catch{}
@@ -27,7 +31,14 @@ const range=generation=>IDBKeyRange.bound([PREFIX,generation,0],[PREFIX,generati
 function clearGeneration(store,generation){const r=store.openCursor(range(generation));r.onsuccess=()=>{const c=r.result;if(c){c.delete();c.continue();}};}
 function put(db,key,value){return new Promise((resolve,reject)=>{const tx=db.transaction('workspace','readwrite');tx.oncomplete=resolve;tx.onerror=e=>reject(tx.error||e.target?.error||Error('Opslag mislukt'));tx.onabort=()=>reject(tx.error||Error('Opslag afgebroken'));try{tx.objectStore('workspace').put(value,key);}catch(error){tx.abort();reject(error);}});}
 function removeGeneration(db,generation){return new Promise((resolve,reject)=>{const tx=db.transaction('workspace','readwrite');tx.oncomplete=resolve;tx.onerror=e=>reject(tx.error||e.target?.error||Error('Opslag mislukt'));tx.onabort=()=>reject(tx.error||Error('Opslag afgebroken'));clearGeneration(tx.objectStore('workspace'),generation);});}
-async function readValue(key){return ontsleutelUitOpslag(await readRaw(key));}
+async function readValue(key){
+  const raw=await readRaw(key);
+  if(!raw?.blokken)return ontsleutelUitOpslag(raw);
+  // Ontsleutelen kan pas na de leestransactie: IndexedDB sluit een transactie bij een await.
+  const decoder=workspaceDecoder();
+  for(const part of raw.blokken)decoder.add(await ontsleutelUitOpslag(part));
+  return ontsleutelUitOpslag(decoder.finish(await ontsleutelUitOpslag(raw.root)));
+}
 async function readRaw(key){
   const db=await openDB();
   try{return await new Promise((resolve,reject)=>{
@@ -37,10 +48,10 @@ async function readRaw(key){
       const value=r.result;
       if(key==='current'&&value?.storage===FORMAT&&!isManifest(value)){failure=Error('Onbekende of beschadigde opslagindeling van de werkruimte.');tx.abort();return;}
       if(key!=='current'||!isManifest(value)){result=value;return;}
-      const decoder=workspaceDecoder();let count=0;
+      const blokken=[];let count=0;
       const cursor=store.openCursor(range(value.generation));cursor.onsuccess=()=>{
-        try{const c=cursor.result;if(!c){if(count!==value.parts)throw Error('Opgeslagen werkruimte is onvolledig, opslagblokken ontbreken.');result=decoder.finish(value.root);return;}
-          if(c.key[2]!==count||count>=value.parts)throw Error('Opgeslagen werkruimte bevat ongeldige opslagblokken.');decoder.add(c.value);count++;c.continue();
+        try{const c=cursor.result;if(!c){if(count!==value.parts)throw Error('Opgeslagen werkruimte is onvolledig, opslagblokken ontbreken.');result={blokken,root:value.root};return;}
+          if(c.key[2]!==count||count>=value.parts)throw Error('Opgeslagen werkruimte bevat ongeldige opslagblokken.');blokken.push(c.value);count++;c.continue();
         }catch(error){failure=error;tx.abort();}
       };
     };
@@ -55,15 +66,15 @@ async function read(){return readValue('current');}
 function write(state){
   // Eén bevroren bronstand; de stapsgewijze opslag mag geen latere edits mengen.
   let snapshot;try{snapshot=structuredClone(state);}catch(error){return Promise.reject(error);}
-  const operation=writeQueue.then(async()=>persistWorkspace(await versleutelVoorOpslag(snapshot)));
+  const operation=writeQueue.then(()=>persistWorkspace(snapshot));
   writeQueue=operation.catch(()=>{});return operation;
 }
 async function persistWorkspace(snapshot){
   const generation=crypto.randomUUID(),db=await openDB();let parts=0;
   try{
     const generator=workspaceParts(snapshot);let step=generator.next();
-    while(!step.done){await put(db,[PREFIX,generation,parts++],step.value);step=generator.next();}
-    const manifest={storage:FORMAT,version:1,generation,parts,root:step.value};
+    while(!step.done){await put(db,[PREFIX,generation,parts++],await versleutelVoorOpslag(step.value));step=generator.next();}
+    const manifest={storage:FORMAT,version:1,generation,parts,root:await versleutelVoorOpslag(step.value)};
     await new Promise((resolve,reject)=>{
       const tx=db.transaction('workspace','readwrite'),store=tx.objectStore('workspace');
       tx.oncomplete=resolve;tx.onerror=e=>reject(tx.error||e.target?.error||Error('Opslag mislukt'));tx.onabort=()=>reject(tx.error||Error('Opslag afgebroken'));
